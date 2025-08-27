@@ -63,40 +63,58 @@ class DatabaseManager {
   }
 
   async initRedis() {
+    console.log(`🔍 Redis Debug: REDIS_URL=${process.env.REDIS_URL ? 'SET' : 'NOT SET'}`);
+    console.log(`🔍 Redis Config: url=${this.config.redis.url ? 'SET' : 'NOT SET'}, host=${this.config.redis.host}, port=${this.config.redis.port}`);
+    
     try {
       const redisConfig = this.config.redis.url ? {
         ...this.config.redis,
         lazyConnect: true,
         retryDelayOnFailover: 100,
-        maxRetriesPerRequest: null,
+        maxRetriesPerRequest: 3,
         retryConnectOnFailure: true,
         connectTimeout: 5000,
         commandTimeout: 3000,
+        maxRetriesPerRequest: 1
       } : {
         host: this.config.redis.host,
         port: this.config.redis.port,
         password: this.config.redis.password,
         lazyConnect: true,
         retryDelayOnFailover: 100,
-        maxRetriesPerRequest: null,
+        maxRetriesPerRequest: 3,
         retryConnectOnFailure: true,
         connectTimeout: 5000,
         commandTimeout: 3000,
+        maxRetriesPerRequest: 1
       };
 
       this.redis = new Redis(redisConfig);
 
+      let reconnectAttempts = 0;
+      const maxReconnectAttempts = 3;
+
       // Add error handlers to prevent unhandled errors
       this.redis.on('error', (error) => {
-        console.warn('⚠️  Redis connection error:', error.message);
+        reconnectAttempts++;
+        console.warn(`⚠️  Redis connection error (attempt ${reconnectAttempts}):`, error.message);
+        
+        if (reconnectAttempts >= maxReconnectAttempts) {
+          console.warn('⚠️  Max Redis reconnection attempts reached, disabling Redis');
+          this.redis.disconnect(false);
+          this.redis = null;
+        }
       });
 
       this.redis.on('connect', () => {
         console.log('✅ Redis connected successfully');
+        reconnectAttempts = 0; // Reset counter on successful connection
       });
 
       this.redis.on('reconnecting', (ms) => {
-        console.log(`🔄 Redis reconnecting in ${ms}ms...`);
+        if (reconnectAttempts < maxReconnectAttempts) {
+          console.log(`🔄 Redis reconnecting in ${ms}ms... (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`);
+        }
       });
 
       this.redis.on('close', () => {
@@ -107,11 +125,13 @@ class DatabaseManager {
       try {
         await Promise.race([
           this.redis.ping(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 3000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 5000))
         ]);
         console.log('✅ Redis connection established and tested');
       } catch (testError) {
         console.warn('⚠️  Redis connection test failed, will continue without caching:', testError.message);
+        this.redis.disconnect(false);
+        this.redis = null;
       }
       
       // Set cache expiration times
@@ -130,6 +150,20 @@ class DatabaseManager {
   // Helper method to safely check Redis availability
   isRedisAvailable() {
     return this.redis && this.redis.status === 'ready';
+  }
+
+  // Safely execute Redis commands with fallback
+  async safeRedisCommand(command, ...args) {
+    if (!this.isRedisAvailable()) {
+      return null;
+    }
+    
+    try {
+      return await this.redis[command](...args);
+    } catch (error) {
+      console.warn(`Redis ${command} command failed:`, error.message);
+      return null;
+    }
   }
 
   async initSQLite() {
