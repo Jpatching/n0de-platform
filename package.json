@@ -7,9 +7,9 @@
   "license": "UNLICENSED",
   "scripts": {
     "postinstall": "npx prisma generate",
-    "build": "npx prisma db push && nest build",
+    "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "npx nest start",
+    "start": "npm run start:prod",
     "start:dev": "npx nest start --watch",
     "start:debug": "npx nest start --debug --watch",
     "start:prod": "node dist/src/main.js",
