@@ -74,8 +74,10 @@ async function initializeServices() {
     }
     
     // Import and start core services
-    const { startAuthService } = await import('./src/auth/database-manager.js');
-    console.log(chalk.blue('🔐 Auth service ready'));
+    const DatabaseManager = await import('./src/auth/database-manager.js');
+    const dbManager = new DatabaseManager.default();
+    await dbManager.init();
+    console.log(chalk.blue('🔐 Database and auth services ready'));
     
     console.log(chalk.green('✅ All n0de services initialized and ready'));
     console.log(chalk.cyan('🌐 Public URL: https://n0de-backend-production.up.railway.app'));

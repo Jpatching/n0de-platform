@@ -1,5 +1,5 @@
-import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
+// Conditional import for SQLite (only when needed)
+let sqlite3, open;
 import pg from 'pg';
 import Redis from 'ioredis';
 import bcrypt from 'bcrypt';
@@ -9,18 +9,23 @@ import { v4 as uuidv4 } from 'uuid';
 class DatabaseManager {
   constructor(config = {}) {
     this.config = {
-      type: process.env.DB_TYPE || config.type || 'sqlite',
+      type: process.env.DB_TYPE || config.type || (process.env.DATABASE_URL ? 'postgresql' : 'sqlite'),
       sqlite: {
         filename: config.sqlite?.filename || './data/users.db'
       },
-      postgresql: {
+      postgresql: process.env.DATABASE_URL ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+      } : {
         host: process.env.DB_HOST || config.postgresql?.host || 'localhost',
         port: process.env.DB_PORT || config.postgresql?.port || 5432,
         database: process.env.DB_NAME || config.postgresql?.database || 'n0de_db',
         user: process.env.DB_USER || config.postgresql?.user || 'n0de_user',
         password: process.env.DB_PASSWORD || config.postgresql?.password || 'n0de_password'
       },
-      redis: {
+      redis: process.env.REDIS_URL ? {
+        url: process.env.REDIS_URL
+      } : {
         host: process.env.REDIS_HOST || config.redis?.host || 'localhost',
         port: process.env.REDIS_PORT || config.redis?.port || 6379,
         password: process.env.REDIS_PASSWORD || config.redis?.password || null
@@ -59,17 +64,55 @@ class DatabaseManager {
 
   async initRedis() {
     try {
-      this.redis = new Redis({
+      const redisConfig = this.config.redis.url ? {
+        ...this.config.redis,
+        lazyConnect: true,
+        retryDelayOnFailover: 100,
+        maxRetriesPerRequest: null,
+        retryConnectOnFailure: true,
+        connectTimeout: 5000,
+        commandTimeout: 3000,
+      } : {
         host: this.config.redis.host,
         port: this.config.redis.port,
         password: this.config.redis.password,
+        lazyConnect: true,
         retryDelayOnFailover: 100,
-        maxRetriesPerRequest: 3
+        maxRetriesPerRequest: null,
+        retryConnectOnFailure: true,
+        connectTimeout: 5000,
+        commandTimeout: 3000,
+      };
+
+      this.redis = new Redis(redisConfig);
+
+      // Add error handlers to prevent unhandled errors
+      this.redis.on('error', (error) => {
+        console.warn('⚠️  Redis connection error:', error.message);
       });
 
-      // Test Redis connection
-      await this.redis.ping();
-      console.log('✅ Redis connection established');
+      this.redis.on('connect', () => {
+        console.log('✅ Redis connected successfully');
+      });
+
+      this.redis.on('reconnecting', (ms) => {
+        console.log(`🔄 Redis reconnecting in ${ms}ms...`);
+      });
+
+      this.redis.on('close', () => {
+        console.log('📴 Redis connection closed');
+      });
+
+      // Test Redis connection with timeout
+      try {
+        await Promise.race([
+          this.redis.ping(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 3000))
+        ]);
+        console.log('✅ Redis connection established and tested');
+      } catch (testError) {
+        console.warn('⚠️  Redis connection test failed, will continue without caching:', testError.message);
+      }
       
       // Set cache expiration times
       this.cacheExpiry = {
@@ -84,7 +127,20 @@ class DatabaseManager {
     }
   }
 
+  // Helper method to safely check Redis availability
+  isRedisAvailable() {
+    return this.redis && this.redis.status === 'ready';
+  }
+
   async initSQLite() {
+    // Dynamic import of SQLite dependencies only when needed
+    if (!sqlite3) {
+      const sqlite3Module = await import('sqlite3');
+      const openModule = await import('sqlite');
+      sqlite3 = sqlite3Module.default;
+      open = openModule.open;
+    }
+    
     this.db = await open({
       filename: this.config.sqlite.filename,
       driver: sqlite3.Database

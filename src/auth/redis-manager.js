@@ -4,12 +4,41 @@ import chalk from 'chalk';
 
 class RedisUserManager {
   constructor() {
-    this.redis = new Redis({
+    // Use Railway Redis URL if available, otherwise fall back to localhost
+    const redisConfig = process.env.REDIS_URL ? {
+      url: process.env.REDIS_URL,
+      lazyConnect: true,
+      retryDelayOnFailover: 100,
+      maxRetriesPerRequest: null,
+      retryConnectOnFailure: true,
+      connectTimeout: 5000,
+      commandTimeout: 3000,
+      retryStrategy: (times) => Math.min(times * 50, 2000)
+    } : {
       port: 6379,
       host: '127.0.0.1',
       family: 4,
       db: 0,
       retryStrategy: (times) => Math.min(times * 50, 2000)
+    };
+
+    this.redis = new Redis(redisConfig);
+
+    // Add error handlers to prevent unhandled errors
+    this.redis.on('error', (error) => {
+      console.warn('⚠️  Redis connection error:', error.message);
+    });
+
+    this.redis.on('connect', () => {
+      console.log('✅ Redis connected successfully');
+    });
+
+    this.redis.on('reconnecting', (ms) => {
+      console.log(`🔄 Redis reconnecting in ${ms}ms...`);
+    });
+
+    this.redis.on('close', () => {
+      console.log('📴 Redis connection closed');
     });
     
     // Payment plans configuration
