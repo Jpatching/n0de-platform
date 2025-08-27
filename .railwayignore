@@ -1,0 +1,11 @@
+# Railway specific ignores
+node_modules/
+*.log
+.env
+.git/
+test-results/
+coverage/
+docs/
+*.md
+LICENSE
+.gitignore
