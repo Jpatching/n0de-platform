@@ -1,0 +1,213 @@
+/* 
+ * ADVANCED LAYOUT FIX FOR N0DE.PRO
+ * Targets specific elements causing the 22,192px height issue
+ */
+
+/* =================================================================
+   CRITICAL HEIGHT FIXES
+   ================================================================= */
+
+/* Fix the main container that's causing extreme height */
+.min-h-screen.bg-bg-main.text-text-primary.overflow-x-hidden.relative {
+  height: auto !important;
+  min-height: 100vh !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+/* Fix the performance section that's 8,386px high */
+#performance.pt-2.pb-16 {
+  height: auto !important;
+  min-height: auto !important;
+  padding-top: 2rem !important;
+  padding-bottom: 4rem !important;
+}
+
+/* Fix any container-width elements with extreme heights */
+.container-width {
+  height: auto !important;
+  min-height: auto !important;
+}
+
+/* Fix any text-center elements with extreme heights */
+.text-center.mb-8 {
+  height: auto !important;
+  min-height: auto !important;
+  margin-bottom: 2rem !important;
+}
+
+/* Fix relative overflow-hidden elements */
+.relative.overflow-hidden.mb-8.space-y-6 {
+  height: auto !important;
+  min-height: auto !important;
+  overflow: visible !important;
+  margin-bottom: 2rem !important;
+}
+
+/* Fix section-padding elements */
+.section-padding.bg-bg-main.relative.z-10 {
+  height: auto !important;
+  min-height: auto !important;
+  padding-top: 4rem !important;
+  padding-bottom: 4rem !important;
+}
+
+/* =================================================================
+   LAYOUT NORMALIZATION
+   ================================================================= */
+
+/* Ensure all sections have reasonable heights */
+section {
+  height: auto !important;
+  min-height: auto !important;
+  max-height: none !important;
+}
+
+/* Fix any divs that might be stretched */
+div {
+  max-height: none !important;
+}
+
+div[style*="height"] {
+  height: auto !important;
+}
+
+/* =================================================================
+   RESPONSIVE LAYOUT FIXES
+   ================================================================= */
+
+/* Fix viewport-related issues */
+html, body {
+  overflow-x: hidden;
+  overflow-y: auto;
+  height: auto !important;
+  min-height: 100vh !important;
+}
+
+/* Fix any fixed positioning that might affect layout */
+.fixed {
+  position: fixed !important;
+  z-index: 9999;
+}
+
+/* Navigation fixes */
+nav.fixed {
+  height: auto !important;
+  min-height: auto !important;
+  backdrop-filter: blur(16px) !important;
+}
+
+/* =================================================================
+   ANIMATION AND SCROLL FIXES
+   ================================================================= */
+
+/* Fix any animations that might cause layout issues */
+[style*="transform"] {
+  transform: none !important;
+}
+
+/* Fix scroll animations specifically */
+.animate-scroll {
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* Fix any elements with perspective transforms */
+[style*="perspective"] {
+  perspective: none !important;
+  transform-style: flat !important;
+}
+
+/* =================================================================
+   CONTENT FLOW FIXES
+   ================================================================= */
+
+/* Ensure proper content flow */
+main, 
+article, 
+section, 
+header, 
+footer {
+  display: block !important;
+  height: auto !important;
+  min-height: auto !important;
+}
+
+/* Fix any flex containers that might be stretched */
+.flex {
+  height: auto !important;
+  min-height: auto !important;
+}
+
+/* Grid container fixes */
+.grid {
+  height: auto !important;
+  min-height: auto !important;
+}
+
+/* =================================================================
+   BACKGROUND AND IMAGE FIXES
+   ================================================================= */
+
+/* Fix background image containers */
+[style*="background-image"] {
+  height: auto !important;
+  min-height: 100vh !important;
+  background-attachment: scroll !important;
+}
+
+/* Fix absolute positioned backgrounds */
+.absolute.inset-0 {
+  position: absolute !important;
+  height: 100% !important;
+  width: 100% !important;
+}
+
+/* =================================================================
+   Z-INDEX AND POSITIONING FIXES
+   ================================================================= */
+
+/* Fix layering issues */
+.z-0 { z-index: 0 !important; }
+.z-10 { z-index: 10 !important; }
+.z-40 { z-index: 40 !important; }
+.z-50 { z-index: 50 !important; }
+
+/* =================================================================
+   DEBUGGING HELPERS (Temporary)
+   ================================================================= */
+
+/* Add red border to any element still over 2000px for debugging */
+/*
+*[style*="height"] {
+  border: 2px solid red !important;
+}
+*/
+
+/* =================================================================
+   FORCE LAYOUT RECALCULATION
+   ================================================================= */
+
+/* Force browser to recalculate layout */
+body::before {
+  content: "";
+  display: block;
+  height: 0;
+  overflow: hidden;
+}
+
+/* Ensure all containers use proper box-sizing */
+* {
+  box-sizing: border-box !important;
+}
+
+/* Final layout enforcement */
+body > div {
+  height: auto !important;
+  min-height: 100vh !important;
+}
+
+body > div > div {
+  height: auto !important;
+  min-height: 100vh !important;
+}

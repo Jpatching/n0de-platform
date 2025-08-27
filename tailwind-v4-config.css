@@ -1,0 +1,210 @@
+/*
+ * TAILWIND CSS V4 CONFIGURATION FOR N0DE.PRO
+ * CSS-first configuration approach for Tailwind v4
+ */
+
+@import "tailwindcss";
+
+/* =================================================================
+   TAILWIND V4 THEME CONFIGURATION (CSS-first approach)
+   ================================================================= */
+
+@theme {
+  /* Custom Color Palette for N0DE */
+  --color-bg-main: #0f0f0f;
+  --color-bg-elevated: #1a1a1a;
+  --color-bg-card: #202020;
+  
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #71717a;
+  
+  /* N0DE Brand Colors */
+  --color-n0de-cyan: #01d3f4;
+  --color-n0de-sky: #0b86f8;
+  --color-n0de-navy: #00255e;
+  --color-n0de-green: #10b981;
+  --color-n0de-blue: #3b82f6;
+  --color-n0de-purple: #8b5cf6;
+  
+  /* Border Colors */
+  --color-border: #27272a;
+  
+  /* Font Families (matching the existing fonts) */
+  --font-inter: "Inter", "Inter Fallback", sans-serif;
+  --font-mono: "JetBrains Mono", "JetBrains Mono Fallback", monospace;
+  --font-display: "Space Grotesk", "Space Grotesk Fallback", sans-serif;
+  --font-body: var(--font-inter);
+  
+  /* Custom Spacing */
+  --spacing-section: 4rem;
+  --spacing-container: 2rem;
+  
+  /* Container Max Width */
+  --container-max-width: 1280px;
+  
+  /* Animation Durations */
+  --animate-duration-fast: 200ms;
+  --animate-duration-normal: 300ms;
+  --animate-duration-slow: 500ms;
+  
+  /* Border Radius */
+  --radius-small: 0.5rem;
+  --radius-medium: 0.75rem;
+  --radius-large: 1rem;
+  --radius-xl: 1.5rem;
+  
+  /* Shadows */
+  --shadow-glow: 0 0 10px currentColor;
+  --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.15);
+  
+  /* Backdrop Blur */
+  --backdrop-blur-sm: blur(8px);
+  --backdrop-blur-md: blur(12px);
+  --backdrop-blur-lg: blur(16px);
+  --backdrop-blur-xl: blur(24px);
+}
+
+/* =================================================================
+   CUSTOM UTILITY CLASSES (Tailwind v4 style)
+   ================================================================= */
+
+@utility container-width {
+  width: 100%;
+  max-width: var(--container-max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--spacing-container);
+  padding-right: var(--spacing-container);
+}
+
+@utility section-padding {
+  padding-left: var(--spacing-container);
+  padding-right: var(--spacing-container);
+  padding-top: var(--spacing-section);
+  padding-bottom: var(--spacing-section);
+}
+
+@utility drop-shadow-glow {
+  filter: var(--shadow-glow);
+}
+
+@utility text-shadow-sm {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* =================================================================
+   COMPONENT CLASSES
+   ================================================================= */
+
+@component .btn-primary {
+  @apply px-6 py-3 bg-gradient-to-b from-n0de-cyan via-n0de-sky to-n0de-navy text-white font-bold rounded-xl;
+  @apply hover:from-n0de-sky hover:via-n0de-cyan hover:to-n0de-navy;
+  @apply transition-all duration-300;
+}
+
+@component .nav-link {
+  @apply text-text-secondary hover:text-n0de-cyan transition-colors duration-200;
+}
+
+@component .card-elevated {
+  @apply bg-bg-elevated border border-border rounded-xl p-6 shadow-elevated;
+}
+
+@component .text-gradient-brand {
+  @apply bg-gradient-to-r from-n0de-cyan via-n0de-sky to-n0de-navy;
+  @apply bg-clip-text text-transparent;
+}
+
+/* =================================================================
+   ANIMATION CLASSES
+   ================================================================= */
+
+@component .animate-scroll {
+  animation: scroll 30s linear infinite;
+}
+
+@keyframes scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@component .animate-fade-in {
+  animation: fade-in var(--animate-duration-slow) ease-out forwards;
+}
+
+@keyframes fade-in {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =================================================================
+   LAYOUT FIXES FOR HEIGHT ISSUES
+   ================================================================= */
+
+/* Critical height normalization */
+html, body {
+  height: auto;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+.min-h-screen {
+  min-height: 100vh;
+  height: auto;
+}
+
+/* Fix any elements with extreme heights */
+section, div, main, article {
+  height: auto;
+  max-height: none;
+}
+
+/* Force proper box-sizing */
+*, ::before, ::after {
+  box-sizing: border-box;
+}
+
+/* =================================================================
+   RESPONSIVE BREAKPOINTS (Tailwind v4 style)
+   ================================================================= */
+
+@media (min-width: 640px) {
+  .container-width {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .container-width {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-width {
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+  }
+}
+
+/* =================================================================
+   DEBUG MODE (Uncomment to debug layout issues)
+   ================================================================= */
+
+/*
+[data-debug="true"] * {
+  outline: 1px solid red;
+  background: rgba(255, 0, 0, 0.1);
+}
+*/

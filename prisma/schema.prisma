@@ -1,0 +1,413 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  username          String?   @unique
+  passwordHash      String?
+  firstName         String?
+  lastName          String?
+  avatar            String?
+  emailVerified     Boolean   @default(false)
+  emailVerifiedAt   DateTime?
+  isActive          Boolean   @default(true)
+  isSuspended       Boolean   @default(false)
+  suspendedReason   String?
+  suspendedAt       DateTime?
+  lastLoginAt       DateTime?
+  loginCount        Int       @default(0)
+  githubId          String?   @unique
+  googleId          String?   @unique
+  role              UserRole  @default(USER)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  apiKeys           ApiKey[]
+  supportTickets    SupportTicket[]
+  usageStats        UsageStats[]
+  sessions          UserSession[]
+  auditLogs         AuditLog[]
+  subscriptions     Subscription[]
+  payments          Payment[]
+  adminActions      AdminAction[]
+  
+  @@map("users")
+}
+
+model ApiKey {
+  id            String      @id @default(cuid())
+  userId        String
+  name          String
+  keyHash       String      @unique // Hashed API key
+  keyPreview    String      // First 8 chars for display
+  permissions   String[]    // Array of permissions
+  rateLimit     Int         @default(1000) // Requests per minute
+  isActive      Boolean     @default(true)
+  lastUsedAt    DateTime?
+  totalRequests Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  expiresAt     DateTime?
+
+  // Relations
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usageStats    UsageStats[]
+  auditLogs     AuditLog[]
+
+  @@map("api_keys")
+}
+
+model UsageStats {
+  id              String    @id @default(cuid())
+  userId          String
+  apiKeyId        String?
+  date            DateTime  @default(now()) @db.Date
+  hour            Int       // 0-23 for hourly tracking
+  requestCount    Int       @default(0)
+  successCount    Int       @default(0)
+  errorCount      Int       @default(0)
+  avgLatency      Float     @default(0)
+  totalLatency    Float     @default(0)
+  bytesTransferred BigInt   @default(0)
+  uniqueIPs       Int       @default(0)
+  region          String?   // frankfurt, amsterdam, north-america
+  endpoint        String?   // RPC method called
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apiKey          ApiKey?   @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, apiKeyId, date, hour, region, endpoint])
+  @@map("usage_stats")
+}
+
+model SupportTicket {
+  id              String              @id @default(cuid())
+  userId          String
+  title           String
+  description     String
+  status          SupportTicketStatus @default(OPEN)
+  priority        TicketPriority      @default(MEDIUM)
+  category        TicketCategory      @default(GENERAL)
+  assignedToEmail String?
+  assignedToName  String?
+  tags            String[]
+  satisfaction    Int?                // 1-5 rating
+  resolvedAt      DateTime?
+  closedAt        DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  // Relations
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages        SupportMessage[]
+  attachments     SupportAttachment[]
+
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id          String        @id @default(cuid())
+  ticketId    String
+  senderId    String?       // null for agent messages
+  senderType  SenderType    @default(USER)
+  senderName  String?
+  senderEmail String?
+  content     String
+  messageType MessageType   @default(TEXT)
+  isInternal  Boolean       @default(false) // Internal agent notes
+  readAt      DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  attachments SupportAttachment[]
+
+  @@map("support_messages")
+}
+
+model SupportAttachment {
+  id          String          @id @default(cuid())
+  ticketId    String?
+  messageId   String?
+  fileName    String
+  originalName String
+  mimeType    String
+  fileSize    Int
+  fileUrl     String
+  uploadedBy  String?
+  createdAt   DateTime        @default(now())
+
+  // Relations
+  ticket      SupportTicket?  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  message     SupportMessage? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@map("support_attachments")
+}
+
+model UserSession {
+  id            String    @id @default(cuid())
+  userId        String
+  sessionId     String    @unique
+  refreshToken  String?   @unique
+  ipAddress     String?
+  userAgent     String?
+  isActive      Boolean   @default(true)
+  expiresAt     DateTime
+  lastActivityAt DateTime @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  userId      String?
+  apiKeyId    String?
+  action      String    // CREATE, UPDATE, DELETE, LOGIN, etc.
+  resource    String    // USER, API_KEY, SUPPORT_TICKET, etc.
+  resourceId  String?
+  oldValues   Json?
+  newValues   Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  apiKey      ApiKey?   @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
+
+model SystemMetrics {
+  id              String    @id @default(cuid())
+  metricType      String    // latency, uptime, throughput, error_rate
+  region          String?   // frankfurt, amsterdam, north-america
+  value           Float
+  unit            String    // ms, percent, rps
+  timestamp       DateTime  @default(now())
+  metadata        Json?
+
+  @@map("system_metrics")
+}
+
+model Subscription {
+  id              String            @id @default(cuid())
+  userId          String
+  planName        String
+  planType        SubscriptionType  @default(FREE)
+  status          SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAt        DateTime?
+  canceledAt      DateTime?
+  trialStart      DateTime?
+  trialEnd        DateTime?
+  metadata        Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments        Payment[]
+
+  @@map("subscriptions")
+}
+
+model RpcNode {
+  id          String      @id @default(cuid())
+  name        String
+  region      String      // frankfurt, amsterdam, north-america
+  endpoint    String      @unique
+  network     String      // mainnet, devnet, testnet
+  isActive    Boolean     @default(true)
+  priority    Int         @default(0) // Higher priority = preferred routing
+  maxRps      Int         @default(1000)
+  currentRps  Int         @default(0)
+  avgLatency  Float       @default(0)
+  uptime      Float       @default(100)
+  lastCheck   DateTime    @default(now())
+  metadata    Json?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("rpc_nodes")
+}
+
+model Payment {
+  id              String            @id @default(cuid())
+  userId          String
+  subscriptionId  String?
+  provider        PaymentProvider
+  providerPaymentId String?         // External payment ID from provider
+  amount          Float
+  currency        String            @default("USD")
+  status          PaymentStatus     @default(PENDING)
+  planType        SubscriptionType?
+  chargeUrl       String?           // For Coinbase Commerce
+  paymentUrl      String?           // For NOWPayments
+  expiresAt       DateTime?
+  paidAt          DateTime?
+  failedAt        DateTime?
+  canceledAt      DateTime?
+  metadata        Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription    Subscription?     @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  webhookEvents   WebhookEvent[]
+  paymentHistory  PaymentHistory[]
+
+  @@map("payments")
+}
+
+model PaymentHistory {
+  id              String            @id @default(cuid())
+  paymentId       String
+  status          PaymentStatus
+  statusReason    String?
+  providerData    Json?
+  timestamp       DateTime          @default(now())
+
+  // Relations
+  payment         Payment           @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@map("payment_history")
+}
+
+model WebhookEvent {
+  id              String            @id @default(cuid())
+  paymentId       String?
+  provider        PaymentProvider
+  eventType       String
+  eventId         String?           @unique // Provider's event ID to prevent duplicates
+  payload         Json
+  processed       Boolean           @default(false)
+  processedAt     DateTime?
+  errorMessage    String?
+  retryCount      Int               @default(0)
+  createdAt       DateTime          @default(now())
+
+  // Relations
+  payment         Payment?          @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@map("webhook_events")
+}
+
+model AdminAction {
+  id              String            @id @default(cuid())
+  adminUserId     String
+  targetUserId    String?
+  action          String            // UPDATE_SUBSCRIPTION, SUSPEND_USER, etc.
+  resource        String            // USER, SUBSCRIPTION, SUPPORT_TICKET, etc.
+  resourceId      String?
+  details         Json?
+  ipAddress       String?
+  userAgent       String?
+  createdAt       DateTime          @default(now())
+
+  // Relations
+  adminUser       User              @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@map("admin_actions")
+}
+
+// Add role field to User for admin management
+// We need to alter the User model to include role
+// This will be done via migration
+
+// Enums
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketCategory {
+  TECHNICAL
+  BILLING
+  GENERAL
+  FEATURE_REQUEST
+  BUG_REPORT
+}
+
+enum SenderType {
+  USER
+  AGENT
+  SYSTEM
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  SYSTEM
+}
+
+enum SubscriptionType {
+  FREE
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  UNPAID
+  TRIALING
+  EXPIRED
+}
+
+enum PaymentProvider {
+  COINBASE_COMMERCE
+  NOWPAYMENTS
+  STRIPE
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELED
+  EXPIRED
+  REFUNDED
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}

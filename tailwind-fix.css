@@ -1,0 +1,233 @@
+/* 
+ * TAILWIND CSS FIX FOR N0DE.PRO
+ * Missing custom Tailwind classes that should be compiled but aren't
+ * This file provides the proper CSS definitions for the frontend
+ */
+
+/* =================================================================
+   CUSTOM BACKGROUND COLORS (bg-bg-*)
+   ================================================================= */
+
+.bg-bg-main {
+  background-color: #0f0f0f; /* Dark background */
+}
+
+.bg-bg-elevated {
+  background-color: #1a1a1a; /* Slightly elevated dark */
+}
+
+.bg-bg-card {
+  background-color: #202020; /* Card background */
+}
+
+/* =================================================================
+   CUSTOM TEXT COLORS (text-text-*)
+   ================================================================= */
+
+.text-text-primary {
+  color: #ffffff; /* White primary text */
+}
+
+.text-text-secondary {
+  color: #a1a1aa; /* Light gray secondary text */
+}
+
+.text-text-muted {
+  color: #71717a; /* Muted gray text */
+}
+
+/* =================================================================
+   CUSTOM N0DE BRAND COLORS (text-N0DE-*, bg-N0DE-*)
+   ================================================================= */
+
+.text-N0DE-cyan {
+  color: #01d3f4; /* N0DE brand cyan */
+}
+
+.text-N0DE-sky {
+  color: #0b86f8; /* N0DE brand sky blue */
+}
+
+.text-N0DE-navy {
+  color: #00255e; /* N0DE brand navy */
+}
+
+.text-N0DE-green {
+  color: #10b981; /* Success green */
+}
+
+.text-N0DE-blue {
+  color: #3b82f6; /* Blue accent */
+}
+
+.text-N0DE-purple {
+  color: #8b5cf6; /* Purple accent */
+}
+
+.bg-N0DE-cyan {
+  background-color: #01d3f4;
+}
+
+.bg-N0DE-sky {
+  background-color: #0b86f8;
+}
+
+.bg-N0DE-navy {
+  background-color: #00255e;
+}
+
+.bg-N0DE-green {
+  background-color: #10b981;
+}
+
+/* =================================================================
+   CUSTOM LAYOUT UTILITIES
+   ================================================================= */
+
+.container-width {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.section-padding {
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-top: 4rem;
+  padding-bottom: 4rem;
+}
+
+/* =================================================================
+   BORDER COLORS
+   ================================================================= */
+
+.border-border {
+  border-color: #27272a;
+}
+
+/* =================================================================
+   OPACITY VARIANTS (with alpha channels)
+   ================================================================= */
+
+.bg-bg-main\/80 {
+  background-color: rgba(15, 15, 15, 0.8);
+}
+
+.bg-bg-elevated\/95 {
+  background-color: rgba(26, 26, 26, 0.95);
+}
+
+.bg-bg-elevated\/30 {
+  background-color: rgba(26, 26, 26, 0.3);
+}
+
+.from-N0DE-cyan {
+  --tw-gradient-from: #01d3f4;
+  --tw-gradient-to: rgba(1, 211, 244, 0);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+
+.via-N0DE-sky {
+  --tw-gradient-to: rgba(11, 134, 248, 0);
+  --tw-gradient-stops: var(--tw-gradient-from), #0b86f8, var(--tw-gradient-to);
+}
+
+.to-N0DE-navy {
+  --tw-gradient-to: #00255e;
+}
+
+/* =================================================================
+   ESSENTIAL RESET STYLES (Fix 22192px height issue)
+   ================================================================= */
+
+/* Reset body and html to proper dimensions */
+html {
+  height: auto;
+  min-height: 100vh;
+}
+
+body {
+  height: auto;
+  min-height: 100vh;
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+}
+
+/* Fix container heights */
+.min-h-screen {
+  min-height: 100vh !important;
+  height: auto !important;
+}
+
+/* Fix any elements with extreme heights */
+div[style*="height: 22192px"],
+div[style*="height:22192px"] {
+  height: auto !important;
+  min-height: 100vh !important;
+}
+
+/* =================================================================
+   RESPONSIVE UTILITIES
+   ================================================================= */
+
+@media (min-width: 640px) {
+  .container-width {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .container-width {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-width {
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+  }
+}
+
+/* =================================================================
+   ANIMATION FIXES
+   ================================================================= */
+
+.animate-scroll {
+  animation: scroll 30s linear infinite;
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* =================================================================
+   UTILITY CLASSES FOR PROPER STYLING
+   ================================================================= */
+
+.backdrop-blur-lg {
+  backdrop-filter: blur(16px);
+}
+
+.backdrop-blur-xl {
+  backdrop-filter: blur(24px);
+}
+
+.drop-shadow-glow {
+  filter: drop-shadow(0 0 10px currentColor);
+}
+
+.text-shadow-sm {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}

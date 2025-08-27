@@ -1,105 +1,269 @@
-# 🚀 n0de Platform
+# n0de RPC Backend
 
-Enterprise-level Solana RPC infrastructure service with comprehensive analytics, user management, and payment processing.
+The fastest, most reliable Solana RPC infrastructure backend API.
 
-## 🌟 Features
+## 🚀 Quick Start
 
-- **Admin Dashboard**: Real-time statistics, user management, revenue tracking
-- **User API**: Account management, usage analytics, plan upgrades  
-- **Payment Service**: Crypto payments via Coinbase Commerce & NOWPayments
-- **Database Integration**: PostgreSQL + Redis for high-performance data management
-- **Authentication**: API key-based auth with rate limiting
-- **Multi-Plan Support**: Free, Starter, Pro, Enterprise tiers
+### Local Development
+
+1. **Clone and setup:**
+   ```bash
+   cd n0de-backend
+   npm install
+   ```
+
+2. **Environment setup:**
+   ```bash
+   cp env.example .env
+   # Edit .env with your database and Redis URLs
+   ```
+
+3. **Database setup:**
+   ```bash
+   npx prisma migrate dev
+   npx prisma generate
+   npm run seed
+   ```
+
+4. **Start development server:**
+   ```bash
+   npm run start:dev
+   ```
+
+5. **Access the API:**
+   - API: http://localhost:3000/api/v1
+   - Docs: http://localhost:3000/api/docs
+   - Health: http://localhost:3000/health
+
+### Railway Deployment
+
+1. **Create Railway project:**
+   ```bash
+   railway login
+   railway init
+   ```
+
+2. **Add services:**
+   - PostgreSQL database
+   - Redis cache
+   - Web service (this backend)
+
+3. **Set environment variables:**
+   ```bash
+   railway variables set JWT_SECRET=your-super-secret-jwt-key
+   railway variables set NODE_ENV=production
+   # Add other variables from env.example
+   ```
+
+4. **Deploy:**
+   ```bash
+   railway up
+   ```
+
+## 📚 API Documentation
+
+### Authentication Endpoints
+- `POST /api/v1/auth/register` - Register new user
+- `POST /api/v1/auth/login` - Login user
+- `POST /api/v1/auth/logout` - Logout user
+- `GET /api/v1/auth/profile` - Get user profile
+- `PUT /api/v1/auth/profile` - Update profile
+- `PUT /api/v1/auth/change-password` - Change password
+
+### API Key Management
+- `GET /api/v1/api-keys` - List user's API keys
+- `POST /api/v1/api-keys` - Create new API key
+- `GET /api/v1/api-keys/:id` - Get specific API key
+- `PUT /api/v1/api-keys/:id` - Update API key
+- `DELETE /api/v1/api-keys/:id` - Delete API key
+
+### Usage Statistics
+- `GET /api/v1/stats/usage` - Get usage statistics
+- `GET /api/v1/stats/history` - Get usage history
+
+### Support System
+- `GET /api/v1/support/tickets` - List support tickets
+- `POST /api/v1/support/tickets` - Create support ticket
+- `GET /api/v1/support/tickets/:id` - Get specific ticket
+- `PUT /api/v1/support/tickets/:id` - Update ticket
+
+### RPC Proxy
+- `POST /api/v1/rpc/test` - Test RPC calls
+- `POST /api/v1/rpc/mainnet` - Mainnet RPC proxy
+- `POST /api/v1/rpc/devnet` - Devnet RPC proxy
+- `POST /api/v1/rpc/testnet` - Testnet RPC proxy
+
+### Performance Metrics
+- `GET /api/v1/metrics/performance` - Get performance metrics
+- `GET /api/v1/metrics/regions` - Get regional metrics
+
+### System Health
+- `GET /health` - System health check
 
 ## 🏗️ Architecture
 
-### Services
-- **Admin Dashboard** (Port 3002): Internal management interface
-- **User API** (Port 3004): External user-facing API
-- **Payment Service** (Port 3005): Crypto payment processing
-- **Database Layer**: PostgreSQL for persistence, Redis for caching
-
 ### Tech Stack
-- **Backend**: Node.js + Express
-- **Database**: PostgreSQL 17 + Redis 8
-- **Authentication**: JWT + API Keys
-- **Payments**: Coinbase Commerce, NOWPayments
-- **Deployment**: Railway + GitHub Actions
-- **Frontend**: Vercel (separate repository)
+- **Framework:** NestJS with TypeScript
+- **Database:** PostgreSQL with Prisma ORM
+- **Cache:** Redis for sessions and rate limiting
+- **Authentication:** JWT with session validation
+- **Documentation:** Swagger/OpenAPI
+- **Deployment:** Railway with Docker
+
+### Database Schema
+- **Users:** User accounts and profiles
+- **API Keys:** API key management with permissions
+- **Usage Stats:** Request tracking and analytics
+- **Support Tickets:** Customer support system
+- **System Metrics:** Performance monitoring
+- **Audit Logs:** Security and change tracking
+
+### Security Features
+- Password hashing with bcrypt
+- JWT token authentication
+- Session validation with Redis
+- Rate limiting per API key
+- Audit logging for all actions
+- Input validation and sanitization
+- CORS protection
+- Helmet security headers
+
+## 🔧 Configuration
+
+### Environment Variables
+```bash
+# Database
+DATABASE_URL="postgresql://user:pass@localhost:5432/n0de_db"
+
+# JWT
+JWT_SECRET="your-super-secret-jwt-key"
+JWT_EXPIRES_IN="7d"
+
+# Redis
+REDIS_URL="redis://localhost:6379"
+
+# API
+API_PORT=3000
+NODE_ENV=production
+
+# Solana RPC
+SOLANA_MAINNET_RPC="https://api.mainnet-beta.solana.com"
+SOLANA_DEVNET_RPC="https://api.devnet.solana.com"
+SOLANA_TESTNET_RPC="https://api.testnet.solana.com"
+
+# Rate Limiting
+RATE_LIMIT_TTL=60
+RATE_LIMIT_MAX=1000
+
+# CORS
+CORS_ORIGINS="https://n0de.com,https://www.n0de.com"
+```
+
+### Railway Variables
+Set these in your Railway project:
+- `DATABASE_URL` (auto-provided by PostgreSQL service)
+- `REDIS_URL` (auto-provided by Redis service)
+- `JWT_SECRET`
+- `NODE_ENV=production`
+- `CORS_ORIGINS`
+- All other environment variables
 
 ## 🚀 Deployment
 
-### Railway (Production)
-- Connected to GitHub repository for automated deployments
-- PostgreSQL and Redis services configured
-- Environment variables managed via Railway dashboard
+### Railway Deployment Steps
+1. Connect GitHub repository to Railway
+2. Add PostgreSQL and Redis services
+3. Set environment variables
+4. Deploy automatically on push
 
-### Local Development
-```bash
-# Start all services
-DB_TYPE=postgresql node start-production.js
+### Custom Domain Setup
+1. Add custom domain in Railway dashboard
+2. Update CORS_ORIGINS environment variable
+3. Update frontend API_URL to point to your domain
 
-# Individual services
-DB_TYPE=postgresql node src/dashboard/admin-dashboard.js
-DB_TYPE=postgresql USER_DASHBOARD_PORT=3004 node src/dashboard/user-dashboard.js  
-DB_TYPE=postgresql PAYMENT_SERVICE_PORT=3005 node src/payments/payment-service.js
-```
+## 📊 Monitoring
 
-## 📊 API Endpoints
+### Health Checks
+- Database connectivity
+- Redis connectivity
+- Memory usage
+- Response times
+- System uptime
 
-### Admin Dashboard (localhost:3002)
-- `GET /api/stats` - User and revenue statistics
-- `GET /api/users` - List all users
-- `GET /health` - Service health check
+### Logging
+- Structured JSON logging
+- Request/response logging
+- Error tracking with stack traces
+- Security event logging
+- Performance metrics logging
 
-### User API (localhost:3004)  
-- `GET /api/user/profile` - User profile (requires API key)
-- `GET /api/user/analytics` - Usage analytics
-- `POST /api/user/upgrade` - Plan upgrade request
-- `GET /health` - Service health check
-
-### Payment Service (localhost:3005)
-- `POST /api/payments/create` - Create payment request
-- `GET /api/payments/status/:id` - Check payment status
-- `POST /api/payments/*/webhook` - Payment webhooks
-- `GET /health` - Service health check
+### Metrics
+- API request counts
+- Response times
+- Error rates
+- Database query performance
+- Cache hit rates
 
 ## 🧪 Testing
 
-- **GitHub Actions**: Automated testing with PostgreSQL + Redis
-- **Health Checks**: Service availability monitoring  
-- **Integration Tests**: API endpoint validation
-- **Playwright Tests**: Browser automation (configured for SSH servers)
-
-## 🔐 Environment Variables
-
 ```bash
-# Database
-DATABASE_URL=postgresql://user:pass@host:5432/db
-REDIS_URL=redis://host:6379
-DB_TYPE=postgresql
+# Unit tests
+npm run test
 
-# Authentication  
-JWT_SECRET=your_jwt_secret
+# E2E tests
+npm run test:e2e
 
-# Payment Processing
-COINBASE_COMMERCE_API_KEY=your_coinbase_key
-COINBASE_COMMERCE_WEBHOOK_SECRET=your_webhook_secret
-NOWPAYMENTS_API_KEY=your_nowpayments_key
-NOWPAYMENTS_IPN_SECRET=your_ipn_secret
+# Test coverage
+npm run test:cov
 ```
 
-## 📈 Monitoring
+## 📈 Performance
 
-- Real-time user statistics and revenue tracking
-- API usage analytics with rate limiting
-- Payment processing status monitoring
-- Database performance metrics
+### Optimizations
+- Redis caching for sessions and API keys
+- Database connection pooling
+- Response compression
+- Rate limiting to prevent abuse
+- Efficient database queries with Prisma
+
+### Scaling
+- Horizontal scaling ready
+- Stateless design
+- Redis for shared state
+- Database connection pooling
+- Load balancer compatible
+
+## 🔒 Security
+
+### Best Practices
+- Password hashing with bcrypt (12 rounds)
+- JWT tokens with expiration
+- Session validation
+- Input validation and sanitization
+- CORS protection
+- Rate limiting
+- Audit logging
+- Security headers with Helmet
+
+### API Key Security
+- Hashed storage in database
+- Preview-only display in UI
+- Permission-based access control
+- Rate limiting per key
+- Usage tracking and monitoring
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch
+3. Make changes
+4. Add tests
+5. Submit pull request
+
+## 📄 License
+
+Private - n0de Team Only
 
 ---
 
-**Live Services:**
-- 🌐 Frontend: [n0de-website-umber.vercel.app](https://n0de-website-umber.vercel.app)
-- 🚂 Backend: [Railway Service](https://n0de-backend-production-4e34.up.railway.app)
-
-Built with ❤️ for high-performance Solana RPC infrastructure.\n# Integration Test Complete\nAll systems configured and ready for deployment.
+**Built with ❤️ by the n0de team**
