@@ -8,6 +8,9 @@ import { v4 as uuidv4 } from 'uuid';
 
 class DatabaseManager {
   constructor(config = {}) {
+    // Debug environment variables at constructor level
+    console.log('🔍 Constructor Debug: REDIS_URL =', process.env.REDIS_URL ? 'SET' : 'NOT SET');
+    
     this.config = {
       type: process.env.DB_TYPE || config.type || (process.env.DATABASE_URL ? 'postgresql' : 'sqlite'),
       sqlite: {
@@ -31,6 +34,8 @@ class DatabaseManager {
         password: process.env.REDIS_PASSWORD || config.redis?.password || null
       }
     };
+    
+    console.log('🔍 Constructor Redis Config:', JSON.stringify(this.config.redis, null, 2));
     
     this.db = null;
     this.redis = null;
