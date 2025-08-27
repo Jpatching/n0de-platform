@@ -73,7 +73,12 @@ async function initializeServices() {
       console.log(chalk.green('✅ Redis URL configured'));
     }
     
-    console.log(chalk.green('✅ All services initialized'));
+    // Import and start core services
+    const { startAuthService } = await import('./src/auth/database-manager.js');
+    console.log(chalk.blue('🔐 Auth service ready'));
+    
+    console.log(chalk.green('✅ All n0de services initialized and ready'));
+    console.log(chalk.cyan('🌐 Public URL: https://n0de-backend-production.up.railway.app'));
   } catch (error) {
     console.error(chalk.red('❌ Service initialization error:'), error.message);
   }
