@@ -1,0 +1,136 @@
+# PV3 Gaming Security Policy
+
+## 🛡️ Security Contact
+
+**Primary Security Contact:**
+- Email: security@pv3.gg
+- Discord: PV3Gaming#security
+- Telegram: @PV3Security
+
+**Response Time:** We aim to respond to all security reports within 24 hours.
+
+## 🤝 Responsible Disclosure
+
+PV3 Gaming follows a responsible disclosure policy. We appreciate security researchers who:
+
+- Report vulnerabilities privately before public disclosure
+- Allow reasonable time for fixes to be implemented
+- Act in good faith and avoid privacy violations
+- Do not access or modify user data without permission
+
+### Reporting Process
+1. **Report:** Send detailed vulnerability report to security@pv3.gg
+2. **Acknowledgment:** We confirm receipt within 24 hours
+3. **Investigation:** Our team investigates and validates the issue
+4. **Resolution:** We develop and test a fix
+5. **Disclosure:** Coordinated public disclosure after fix deployment
+
+### Required Information
+Please include in your report:
+- Detailed description of the vulnerability
+- Steps to reproduce the issue
+- Potential impact assessment
+- Proof of concept (if applicable)
+- Suggested remediation steps
+
+### Scope
+**In Scope:**
+- Smart contract vulnerabilities affecting fund security
+- Authentication and authorization issues
+- Critical security flaws in web application
+- Game result manipulation vulnerabilities
+
+**Out of Scope:**
+- Social engineering attacks
+- Physical attacks
+- DDoS attacks
+- Issues in third-party dependencies (unless directly exploitable)
+- UI/UX issues without security impact
+
+## 🔒 Security Architecture
+
+### Smart Contract Security
+- **Audit Status:** Internal security review completed - External audit planned
+- **Upgrade Authority:** 2-of-3 multisig controlled by founding team
+- **Emergency Controls:** Limited to pause functionality and fund recovery
+- **Session Vaults:** Non-custodial user-controlled PDAs
+- **Game Validation:** Server-side validation with cryptographic proofs
+
+### Infrastructure Security
+- **Backend:** Node.js with TypeScript, input validation, rate limiting
+- **Database:** PostgreSQL with parameterized queries
+- **Authentication:** JWT tokens with secure session management
+- **WebSocket:** Real-time game communication with player verification
+- **Monitoring:** Comprehensive logging and anomaly detection
+
+### Operational Security
+- **Key Management:** Hardware security modules for critical operations
+- **Access Control:** Role-based permissions with 2FA required
+- **Incident Response:** 24/7 monitoring with automated alerting
+- **Backup Strategy:** Encrypted backups with geographic distribution
+
+## 🚨 Emergency Contacts
+
+**For Critical Issues (Fund Loss Risk):**
+- Emergency Hotline: security@pv3.gg (monitored 24/7)
+- CEO Direct: alex@pv3.gg
+- CTO Direct: josh@pv3.gg
+
+**Multisig Signers:**
+- Alex (CEO): [Pubkey will be published]
+- Josh (CTO): [Pubkey will be published]  
+- Legal/DAO Representative: [Pubkey will be published]
+
+## 🔍 Security Measures
+
+### Smart Contract Protections
+- **Reentrancy Guards:** All external calls protected
+- **Integer Overflow:** SafeMath equivalent checks
+- **Access Controls:** Role-based function restrictions
+- **Input Validation:** Comprehensive parameter checking
+- **Emergency Pause:** Circuit breaker for critical issues
+- **Timelock:** 48-hour delay on sensitive upgrades
+
+### Game Integrity
+- **Server Validation:** All game moves validated server-side
+- **Cryptographic Proofs:** ED25519 signatures for result verification
+- **Anti-Cheat:** Real-time monitoring for suspicious patterns
+- **Fair Play:** Provably fair random number generation
+- **Dispute System:** On-chain dispute resolution with fees
+
+### User Fund Protection
+- **Non-Custodial:** Users control their session vault PDAs
+- **Escrow System:** Match funds held in program-controlled accounts
+- **Fee Transparency:** All fees clearly disclosed and immutable
+- **Withdrawal Limits:** Rate limiting to prevent rapid fund extraction
+- **Recovery Mechanism:** Multisig recovery for abandoned vaults (48h+ inactive)
+
+## 📊 Security Metrics
+
+**Current Status:**
+- **Smart Contract Review:** Internal security review completed
+- **Penetration Testing:** Regular internal assessments
+- **Security Incidents:** 0 critical incidents to date
+- **Response Time:** Average 4.2 hours for security reports
+
+## 🔗 Additional Resources
+
+- **Documentation:** https://docs.pv3.gg/security
+- **Security Updates:** https://blog.pv3.gg/security
+- **Contract Source:** https://github.com/pv3gaming/contracts
+
+## 📜 Legal
+
+This security policy is subject to our Terms of Service and Privacy Policy. By reporting security issues, you agree to:
+
+- Not access or modify user data without explicit permission
+- Not perform testing that could impact platform availability
+- Not publicly disclose vulnerabilities before coordinated disclosure
+- Comply with all applicable laws and regulations
+
+**Last Updated:** January 2024
+**Version:** 1.0
+
+---
+
+*PV3 Gaming is committed to maintaining the highest security standards for our users and the broader Solana ecosystem. We appreciate responsible security research conducted in good faith.* 

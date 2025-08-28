@@ -277,7 +277,7 @@ export class AuthController {
     const authResult = await this.authService.handleOAuthCallback(req.user, ipAddress, userAgent);
     
     // Redirect to frontend with tokens AND user data
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://n0de.pro';
     const userDataEncoded = encodeURIComponent(JSON.stringify({
       id: authResult.user.id,
       email: authResult.user.email,
@@ -314,7 +314,7 @@ export class AuthController {
     const authResult = await this.authService.handleOAuthCallback(req.user, ipAddress, userAgent);
     
     // Redirect to frontend with tokens AND user data
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://n0de.pro';
     const userDataEncoded = encodeURIComponent(JSON.stringify({
       id: authResult.user.id,
       email: authResult.user.email,

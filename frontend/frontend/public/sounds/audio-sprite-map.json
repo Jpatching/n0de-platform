@@ -1,0 +1,42 @@
+{
+  "big-win": {
+    "start": 0,
+    "duration": 2
+  },
+  "cash-out": {
+    "start": 2.5,
+    "duration": 2
+  },
+  "click": {
+    "start": 5,
+    "duration": 2
+  },
+  "coin-win": {
+    "start": 7.5,
+    "duration": 2
+  },
+  "game-lose": {
+    "start": 10,
+    "duration": 2
+  },
+  "game-win": {
+    "start": 12.5,
+    "duration": 2
+  },
+  "gem-reveal": {
+    "start": 15,
+    "duration": 2
+  },
+  "mine-explosion": {
+    "start": 17.5,
+    "duration": 2
+  },
+  "round-start": {
+    "start": 20,
+    "duration": 2
+  },
+  "tension": {
+    "start": 22.5,
+    "duration": 2
+  }
+}

@@ -1,0 +1,59 @@
+'use client';
+
+import { motion } from 'framer-motion';
+
+export default function InteractiveBackground() {
+  return (
+    <div className="fixed inset-0 w-full h-full overflow-hidden z-0">
+      
+      {/* Single Smooth Background with Jitter Effects */}
+      <motion.div
+        className="absolute inset-0 w-full h-full"
+        style={{
+          backgroundImage: `url('/ChatGPT Image Aug 7, 2025, 12_12_38 AM.png')`,
+          backgroundSize: 'cover',
+          backgroundRepeat: 'repeat',
+          backgroundPosition: 'center'
+        }}
+        animate={{
+          // Subtle Jitter-style morphing without flicker
+          backgroundPositionX: ['0px', '20px', '-10px', '0px'],
+          backgroundPositionY: ['0px', '15px', '-8px', '0px'],
+          scale: [1, 1.02, 0.99, 1],
+          opacity: [0.8, 0.9, 0.85, 0.8],
+          filter: [
+            'contrast(1.05) brightness(1.05) saturate(1)',
+            'contrast(1.1) brightness(1.08) saturate(1.05)',
+            'contrast(1.02) brightness(1.02) saturate(0.98)',
+            'contrast(1.05) brightness(1.05) saturate(1)'
+          ]
+        }}
+        transition={{
+          duration: 12,
+          repeat: Infinity,
+          ease: [0.25, 0.46, 0.45, 0.94], // Jitter's "Slow down" easing
+          times: [0, 0.3, 0.7, 1]
+        }}
+      />
+
+      {/* Subtle gradient overlay */}
+      <motion.div
+        className="absolute inset-0"
+        style={{
+          background: `
+            radial-gradient(ellipse 800px 600px at 30% 40%, rgba(1, 211, 244, 0.04) 0%, transparent 70%),
+            radial-gradient(ellipse 600px 600px at 70% 60%, rgba(11, 134, 248, 0.03) 0%, transparent 70%)
+          `,
+        }}
+        animate={{
+          opacity: [0.6, 0.8, 0.5, 0.6]
+        }}
+        transition={{
+          duration: 8,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+      />
+    </div>
+  );
+}

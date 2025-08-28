@@ -1,0 +1,16 @@
+node_modules
+*.log
+.git
+.gitignore
+README.md
+.env
+.env.local
+.env.production.local
+.env.test.local
+.DS_Store
+*.tsbuildinfo
+dist/tsconfig.tsbuildinfo
+*.local
+coverage
+.nyc_output
+.cache 

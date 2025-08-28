@@ -1,0 +1,38 @@
+# N0DE Stripe Setup Commands
+# Copy and run these commands after authenticating with: stripe login
+
+# 1. Create STARTER Product
+stripe products create \
+  --name="N0DE Starter Plan" \
+  --description="1M requests/month • 3 API keys • Standard support"
+
+# Save the product ID from response, then create price:
+stripe prices create \
+  --unit-amount=4900 \
+  --currency=usd \
+  --product=STARTER_PRODUCT_ID_FROM_ABOVE \
+  --recurring[interval]=month
+
+# 2. Create PROFESSIONAL Product  
+stripe products create \
+  --name="N0DE Professional Plan" \
+  --description="10M requests/month • 10 API keys • Priority support"
+
+# Save the product ID from response, then create price:
+stripe prices create \
+  --unit-amount=29900 \
+  --currency=usd \
+  --product=PROFESSIONAL_PRODUCT_ID_FROM_ABOVE \
+  --recurring[interval]=month
+
+# 3. Create ENTERPRISE Product
+stripe products create \
+  --name="N0DE Enterprise Plan" \
+  --description="Unlimited requests • Unlimited API keys • 24/7 support"
+
+# Save the product ID from response, then create price:
+stripe prices create \
+  --unit-amount=99900 \
+  --currency=usd \
+  --product=ENTERPRISE_PRODUCT_ID_FROM_ABOVE \
+  --recurring[interval]=month

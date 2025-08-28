@@ -1,0 +1,107 @@
+/* Color Schemes for n0de */
+
+/* Default Scheme - Professional Green/Blue */
+:root {
+  /* Brand Colors */
+  --n0de-green: #00ff88;
+  --n0de-blue: #0066ff;
+  --n0de-purple: #8b5cf6;
+  
+  /* Background Colors */
+  --bg-main: #0a0a0a;
+  --bg-elevated: #111111;
+  --bg-card: #1a1a1a;
+  --bg-hover: #222222;
+  
+  /* Text Colors */
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0a0;
+  --text-muted: #666666;
+  
+  /* Border Colors */
+  --border: #333333;
+  --border-hover: #444444;
+  
+  /* Status Colors */
+  --success: #00ff88;
+  --warning: #ffb800;
+  --error: #ff4444;
+}
+
+/* Alternative Scheme 1 - Orange/Purple (Helius Inspired) */
+[data-theme="orange-purple"] {
+  /* Brand Colors */
+  --n0de-green: #ff6b35;
+  --n0de-blue: #7c3aed;
+  --n0de-purple: #ec4899;
+  
+  /* Background Colors */
+  --bg-main: #0f0f23;
+  --bg-elevated: #1a1a35;
+  --bg-card: #252547;
+  --bg-hover: #2d2d5a;
+  
+  /* Text Colors */
+  --text-primary: #ffffff;
+  --text-secondary: #c7d2fe;
+  --text-muted: #8b93d1;
+  
+  /* Border Colors */
+  --border: #4c4c7a;
+  --border-hover: #5a5a8a;
+  
+  /* Status Colors */
+  --success: #ff6b35;
+  --warning: #fbbf24;
+  --error: #ef4444;
+}
+
+/* Alternative Scheme 2 - Cyan/Magenta (InstantNodes Inspired) */
+[data-theme="cyan-magenta"] {
+  /* Brand Colors */
+  --n0de-green: #00d9ff;
+  --n0de-blue: #ff0080;
+  --n0de-purple: #8000ff;
+  
+  /* Background Colors */
+  --bg-main: #0a0a0f;
+  --bg-elevated: #141420;
+  --bg-card: #1e1e2e;
+  --bg-hover: #28283c;
+  
+  /* Text Colors */
+  --text-primary: #ffffff;
+  --text-secondary: #b4c6fc;
+  --text-muted: #7c8db5;
+  
+  /* Border Colors */
+  --border: #3a3a55;
+  --border-hover: #4a4a68;
+  
+  /* Status Colors */
+  --success: #00d9ff;
+  --warning: #ffb020;
+  --error: #ff4757;
+}
+
+/* Font System */
+@import '@fontsource/space-grotesk/400.css';
+@import '@fontsource/space-grotesk/500.css';
+@import '@fontsource/space-grotesk/600.css';
+@import '@fontsource/space-grotesk/700.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+
+:root {
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* Smooth theme transitions */
+* {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}

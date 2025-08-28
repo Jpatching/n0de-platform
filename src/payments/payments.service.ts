@@ -3,6 +3,7 @@ import { PrismaService } from '../common/prisma.service';
 import { PaymentProvider, PaymentStatus, SubscriptionType } from '@prisma/client';
 import { CoinbaseCommerceService } from './coinbase-commerce.service';
 import { NOWPaymentsService } from './nowpayments.service';
+import { StripeService } from './stripe.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreatePaymentDto, PaymentCallbackDto } from './dto/payments.dto';
 
@@ -14,6 +15,7 @@ export class PaymentsService {
     private prisma: PrismaService,
     private coinbaseService: CoinbaseCommerceService,
     private nowPaymentsService: NOWPaymentsService,
+    private stripeService: StripeService,
     private subscriptionsService: SubscriptionsService,
   ) {}
 
@@ -58,6 +60,9 @@ export class PaymentsService {
         case PaymentProvider.NOWPAYMENTS:
           paymentData = await this.nowPaymentsService.createPayment(payment);
           break;
+        case PaymentProvider.STRIPE:
+          paymentData = await this.stripeService.createCheckoutSession(payment);
+          break;
         default:
           throw new BadRequestException('Unsupported payment provider');
       }
@@ -66,9 +71,9 @@ export class PaymentsService {
       const updatedPayment = await this.prisma.payment.update({
         where: { id: payment.id },
         data: {
-          providerPaymentId: paymentData.id,
-          chargeUrl: paymentData.hosted_url || paymentData.chargeUrl,
-          paymentUrl: paymentData.payment_url || paymentData.paymentUrl,
+          providerPaymentId: paymentData.id || paymentData.sessionId,
+          chargeUrl: paymentData.hosted_url || paymentData.chargeUrl || paymentData.url || paymentData.checkoutUrl,
+          paymentUrl: paymentData.payment_url || paymentData.paymentUrl || paymentData.url || paymentData.checkoutUrl,
           metadata: {
             ...(payment.metadata as object || {}),
             providerData: paymentData,
@@ -184,6 +189,9 @@ export class PaymentsService {
           }
           event = payload;
           break;
+        case PaymentProvider.STRIPE:
+          event = await this.stripeService.handleWebhook(payload, signature);
+          break;
         default:
           throw new Error('Unsupported payment provider');
       }
@@ -258,6 +266,10 @@ export class PaymentsService {
       case PaymentProvider.NOWPAYMENTS:
         paymentId = payload.payment_id;
         newStatus = this.mapNOWPaymentsStatus(payload.payment_status);
+        break;
+      case PaymentProvider.STRIPE:
+        paymentId = payload.paymentId;
+        newStatus = this.mapStripeStatus(payload.type);
         break;
       default:
         throw new Error('Unsupported payment provider');
@@ -361,6 +373,19 @@ export class PaymentsService {
         return PaymentStatus.PENDING;
       default:
         return PaymentStatus.PENDING;
+    }
+  }
+
+  private mapStripeStatus(stripeEventType: string): PaymentStatus {
+    switch (stripeEventType) {
+      case 'payment_completed':
+        return PaymentStatus.COMPLETED;
+      case 'subscription_renewed':
+        return PaymentStatus.COMPLETED;
+      case 'subscription_cancelled':
+        return PaymentStatus.CANCELED;
+      default:
+        return PaymentStatus.PROCESSING;
     }
   }
 

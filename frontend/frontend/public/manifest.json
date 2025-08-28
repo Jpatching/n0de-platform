@@ -1,0 +1,41 @@
+{
+  "name": "PV3 Gaming Platform",
+  "short_name": "PV3",
+  "description": "Web3 1v1 Gaming Platform on Solana",
+  "start_url": "/games",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#f59e0b",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["games", "entertainment", "finance"],
+  "icons": [
+    {
+      "src": "/logos/PV3-Logo.webp",
+      "sizes": "192x192",
+      "type": "image/webp",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/logos/PV3-Logo.webp", 
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "maskable any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/game-covers/coinflip.webm",
+      "sizes": "540x720",
+      "type": "video/webm",
+      "label": "Coinflip Game"
+    },
+    {
+      "src": "/game-covers/crash.webm",
+      "sizes": "540x720", 
+      "type": "video/webm",
+      "label": "Crash Game"
+    }
+  ]
+} 

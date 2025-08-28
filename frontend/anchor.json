@@ -1,0 +1,15 @@
+{
+  "version": "0.27.0",
+  "provider": {
+    "cluster": "devnet",
+    "wallet": "./keypair.json"
+  },
+  "programs": {
+    "localnet": {
+      "pv3": {
+        "address": "7vccXoYNdp6LzvqFcr1recUq4eXJ17K2wd5rAarjMkqh",
+        "idl": "./target/idl/pv3.json"
+      }
+    }
+  }
+} 

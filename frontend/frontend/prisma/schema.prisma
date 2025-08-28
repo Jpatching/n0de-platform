@@ -1,0 +1,387 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  matches       Match[]
+  walletAddress String?   @unique
+  
+  // Authentication fields
+  authMethod    String    @default("wallet") // email, authenticator, wallet
+  password      String?   // For email authentication
+  totpSecret    String?   // For authenticator authentication
+  lastLoginAt   DateTime?
+  
+  // Enhanced profile fields
+  username      String?   @unique
+  displayName   String?
+  bio           String?
+  avatar        String?
+  showUsername  Boolean   @default(true)
+  profileVisibility String @default("public") // public, friends, private
+  
+  // Game stats
+  totalEarnings Float     @default(0)
+  totalMatches  Int       @default(0)
+  wins          Int       @default(0)
+  losses        Int       @default(0)
+  winRate       Float     @default(0)
+  reputation    Int       @default(1000)
+  
+  // Timestamps
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([username])
+  @@index([walletAddress])
+  @@index([email])
+  @@index([authMethod])
+}
+
+model Match {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  gameType  String
+  status    String   @default("pending") // pending, active, completed, cancelled
+  players   User[]
+  result    Json?
+  signature String?  // ed25519 signature from verifier
+}
+
+model BlockedIP {
+  id        String   @id @default(cuid())
+  ip        String   @unique
+  reason    String?
+  createdAt DateTime @default(now())
+  expiresAt DateTime?
+}
+
+// Leaderboards
+model Leaderboard {
+  id        String   @id @default(cuid())
+  type      String   // "earnings", "wins", "winrate"
+  period    String   // "daily", "weekly", "monthly", "alltime"
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([type, period])
+  @@index([type])
+  @@index([period])
+  @@index([updatedAt])
+  @@map("leaderboards")
+}
+
+// Developer System
+model Developer {
+  id              String   @id @default(cuid())
+  walletAddress   String   @unique
+  registeredAt    DateTime @default(now())
+  status          String   @default("active") // active, suspended, banned
+  
+  // Stats
+  totalRevenue    Float    @default(0)
+  totalProjects   Int      @default(0)
+  approvedProjects Int     @default(0)
+  
+  // Profile
+  name            String?
+  email           String?
+  website         String?
+  bio             String?
+  
+  // Relationships
+  projects        DeveloperProject[]
+  
+  @@index([walletAddress])
+  @@index([status])
+  @@index([registeredAt])
+}
+
+model DeveloperProject {
+  id              String   @id @default(cuid())
+  developerId     String
+  name            String
+  description     String
+  gameType        String
+  status          String   @default("draft") // draft, submitted, under_review, approved, live, rejected
+  
+  // Submission details
+  repositoryUrl   String?
+  demoUrl         String?
+  documentation   String?
+  contactEmail    String
+  
+  // Review process
+  submittedAt     DateTime?
+  reviewedAt      DateTime?
+  reviewNotes     String?
+  reviewedBy      String?
+  adminFeedback   String?
+  rejectionReason String?
+  
+  // Approval workflow
+  internalNotes   String?
+  priority        String   @default("normal") // low, normal, high, urgent
+  estimatedReviewTime String?
+  
+  // Live stats
+  revenue         Float    @default(0)
+  players         Int      @default(0)
+  matches         Int      @default(0)
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relationships
+  developer       Developer @relation(fields: [developerId], references: [id])
+  reviews         ProjectReview[]
+  
+  @@index([developerId])
+  @@index([status])
+  @@index([gameType])
+  @@index([submittedAt])
+  @@index([priority])
+}
+
+// Admin System for Developer Hub
+model Admin {
+  id              String   @id @default(cuid())
+  walletAddress   String   @unique
+  username        String   @unique
+  role            String   @default("reviewer") // reviewer, moderator, admin, super_admin
+  permissions     Json?    // Specific permissions array
+  
+  // Profile
+  name            String?
+  email           String?
+  avatar          String?
+  
+  // Activity tracking
+  isActive        Boolean  @default(true)
+  lastLogin       DateTime?
+  createdAt       DateTime @default(now())
+  
+  // Review stats
+  totalReviews    Int      @default(0)
+  approvedProjects Int     @default(0)
+  rejectedProjects Int     @default(0)
+  
+  // Relationships
+  reviews         ProjectReview[]
+  
+  @@index([walletAddress])
+  @@index([role])
+  @@index([isActive])
+}
+
+// Project Review History
+model ProjectReview {
+  id              String   @id @default(cuid())
+  projectId       String
+  adminId         String?
+  action          String   // submitted, under_review, approved, rejected, revision_requested
+  notes           String?
+  feedback        String?
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  
+  // Relationships
+  project         DeveloperProject @relation(fields: [projectId], references: [id])
+  admin           Admin?           @relation(fields: [adminId], references: [id])
+  
+  @@index([projectId])
+  @@index([adminId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("project_reviews")
+}
+
+// Partner System for KOL/Influencer Partnerships
+model Partner {
+  id              String   @id @default(cuid())
+  walletAddress   String   @unique
+  registeredAt    DateTime @default(now())
+  status          String   @default("pending") // pending, under_review, approved, active, suspended, rejected
+  
+  // Profile Information
+  name            String
+  email           String
+  username        String?  // Social media handle
+  bio             String?
+  website         String?
+  
+  // Social Media Presence
+  twitterHandle   String?
+  twitterFollowers Int?
+  youtubeChannel  String?
+  youtubeSubscribers Int?
+  tiktokHandle    String?
+  tiktokFollowers Int?
+  instagramHandle String?
+  instagramFollowers Int?
+  discordServer   String?
+  discordMembers  Int?
+  otherPlatforms  Json?    // Additional platforms and metrics
+  
+  // Engagement Metrics (verified by our team)
+  verifiedReach   Int      @default(0)
+  engagementRate  Float    @default(0)
+  audienceQuality String   @default("unverified") // unverified, low, medium, high, premium
+  botScore        Float    @default(0) // 0-100, higher = more likely to have bots
+  
+  // Partnership Terms
+  tier            String   @default("standard") // standard, premium, elite, custom
+  revenueShare    Float    @default(30) // Their percentage (30-50%)
+  customTerms     String?  // Special agreements
+  minimumPayout   Float    @default(100)
+  
+  // Performance Stats
+  totalEarnings   Float    @default(0)
+  totalReferrals  Int      @default(0)
+  activeReferrals Int      @default(0)
+  conversionRate  Float    @default(0)
+  
+  // Review Process
+  submittedAt     DateTime?
+  reviewedAt      DateTime?
+  reviewedBy      String?
+  adminFeedback   String?
+  rejectionReason String?
+  internalNotes   String?
+  
+  // Verification Status
+  isVerified      Boolean  @default(false)
+  verificationDate DateTime?
+  verificationNotes String?
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relationships
+  applications    PartnerApplication[]
+  reviews         PartnerReview[]
+  
+  @@index([walletAddress])
+  @@index([status])
+  @@index([tier])
+  @@index([verifiedReach(sort: Desc)])
+  @@index([totalEarnings(sort: Desc)])
+  @@index([isVerified])
+  @@map("partners")
+}
+
+model PartnerApplication {
+  id              String   @id @default(cuid())
+  partnerId       String
+  
+  // Application Details
+  applicationReason String  // Why they want to partner
+  contentStrategy String   // How they plan to promote
+  expectedReach   Int      // Their estimated reach
+  previousPartnerships String? // Other gaming partnerships
+  
+  // Media Kit
+  mediaKitUrl     String?
+  portfolioUrl    String?
+  demoContent     String?  // Links to previous gaming content
+  
+  // Audience Demographics
+  primaryAudience String?  // Gaming, crypto, general, etc.
+  audienceAge     String?  // Age demographics
+  audienceGeo     String?  // Geographic distribution
+  
+  // Verification Documents
+  analyticsScreenshots Json? // Social media analytics
+  verificationDocs Json?     // Additional verification materials
+  
+  // Status
+  status          String   @default("submitted") // submitted, under_review, approved, rejected
+  priority        String   @default("normal")    // low, normal, high, urgent
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relationships
+  partner         Partner @relation(fields: [partnerId], references: [id])
+  
+  @@index([partnerId])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+  @@map("partner_applications")
+}
+
+model PartnerReview {
+  id              String   @id @default(cuid())
+  partnerId       String
+  adminId         String?
+  action          String   // submitted, verification_started, metrics_verified, approved, rejected, suspended
+  notes           String?
+  feedback        String?
+  
+  // Verification Results
+  reachVerified   Boolean? // Did we verify their claimed reach?
+  engagementVerified Boolean? // Did we verify engagement rates?
+  botCheckPassed  Boolean? // Did they pass bot detection?
+  qualityScore    Int?     // 1-10 quality rating
+  
+  // Recommended Terms
+  recommendedTier String?  // What tier should they get?
+  recommendedShare Float?  // What revenue share?
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  
+  // Relationships
+  partner         Partner @relation(fields: [partnerId], references: [id])
+  
+  @@index([partnerId])
+  @@index([adminId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("partner_reviews")
+} 

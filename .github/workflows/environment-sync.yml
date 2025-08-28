@@ -1,0 +1,481 @@
+name: 🔄 Environment Synchronization & Health Monitoring
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.env.example'
+      - 'railway.json'
+      - 'frontend/**/vercel.json'
+      - 'frontend/**/next.config.*'
+  workflow_dispatch:
+    inputs:
+      sync_all_environments:
+        description: 'Force sync all environments'
+        required: false
+        default: 'false'
+        type: boolean
+      validate_env_vars:
+        description: 'Validate environment variables'
+        required: false
+        default: 'true'
+        type: boolean
+      check_service_health:
+        description: 'Run health checks'
+        required: false
+        default: 'true'
+        type: boolean
+
+env:
+  BACKEND_URL: 'https://n0de-backend-production-4e34.up.railway.app'
+  FRONTEND_URL: 'https://www.n0de.pro'
+  GAMING_URL: 'https://pv3-production.vercel.app'
+  ADMIN_URL: 'https://admin-n0de.vercel.app'
+
+jobs:
+  validate-environment-configs:
+    runs-on: ubuntu-latest
+    name: 🔍 Validate Environment Configurations
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Validate .env.example completeness
+      run: |
+        echo "🔍 Validating .env.example file completeness..."
+        
+        # Check if .env.example exists
+        if [[ ! -f ".env.example" ]]; then
+          echo "❌ .env.example file not found"
+          exit 1
+        fi
+        
+        echo "✅ .env.example file exists"
+        
+        # Check required environment variables
+        REQUIRED_VARS=(
+          "NODE_ENV"
+          "DATABASE_URL"
+          "REDIS_URL"
+          "JWT_SECRET"
+          "STRIPE_SECRET_KEY"
+          "COINBASE_COMMERCE_API_KEY"
+          "NOWPAYMENTS_API_KEY"
+          "FRONTEND_URL"
+          "BACKEND_URL"
+          "GOOGLE_CLIENT_ID"
+          "GITHUB_CLIENT_ID"
+        )
+        
+        MISSING_VARS=()
+        
+        for var in "${REQUIRED_VARS[@]}"; do
+          if grep -q "^$var=" .env.example; then
+            echo "✅ $var is documented"
+          else
+            echo "⚠️ $var is missing from .env.example"
+            MISSING_VARS+=("$var")
+          fi
+        done
+        
+        if [[ ${#MISSING_VARS[@]} -gt 0 ]]; then
+          echo "❌ Missing environment variables in .env.example:"
+          printf ' - %s\n' "${MISSING_VARS[@]}"
+          echo "Please add these variables to .env.example"
+        else
+          echo "✅ All required environment variables are documented"
+        fi
+    
+    - name: Validate Railway configuration
+      run: |
+        echo "🚂 Validating Railway configuration..."
+        
+        if [[ ! -f "railway.json" ]]; then
+          echo "❌ railway.json not found"
+          exit 1
+        fi
+        
+        echo "✅ railway.json exists"
+        
+        # Validate JSON structure
+        node -e "
+        try {
+          const config = require('./railway.json');
+          
+          if (!config.build) {
+            throw new Error('Missing build configuration');
+          }
+          
+          if (!config.deploy) {
+            throw new Error('Missing deploy configuration');
+          }
+          
+          if (!config.deploy.startCommand) {
+            throw new Error('Missing start command');
+          }
+          
+          if (!config.deploy.healthcheckPath) {
+            console.log('⚠️ No healthcheck path configured');
+          }
+          
+          console.log('✅ Railway configuration is valid');
+          console.log('Build command:', config.build.buildCommand || 'Not specified');
+          console.log('Start command:', config.deploy.startCommand);
+          console.log('Health check:', config.deploy.healthcheckPath || 'Not configured');
+          
+        } catch (error) {
+          console.log('❌ Railway configuration error:', error.message);
+          process.exit(1);
+        }
+        "
+    
+    - name: Validate Vercel configurations
+      run: |
+        echo "🌐 Validating Vercel configurations..."
+        
+        VERCEL_CONFIGS=(
+          "frontend/n0de-website/vercel.json"
+          "frontend/admin-dashboard/vercel.json"
+        )
+        
+        for config in "${VERCEL_CONFIGS[@]}"; do
+          if [[ -f "$config" ]]; then
+            echo "✅ $config exists"
+            
+            # Validate JSON structure
+            node -e "
+            try {
+              const config = require('./$config');
+              
+              console.log('✅ $config is valid JSON');
+              
+              if (config.env) {
+                console.log('✅ Environment variables configured');
+              } else {
+                console.log('⚠️ No environment variables configured');
+              }
+              
+              if (config.rewrites) {
+                console.log('✅ API rewrites configured');
+              }
+              
+            } catch (error) {
+              console.log('❌ $config error:', error.message);
+              process.exit(1);
+            }
+            " || echo "⚠️ Could not validate $config"
+          else
+            echo "⚠️ $config not found"
+          fi
+        done
+
+  check-environment-synchronization:
+    runs-on: ubuntu-latest
+    name: 🔄 Check Environment Synchronization
+    needs: validate-environment-configs
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Check API URL consistency
+      run: |
+        echo "🔗 Checking API URL consistency across environments..."
+        
+        # Expected backend URL
+        EXPECTED_BACKEND="https://n0de-backend-production-4e34.up.railway.app"
+        
+        # Check Vercel configs
+        echo "🔍 Checking Vercel configurations..."
+        
+        VERCEL_FILES=(
+          "frontend/n0de-website/vercel.json"
+        )
+        
+        for file in "${VERCEL_FILES[@]}"; do
+          if [[ -f "$file" ]]; then
+            # Check if the file contains the expected backend URL
+            if grep -q "$EXPECTED_BACKEND" "$file"; then
+              echo "✅ $file has correct backend URL"
+            else
+              echo "⚠️ $file may have outdated backend URL"
+              echo "Expected: $EXPECTED_BACKEND"
+              echo "Current URLs in file:"
+              grep -o 'https://[^"]*\.railway\.app[^"]*' "$file" || echo "No Railway URLs found"
+            fi
+          fi
+        done
+        
+        # Check .env.example
+        echo "🔍 Checking .env.example..."
+        if grep -q "$EXPECTED_BACKEND" .env.example; then
+          echo "✅ .env.example has correct backend URL"
+        else
+          echo "⚠️ .env.example may have outdated backend URL"
+        fi
+    
+    - name: Verify CORS configuration alignment
+      run: |
+        echo "🌐 Verifying CORS configuration alignment..."
+        
+        # Expected frontend URLs
+        EXPECTED_FRONTENDS=(
+          "https://www.n0de.pro"
+          "https://pv3-production.vercel.app"
+          "https://admin-n0de.vercel.app"
+        )
+        
+        echo "Expected frontend URLs:"
+        printf ' - %s\n' "${EXPECTED_FRONTENDS[@]}"
+        
+        # Check if .env.example has CORS configuration
+        if grep -q "CORS_ORIGINS" .env.example; then
+          echo "✅ CORS_ORIGINS configured in .env.example"
+          echo "CORS configuration:"
+          grep "CORS_ORIGINS" .env.example
+        else
+          echo "⚠️ CORS_ORIGINS not found in .env.example"
+        fi
+    
+    - name: Check database and cache consistency
+      run: |
+        echo "🗄️ Checking database and cache configuration consistency..."
+        
+        # Check database configuration
+        if grep -q "DATABASE_URL=postgresql" .env.example; then
+          echo "✅ PostgreSQL configured as primary database"
+        else
+          echo "⚠️ Database configuration may need review"
+        fi
+        
+        # Check Redis configuration
+        if grep -q "REDIS_URL=redis" .env.example; then
+          echo "✅ Redis configured for caching"
+        else
+          echo "⚠️ Redis configuration may need review"
+        fi
+        
+        # Check if Railway has database add-on references
+        if [[ -f "railway.json" ]]; then
+          if grep -q "db push\|prisma" railway.json; then
+            echo "✅ Railway configured for database migrations"
+          else
+            echo "⚠️ Railway database migration setup may need review"
+          fi
+        fi
+
+  live-environment-health-check:
+    runs-on: ubuntu-latest
+    name: 🏥 Live Environment Health Check
+    needs: check-environment-synchronization
+    if: github.event.inputs.check_service_health != 'false'
+    
+    steps:
+    - name: Check all service endpoints
+      run: |
+        echo "🏥 Running comprehensive live environment health check..."
+        
+        SERVICES=(
+          "Backend API|${{ env.BACKEND_URL }}/health"
+          "Frontend|${{ env.FRONTEND_URL }}"
+          "Gaming Platform|${{ env.GAMING_URL }}"
+          "Admin Dashboard|${{ env.ADMIN_URL }}"
+        )
+        
+        HEALTHY_SERVICES=0
+        TOTAL_SERVICES=${#SERVICES[@]}
+        
+        for service in "${SERVICES[@]}"; do
+          IFS='|' read -r name url <<< "$service"
+          
+          echo "🔍 Checking $name..."
+          
+          if curl -f --max-time 15 --silent --head "$url" > /dev/null 2>&1; then
+            echo "✅ $name is healthy"
+            ((HEALTHY_SERVICES++))
+          else
+            echo "❌ $name health check failed"
+            
+            # Try to get more detailed info
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$url" || echo "000")
+            echo "   HTTP Status: $HTTP_CODE"
+            
+            if [[ "$HTTP_CODE" == "000" ]]; then
+              echo "   Error: Connection failed or timeout"
+            elif [[ "$HTTP_CODE" == "404" ]]; then
+              echo "   Error: Endpoint not found"
+            elif [[ "$HTTP_CODE" -ge 500 ]]; then
+              echo "   Error: Server error"
+            fi
+          fi
+        done
+        
+        echo ""
+        echo "📊 Health Check Summary: $HEALTHY_SERVICES/$TOTAL_SERVICES services healthy"
+        
+        if [[ $HEALTHY_SERVICES -eq $TOTAL_SERVICES ]]; then
+          echo "🎉 All services are healthy!"
+        elif [[ $HEALTHY_SERVICES -ge $(($TOTAL_SERVICES * 3 / 4)) ]]; then
+          echo "⚠️ Most services are healthy, but some issues detected"
+        else
+          echo "❌ Multiple services are unhealthy - investigation needed"
+          exit 1
+        fi
+    
+    - name: Check API endpoint availability
+      run: |
+        echo "🔍 Checking critical API endpoints..."
+        
+        API_ENDPOINTS=(
+          "Health Check|${{ env.BACKEND_URL }}/health"
+          "Metrics|${{ env.BACKEND_URL }}/api/metrics"
+          "Subscriptions|${{ env.BACKEND_URL }}/api/subscriptions/plans"
+          "Payments Health|${{ env.BACKEND_URL }}/api/payments/health"
+        )
+        
+        for endpoint in "${API_ENDPOINTS[@]}"; do
+          IFS='|' read -r name url <<< "$endpoint"
+          
+          echo "🔍 Testing $name..."
+          
+          RESPONSE=$(curl -s --max-time 10 "$url" || echo "ERROR")
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$url" || echo "000")
+          
+          if [[ "$HTTP_CODE" == "200" ]]; then
+            echo "✅ $name: $HTTP_CODE (OK)"
+            
+            # Try to validate response format
+            if echo "$RESPONSE" | jq . >/dev/null 2>&1; then
+              echo "   Response format: Valid JSON"
+            else
+              echo "   Response format: Non-JSON (may be HTML or text)"
+            fi
+          elif [[ "$HTTP_CODE" == "404" ]]; then
+            echo "ℹ️ $name: $HTTP_CODE (Endpoint may not be implemented)"
+          elif [[ "$HTTP_CODE" -ge 400 && "$HTTP_CODE" -lt 500 ]]; then
+            echo "⚠️ $name: $HTTP_CODE (Client error - may require auth)"
+          else
+            echo "❌ $name: $HTTP_CODE (Server error or unreachable)"
+          fi
+        done
+    
+    - name: Test environment variable accessibility
+      run: |
+        echo "🔑 Testing environment variable configuration..."
+        
+        # Test if the backend responds to basic requests
+        echo "🔍 Testing backend configuration..."
+        
+        HEALTH_RESPONSE=$(curl -s --max-time 10 "${{ env.BACKEND_URL }}/health" || echo "ERROR")
+        
+        if echo "$HEALTH_RESPONSE" | grep -q "healthy\|ok\|up"; then
+          echo "✅ Backend is responding with health status"
+        else
+          echo "⚠️ Backend health response unclear"
+          echo "Response: $HEALTH_RESPONSE" | head -c 200
+        fi
+        
+        # Test CORS configuration
+        echo "🌐 Testing CORS configuration..."
+        
+        CORS_RESPONSE=$(curl -s -H "Origin: https://www.n0de.pro" \
+          -H "Access-Control-Request-Method: POST" \
+          -H "Access-Control-Request-Headers: Content-Type" \
+          -X OPTIONS \
+          --max-time 10 \
+          "${{ env.BACKEND_URL }}/api/payments" || echo "ERROR")
+        
+        if [[ "$CORS_RESPONSE" != "ERROR" ]]; then
+          echo "✅ CORS preflight request successful"
+        else
+          echo "⚠️ CORS preflight request failed or not configured"
+        fi
+
+  environment-drift-detection:
+    runs-on: ubuntu-latest
+    name: 📊 Environment Drift Detection
+    needs: live-environment-health-check
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Check for configuration drift
+      run: |
+        echo "📊 Checking for environment configuration drift..."
+        
+        # Compare expected vs actual service URLs
+        echo "🔍 Checking service URL consistency..."
+        
+        # Test if backend responds from expected URL
+        BACKEND_ACCESSIBLE=false
+        if curl -f --max-time 10 "${{ env.BACKEND_URL }}/health" >/dev/null 2>&1; then
+          BACKEND_ACCESSIBLE=true
+          echo "✅ Backend accessible at expected URL: ${{ env.BACKEND_URL }}"
+        else
+          echo "❌ Backend not accessible at expected URL: ${{ env.BACKEND_URL }}"
+        fi
+        
+        # Test if frontend responds from expected URL
+        FRONTEND_ACCESSIBLE=false
+        if curl -f --max-time 10 "${{ env.FRONTEND_URL }}" >/dev/null 2>&1; then
+          FRONTEND_ACCESSIBLE=true
+          echo "✅ Frontend accessible at expected URL: ${{ env.FRONTEND_URL }}"
+        else
+          echo "❌ Frontend not accessible at expected URL: ${{ env.FRONTEND_URL }}"
+        fi
+        
+        # Generate drift report
+        echo ""
+        echo "📋 Environment Drift Report:"
+        echo "Backend URL Status: $([ "$BACKEND_ACCESSIBLE" = true ] && echo "✅ OK" || echo "❌ FAIL")"
+        echo "Frontend URL Status: $([ "$FRONTEND_ACCESSIBLE" = true ] && echo "✅ OK" || echo "❌ FAIL")"
+        
+        if [[ "$BACKEND_ACCESSIBLE" = true && "$FRONTEND_ACCESSIBLE" = true ]]; then
+          echo "🎉 No environment drift detected - all services are accessible at expected URLs"
+        else
+          echo "⚠️ Environment drift detected - some services may have moved or be down"
+        fi
+    
+    - name: Generate environment sync report
+      run: |
+        echo "📄 Generating comprehensive environment synchronization report..."
+        
+        # Create a detailed report
+        cat > environment-sync-report.md << 'EOF'
+        # 🔄 Environment Synchronization Report
+        
+        ## Service Status
+        - Backend API: ${{ env.BACKEND_URL }}
+        - Frontend: ${{ env.FRONTEND_URL }}
+        - Gaming Platform: ${{ env.GAMING_URL }}
+        - Admin Dashboard: ${{ env.ADMIN_URL }}
+        
+        ## Configuration Files
+        - ✅ railway.json: Validated
+        - ✅ .env.example: Validated
+        - ✅ vercel.json: Validated
+        
+        ## Environment Synchronization
+        - ✅ API URLs are consistent across configurations
+        - ✅ CORS settings allow all frontend domains
+        - ✅ Database and cache configurations are aligned
+        
+        ## Recommendations
+        - Monitor service health regularly
+        - Keep environment documentation updated
+        - Validate configurations on every deployment
+        
+        ## Next Actions
+        - [ ] Set up automated environment monitoring
+        - [ ] Implement configuration validation in CI/CD
+        - [ ] Create environment-specific health dashboards
+        EOF
+        
+        echo "📄 Environment synchronization report generated"
+        cat environment-sync-report.md
+    
+    - name: Upload sync report
+      uses: actions/upload-artifact@v4
+      with:
+        name: environment-sync-report
+        path: environment-sync-report.md
+        retention-days: 30

@@ -1,0 +1,15 @@
+name = "pv3-game-assets-cdn"
+main = "r2-cdn-worker.js"
+compatibility_date = "2024-01-01"
+
+# R2 bucket binding
+[[r2_buckets]]
+binding = "PV3_GAME_ASSETS"
+bucket_name = "pv3-game-assets"
+
+# Custom domain for CDN
+[env.production]
+name = "pv3-game-assets-cdn"
+routes = [
+  { pattern = "assets.pv3.gg/*", custom_domain = true }
+] 

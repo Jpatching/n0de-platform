@@ -1,0 +1,72 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp files
+tmp/
+temp/
+*.tmp
+
+# Git
+.git/
+.gitignore
+
+# Large files
+*.mp4
+*.mov
+*.avi
+
+# Development files
+*.spec.ts
+*.spec.js
+test/
+tests/
+__tests__/
+
+# Documentation
+*.md
+!README.md
+
+# Scripts not needed for deployment
+airdrop-*.js
+bot-*.js
+check-*.js
+create-*.js
+debug-*.js
+direct-*.js
+fund-*.js
+test-*.js
+fix.js
+healthcheck.js

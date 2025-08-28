@@ -208,4 +208,15 @@ export class PaymentsController {
   ) {
     return this.paymentsService.processWebhook(PaymentProvider.NOWPAYMENTS, payload, signature);
   }
+
+  @Post('webhooks/stripe')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Stripe webhook handler' })
+  @ApiResponse({ status: 200, description: 'Webhook processed successfully' })
+  async stripeWebhook(
+    @Body() payload: any,
+    @Headers('stripe-signature') signature: string,
+  ) {
+    return this.paymentsService.processWebhook(PaymentProvider.STRIPE, payload, signature);
+  }
 }

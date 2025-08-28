@@ -1,0 +1,1249 @@
+// PV3 Platform - Complete Prisma Schema
+// Shared between Backend (Railway) and Frontend (Vercel)
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Core User Model
+model User {
+  id                String    @id @default(cuid())
+  wallet            String    @unique
+  username          String?   @unique
+  displayName       String?
+  email             String?   @unique
+  avatar            String?
+  bio               String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  lastSeen          DateTime? @default(now())
+  isActive          Boolean   @default(true)
+  usernameChanged   Boolean   @default(false)
+  showUsername      Boolean   @default(true)
+  profileVisibility String    @default("public")
+
+  // Gaming stats
+  wins              Int       @default(0)
+  losses            Int       @default(0)
+  totalMatches      Int       @default(0)
+  winRate           Float     @default(0)
+  totalEarnings     Float     @default(0)
+  reputation        Int       @default(1000)
+
+  // Prestige system
+  proofPoints       Int       @default(0)
+  totalProofPoints  Int       @default(0)
+  prestige          Int       @default(0)
+  currentTier       Int       @default(0)
+  prestigeHistory   Json      @default("[]")
+  lastPrestigeAt    DateTime?
+
+  // Referral system - THE MAIN PP EARNING MECHANISM
+  referralCode      String?   @unique  // User's unique referral code
+  referredBy        String?              // ID of user who referred them
+  referredUsers     String[]  @default([]) // Array of user IDs they referred
+  totalReferrals    Int       @default(0)  // Count of successful referrals
+  referralEarnings  Float     @default(0)  // Total SOL earned from referrals
+  referralPP        Int       @default(0)  // Total PP earned from referrals
+
+  // Authentication fields
+  authMethod    String    @default("wallet") // wallet, email, authenticator
+  password      String?   // Hashed password for email auth
+  totpSecret    String?   // TOTP secret for authenticator auth
+  lastLoginAt   DateTime?
+
+  // Security & 2FA
+  twoFactorEnabled         Boolean   @default(false)
+  twoFactorSecret          String?   // Hashed TOTP secret
+  backupCodes              String?   // Hashed backup codes
+  lastTwoFactorVerification DateTime?
+  
+  // Reputation & Achievements
+  achievements  Json?
+  badges        Json?
+  
+  // Preferences
+  preferences   Json?
+  
+  // Relationships
+  player1Matches    Match[]   @relation("Player1")
+  player2Matches    Match[]   @relation("Player2")
+  wonMatches        Match[]   @relation("Winner")
+  tournaments   TournamentParticipant[]
+  referrals     Referral[] @relation("Referrer")
+  referred      Referral[] @relation("Referred")
+  bridgeTransactions BridgeTransaction[]
+  securityLogs  SecurityLog[]
+  
+  // Pump Wars relationships
+  pumpWarsBets  PumpWarsBet[] @relation("PumpWarsBets")
+  
+  // Social relationships
+  forumThreads     ForumThread[] @relation("ThreadAuthor")
+  lastPostThreads  ForumThread[] @relation("ThreadLastPost")
+  forumPosts       ForumPost[]   @relation("PostAuthor")
+  userAchievements UserAchievement[] @relation("UserAchievements")
+  friendshipRequests Friendship[] @relation("FriendshipRequester")
+  friendshipReceived Friendship[] @relation("FriendshipAddressee")
+  
+  // Streaming relationships
+  streams          Stream[]      @relation("StreamerStreams")
+  streamTips       StreamTip[]   @relation("StreamTips")
+  streamSubscriptions StreamSubscription[] @relation("StreamSubscriptions")
+  streamChatMessages StreamChatMessage[] @relation("StreamChatMessages")
+  streamViewers    StreamViewer[] @relation("StreamViewers")
+  
+  // PnL tracking relationships
+  pnlRecords       PnLRecord[] @relation("UserPnLRecords")
+  pnlSummary       PnLSummary? @relation("UserPnLSummary")
+  pnlFavorites     PnLCardFavorite[] @relation("UserPnLFavorites")
+  pnlCollections   PnLCollection[] @relation("UserPnLCollections")
+  
+  // Performance indexes
+  @@index([totalEarnings(sort: Desc)])
+  @@index([wins(sort: Desc)])
+  @@index([winRate(sort: Desc)])
+  @@index([reputation(sort: Desc)])
+  @@index([proofPoints(sort: Desc)])
+  @@index([prestige(sort: Desc)])
+  @@index([totalProofPoints(sort: Desc)])
+  @@index([createdAt])
+  @@index([twoFactorEnabled])
+  @@index([lastTwoFactorVerification])
+  @@index([username])
+  @@index([authMethod])
+  @@index([email])
+  @@index([lastLoginAt])
+  @@index([referralCode])
+  @@index([referredBy])
+  @@map("users")
+}
+
+// Match System
+model Match {
+  id        String   @id @default(cuid())
+  gameType  String
+  wager     Float
+  status    String   @default("pending")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  startedAt DateTime?
+  endedAt   DateTime?
+  completedAt DateTime?
+  
+  // Players
+  player1Id String
+  player2Id String?
+  winnerId  String?
+  
+  // Game data
+  gameData  Json?
+  result    Json?
+  signature String?
+  
+  // Solana integration
+  escrowAddress String?
+  transactionId String?
+  
+  // Streaming integration
+  streamId  String?
+  
+  player1   User @relation("Player1", fields: [player1Id], references: [id])
+  player2   User? @relation("Player2", fields: [player2Id], references: [id])
+  winner    User? @relation("Winner", fields: [winnerId], references: [id])
+  
+  // Performance indexes
+  @@index([status])
+  @@index([gameType])
+  @@index([createdAt(sort: Desc)])
+  @@index([completedAt(sort: Desc)])
+  @@index([player1Id])
+  @@index([player2Id])
+  @@index([winnerId])
+  @@index([streamId])
+  @@index([wager(sort: Desc)])
+  @@map("matches")
+}
+
+// PnL Tracking System
+model PnLRecord {
+  id            String   @id @default(cuid())
+  userId        String
+  matchId       String?  // Optional - could be from other sources
+  gameType      String   // RPS, MINES, CRASH, etc.
+  result        String   // WIN, LOSS
+  
+  // Financial data
+  wagerAmount   Float
+  pnlAmount     Float    // Profit/Loss amount (+ for profit, - for loss)
+  pnlPercentage Float    // Percentage gain/loss
+  finalAmount   Float    // Final amount after win/loss
+  feeAmount     Float    @default(0) // Platform fees deducted
+  
+  // Game specific data
+  gameSpecific  Json?    // Store game-specific data (score, rounds, etc.)
+  
+  // Card data for recreation
+  cardData      Json?    // Store all data needed to recreate the PnL card
+  
+  // Metadata
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  user          User     @relation("UserPnLRecords", fields: [userId], references: [id])
+  favorites     PnLCardFavorite[] @relation("PnLCardFavorites")
+  collectionCards PnLCollectionCard[] @relation("PnLCollectionCards")
+  
+  // Performance indexes
+  @@index([userId])
+  @@index([gameType])
+  @@index([result])
+  @@index([createdAt(sort: Desc)])
+  @@index([pnlAmount(sort: Desc)])
+  @@index([wagerAmount(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, gameType])
+  @@index([userId, result])
+  @@map("pnl_records")
+}
+
+// PnL Summary for quick analytics
+model PnLSummary {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  
+  // Overall stats
+  totalGames      Int      @default(0)
+  totalWins       Int      @default(0)
+  totalLosses     Int      @default(0)
+  winRate         Float    @default(0)
+  
+  // Financial overview
+  totalWagered    Float    @default(0)
+  totalPnL        Float    @default(0)
+  totalProfit     Float    @default(0)
+  totalLoss       Float    @default(0)
+  totalFees       Float    @default(0)
+  bestWin         Float    @default(0)
+  worstLoss       Float    @default(0)
+  
+  // Time-based analytics (stored as JSON for flexibility)
+  dailyStats      Json     @default("{}")   // Last 30 days
+  weeklyStats     Json     @default("{}")   // Last 12 weeks  
+  monthlyStats    Json     @default("{}")   // Last 12 months
+  
+  // Game type breakdown
+  gameTypeStats   Json     @default("{}")   // Stats per game type
+  
+  // Streaks
+  currentStreak   Int      @default(0)      // Current win/loss streak
+  bestWinStreak   Int      @default(0)
+  worstLossStreak Int      @default(0)
+  
+  // Update tracking
+  lastUpdated     DateTime @updatedAt
+  createdAt       DateTime @default(now())
+  
+  // Relations
+  user            User     @relation("UserPnLSummary", fields: [userId], references: [id])
+  
+  // Performance indexes
+  @@index([totalPnL(sort: Desc)])
+  @@index([winRate(sort: Desc)])
+  @@index([totalWagered(sort: Desc)])
+  @@index([bestWin(sort: Desc)])
+  @@index([lastUpdated])
+  @@map("pnl_summaries")
+}
+
+// PnL Favorites & Collections System
+model PnLCardFavorite {
+  id        String   @id @default(cuid())
+  userId    String
+  cardId    String   // PnL record ID
+  createdAt DateTime @default(now())
+  
+  // Relations
+  user      User      @relation("UserPnLFavorites", fields: [userId], references: [id])
+  card      PnLRecord @relation("PnLCardFavorites", fields: [cardId], references: [id])
+  
+  // Ensure unique favorites per user per card
+  @@unique([userId, cardId])
+  @@index([userId])
+  @@index([cardId])
+  @@index([createdAt(sort: Desc)])
+  @@map("pnl_card_favorites")
+}
+
+model PnLCollection {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  user        User     @relation("UserPnLCollections", fields: [userId], references: [id])
+  cards       PnLCollectionCard[] @relation("CollectionCards")
+  
+  // Performance indexes
+  @@index([userId])
+  @@index([isPublic])
+  @@index([createdAt(sort: Desc)])
+  @@index([updatedAt(sort: Desc)])
+  @@map("pnl_collections")
+}
+
+model PnLCollectionCard {
+  id           String   @id @default(cuid())
+  collectionId String
+  cardId       String
+  addedAt      DateTime @default(now())
+  
+  // Relations
+  collection   PnLCollection @relation("CollectionCards", fields: [collectionId], references: [id])
+  card         PnLRecord     @relation("PnLCollectionCards", fields: [cardId], references: [id])
+  
+  // Ensure unique cards per collection
+  @@unique([collectionId, cardId])
+  @@index([collectionId])
+  @@index([cardId])
+  @@index([addedAt(sort: Desc)])
+  @@map("pnl_collection_cards")
+}
+
+// Tournament System
+model Tournament {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  prizePool   Float
+  status      String   @default("upcoming")
+  maxPlayers  Int
+  currentPlayers Int   @default(0)
+  createdAt   DateTime @default(now())
+  startsAt    DateTime
+  endsAt      DateTime?
+  
+  // Tournament configuration
+  gameType    String
+  entryFee    Float
+  format      String   @default("single_elimination")
+  rules       Json?
+  
+  participants TournamentParticipant[]
+  
+  // Performance indexes
+  @@index([status])
+  @@index([gameType])
+  @@index([startsAt])
+  @@index([prizePool(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@map("tournaments")
+}
+
+model TournamentParticipant {
+  id           String @id @default(cuid())
+  tournamentId String
+  userId       String
+  joinedAt     DateTime @default(now())
+  eliminated   Boolean  @default(false)
+  placement    Int?
+  
+  tournament   Tournament @relation(fields: [tournamentId], references: [id])
+  user         User       @relation(fields: [userId], references: [id])
+  
+  @@unique([tournamentId, userId])
+  @@index([tournamentId])
+  @@index([userId])
+  @@map("tournament_participants")
+}
+
+// Referral System
+model Referral {
+  id         String   @id @default(cuid())
+  code       String   @unique
+  referrerId String
+  referredId String?
+  createdAt  DateTime @default(now())
+  claimedAt  DateTime?
+  
+  // Rewards
+  totalEarnings Float @default(0)
+  totalRewards  Float @default(0)
+  
+  referrer   User @relation("Referrer", fields: [referrerId], references: [id])
+  referred   User? @relation("Referred", fields: [referredId], references: [id])
+  
+  // Performance indexes
+  @@index([referrerId])
+  @@index([totalEarnings(sort: Desc)])
+  @@index([createdAt])
+  @@map("referrals")
+}
+
+// Leaderboards
+model Leaderboard {
+  id        String   @id @default(cuid())
+  type      String   // "earnings", "wins", "winrate"
+  period    String   // "daily", "weekly", "monthly", "alltime"
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([type, period])
+  @@index([type])
+  @@index([period])
+  @@index([updatedAt])
+  @@map("leaderboards")
+}
+
+// Security & Audit
+model SecurityLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  type      String
+  action    String
+  details   Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  
+  // Additional fields for analytics
+  eventType String?  // For categorizing security events
+  metadata  Json?    // For storing additional structured data
+  
+  // User relationship
+  user      User?    @relation(fields: [userId], references: [id])
+  
+  // Performance indexes
+  @@index([userId])
+  @@index([type])
+  @@index([eventType])
+  @@index([createdAt(sort: Desc)])
+  @@index([ipAddress])
+  @@map("security_logs")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  adminId    String?
+  action     String
+  targetType String?
+  targetId   String?
+  details    Json?
+  createdAt  DateTime @default(now())
+  
+  // Performance indexes
+  @@index([adminId])
+  @@index([action])
+  @@index([targetType])
+  @@index([createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+// Analytics
+model Analytics {
+  id        String   @id @default(cuid())
+  type      String
+  period    String   // "hourly", "daily", "weekly"
+  data      Json
+  createdAt DateTime @default(now())
+  
+  @@unique([type, period, createdAt])
+  @@index([type])
+  @@index([period])
+  @@index([createdAt(sort: Desc)])
+  @@map("analytics")
+}
+
+// Bridge System
+model BridgeTransaction {
+  id            String   @id @default(cuid())
+  userId        String
+  sourceChain   String
+  targetChain   String
+  sourceToken   String
+  targetToken   String
+  amount        Float
+  bridgeFee     Float    @default(0)
+  convenienceFee Float   @default(0)
+  netAmount     Float
+  status        String   @default("pending") // pending, bridging, completed, failed
+  
+  // Transaction hashes
+  sourceTxHash  String?
+  targetTxHash  String?
+  vaaId         String?
+  
+  // Timestamps
+  createdAt     DateTime @default(now())
+  completedAt   DateTime?
+  
+  // User relationship
+  user          User     @relation(fields: [userId], references: [id])
+  
+  // Fee collections relationship
+  feeCollections BridgeFeeCollection[]
+  
+  // Performance indexes
+  @@index([userId])
+  @@index([status])
+  @@index([sourceChain])
+  @@index([createdAt(sort: Desc)])
+  @@index([sourceTxHash])
+  @@map("bridge_transactions")
+}
+
+model BridgeFeeCollection {
+  id            String   @id @default(cuid())
+  bridgeId      String
+  feeAmount     Float
+  feeType       String   // "convenience", "gas_reimbursement"
+  collectedAt   DateTime @default(now())
+  
+  bridge        BridgeTransaction @relation(fields: [bridgeId], references: [id])
+  
+  @@index([bridgeId])
+  @@index([collectedAt])
+  @@index([feeType])
+  @@map("bridge_fee_collections")
+}
+
+// Developer System
+model Developer {
+  id              String   @id @default(cuid())
+  walletAddress   String   @unique
+  registeredAt    DateTime @default(now())
+  status          String   @default("active") // active, suspended, banned
+  
+  // Stats
+  totalRevenue    Float    @default(0)
+  totalProjects   Int      @default(0)
+  approvedProjects Int     @default(0)
+  
+  // Profile
+  name            String?
+  email           String?
+  website         String?
+  bio             String?
+  
+  // Relationships
+  projects        DeveloperProject[]
+  
+  @@index([walletAddress])
+  @@index([status])
+  @@index([registeredAt])
+  @@map("developers")
+}
+
+model DeveloperProject {
+  id              String   @id @default(cuid())
+  developerId     String
+  name            String
+  description     String
+  gameType        String
+  status          String   @default("draft") // draft, submitted, under_review, approved, live, rejected
+  
+  // Submission details
+  repositoryUrl   String?
+  demoUrl         String?
+  documentation   String?
+  contactEmail    String
+  
+  // Review process
+  submittedAt     DateTime?
+  reviewedAt      DateTime?
+  reviewNotes     String?
+  reviewedBy      String?
+  adminFeedback   String?
+  rejectionReason String?
+  
+  // Approval workflow
+  internalNotes   String?
+  priority        String   @default("normal") // low, normal, high, urgent
+  estimatedReviewTime String?
+  
+  // Live stats
+  revenue         Float    @default(0)
+  players         Int      @default(0)
+  matches         Int      @default(0)
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relationships
+  developer       Developer @relation(fields: [developerId], references: [id])
+  reviews         ProjectReview[]
+  
+  @@index([developerId])
+  @@index([status])
+  @@index([gameType])
+  @@index([submittedAt])
+  @@index([priority])
+  @@map("developer_projects")
+}
+
+// Admin System for Developer Hub
+model Admin {
+  id              String   @id @default(cuid())
+  walletAddress   String   @unique
+  username        String   @unique
+  role            String   @default("reviewer") // reviewer, moderator, admin, super_admin
+  permissions     Json?    // Specific permissions array
+  
+  // Profile
+  name            String?
+  email           String?
+  avatar          String?
+  
+  // Activity tracking
+  isActive        Boolean  @default(true)
+  lastLogin       DateTime?
+  createdAt       DateTime @default(now())
+  
+  // Review stats
+  totalReviews    Int      @default(0)
+  approvedProjects Int     @default(0)
+  rejectedProjects Int     @default(0)
+  
+  // Relationships
+  reviews         ProjectReview[]
+  
+  @@index([walletAddress])
+  @@index([role])
+  @@index([isActive])
+  @@map("admins")
+}
+
+// Project Review History
+model ProjectReview {
+  id              String   @id @default(cuid())
+  projectId       String
+  adminId         String?
+  action          String   // submitted, under_review, approved, rejected, revision_requested
+  notes           String?
+  feedback        String?
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  
+  // Relationships
+  project         DeveloperProject @relation(fields: [projectId], references: [id])
+  admin           Admin?           @relation(fields: [adminId], references: [id])
+  
+  @@index([projectId])
+  @@index([adminId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("project_reviews")
+}
+
+// Partner System for KOL/Influencer Partnerships
+model Partner {
+  id              String   @id @default(cuid())
+  walletAddress   String   @unique
+  registeredAt    DateTime @default(now())
+  status          String   @default("pending") // pending, under_review, approved, active, suspended, rejected
+  
+  // Profile Information
+  name            String
+  email           String
+  username        String?  // Social media handle
+  bio             String?
+  website         String?
+  
+  // Social Media Presence
+  twitterHandle   String?
+  twitterFollowers Int?
+  youtubeChannel  String?
+  youtubeSubscribers Int?
+  tiktokHandle    String?
+  tiktokFollowers Int?
+  instagramHandle String?
+  instagramFollowers Int?
+  discordServer   String?
+  discordMembers  Int?
+  otherPlatforms  Json?    // Additional platforms and metrics
+  
+  // Engagement Metrics (verified by our team)
+  verifiedReach   Int      @default(0)
+  engagementRate  Float    @default(0)
+  audienceQuality String   @default("unverified") // unverified, low, medium, high, premium
+  botScore        Float    @default(0) // 0-100, higher = more likely to have bots
+  
+  // Partnership Terms
+  tier            String   @default("standard") // standard, premium, elite, custom
+  revenueShare    Float    @default(30) // Their percentage (30-50%)
+  customTerms     String?  // Special agreements
+  minimumPayout   Float    @default(100)
+  
+  // Performance Stats
+  totalEarnings   Float    @default(0)
+  totalReferrals  Int      @default(0)
+  activeReferrals Int      @default(0)
+  conversionRate  Float    @default(0)
+  
+  // Review Process
+  submittedAt     DateTime?
+  reviewedAt      DateTime?
+  reviewedBy      String?
+  adminFeedback   String?
+  rejectionReason String?
+  internalNotes   String?
+  
+  // Verification Status
+  isVerified      Boolean  @default(false)
+  verificationDate DateTime?
+  verificationNotes String?
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relationships
+  applications    PartnerApplication[]
+  reviews         PartnerReview[]
+  
+  @@index([walletAddress])
+  @@index([status])
+  @@index([tier])
+  @@index([verifiedReach(sort: Desc)])
+  @@index([totalEarnings(sort: Desc)])
+  @@index([isVerified])
+  @@map("partners")
+}
+
+model PartnerApplication {
+  id              String   @id @default(cuid())
+  partnerId       String
+  
+  // Application Details
+  applicationReason String  // Why they want to partner
+  contentStrategy String   // How they plan to promote
+  expectedReach   Int      // Their estimated reach
+  previousPartnerships String? // Other gaming partnerships
+  
+  // Media Kit
+  mediaKitUrl     String?
+  portfolioUrl    String?
+  demoContent     String?  // Links to previous gaming content
+  
+  // Audience Demographics
+  primaryAudience String?  // Gaming, crypto, general, etc.
+  audienceAge     String?  // Age demographics
+  audienceGeo     String?  // Geographic distribution
+  
+  // Verification Documents
+  analyticsScreenshots Json? // Social media analytics
+  verificationDocs Json?     // Additional verification materials
+  
+  // Status
+  status          String   @default("submitted") // submitted, under_review, approved, rejected
+  priority        String   @default("normal")    // low, normal, high, urgent
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  // Relationships
+  partner         Partner @relation(fields: [partnerId], references: [id])
+  
+  @@index([partnerId])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+  @@map("partner_applications")
+}
+
+model PartnerReview {
+  id              String   @id @default(cuid())
+  partnerId       String
+  adminId         String?
+  action          String   // submitted, verification_started, metrics_verified, approved, rejected, suspended
+  notes           String?
+  feedback        String?
+  
+  // Verification Results
+  reachVerified   Boolean? // Did we verify their claimed reach?
+  engagementVerified Boolean? // Did we verify engagement rates?
+  botCheckPassed  Boolean? // Did they pass bot detection?
+  qualityScore    Int?     // 1-10 quality rating
+  
+  // Recommended Terms
+  recommendedTier String?  // What tier should they get?
+  recommendedShare Float?  // What revenue share?
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  
+  // Relationships
+  partner         Partner @relation(fields: [partnerId], references: [id])
+  
+  @@index([partnerId])
+  @@index([adminId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("partner_reviews")
+}
+
+// Social Hub - Forum System
+model ForumCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  slug        String   @unique
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relationships
+  threads     ForumThread[]
+  
+  @@index([sortOrder])
+  @@index([isActive])
+  @@map("forum_categories")
+}
+
+model ForumThread {
+  id          String   @id @default(cuid())
+  title       String
+  content     String?
+  isPinned    Boolean  @default(false)
+  isLocked    Boolean  @default(false)
+  viewCount   Int      @default(0)
+  replyCount  Int      @default(0)
+  
+  // Author
+  authorId    String
+  author      User     @relation("ThreadAuthor", fields: [authorId], references: [id])
+  
+  // Category
+  categoryId  String
+  category    ForumCategory @relation(fields: [categoryId], references: [id])
+  
+  // Last post tracking
+  lastPostAt       DateTime?
+  lastPostAuthorId String?
+  lastPostAuthor   User?    @relation("ThreadLastPost", fields: [lastPostAuthorId], references: [id])
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relationships
+  posts       ForumPost[]
+  
+  @@index([categoryId])
+  @@index([authorId])
+  @@index([isPinned, lastPostAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@map("forum_threads")
+}
+
+model ForumPost {
+  id        String   @id @default(cuid())
+  content   String
+  isEdited  Boolean  @default(false)
+  editedAt  DateTime?
+  
+  // Author
+  authorId  String
+  author    User     @relation("PostAuthor", fields: [authorId], references: [id])
+  
+  // Thread
+  threadId  String
+  thread    ForumThread @relation(fields: [threadId], references: [id])
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([threadId])
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("forum_posts")
+}
+
+// Social Hub - Achievement System
+model Achievement {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  icon        String
+  rarity      String   @default("common") // common, uncommon, rare, epic, legendary
+  targetValue Int      @default(1)
+  key         String   @unique // Unique identifier for achievement logic
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relationships
+  userAchievements UserAchievement[]
+  
+  @@index([rarity])
+  @@index([isActive])
+  @@index([key])
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  progress      Int      @default(0)
+  isUnlocked    Boolean  @default(false)
+  unlockedAt    DateTime?
+  
+  // User
+  userId        String
+  user          User     @relation("UserAchievements", fields: [userId], references: [id])
+  
+  // Achievement
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  
+  // Timestamps
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@index([achievementId])
+  @@index([isUnlocked])
+  @@index([unlockedAt(sort: Desc)])
+  @@map("user_achievements")
+}
+
+// Social Hub - Friends System
+model Friendship {
+  id          String   @id @default(cuid())
+  status      String   @default("pending") // pending, accepted, blocked
+  acceptedAt  DateTime?
+  
+  // Requester (who sent the friend request)
+  requesterId String
+  requester   User     @relation("FriendshipRequester", fields: [requesterId], references: [id])
+  
+  // Addressee (who received the friend request)
+  addresseeId String
+  addressee   User     @relation("FriendshipAddressee", fields: [addresseeId], references: [id])
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([requesterId, addresseeId])
+  @@index([requesterId])
+  @@index([addresseeId])
+  @@index([status])
+  @@index([acceptedAt(sort: Desc)])
+  @@map("friendships")
+}
+
+// ===== STREAMING PLATFORM MODELS =====
+
+model Stream {
+  id                String   @id @default(cuid())
+  streamerId        String
+  title             String
+  description       String?
+  category          String   // high_stakes, educational, prestige_showcase, tournaments, just_chatting, etc.
+  gameType          String?
+  stakes            Float?   // SOL amount for high-stakes streams
+  isLive            Boolean  @default(true)
+  isEducational     Boolean  @default(false)
+  isPremium         Boolean  @default(false)
+  minPrestigeToView Int?     // Minimum prestige required to view
+  language          String   @default("en")
+  tags              String[] @default([])
+  
+  // Stream technical details
+  streamKey         String   @unique
+  rtmpUrl           String
+  playbackUrl       String
+  thumbnailUrl      String?
+  
+  // Stream stats
+  viewerCount       Int      @default(0)
+  peakViewerCount   Int      @default(0)
+  totalTips         Float    @default(0)
+  totalSubscribers  Int      @default(0)
+  
+  // Timestamps
+  startedAt         DateTime @default(now())
+  endedAt           DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // Chat settings
+  chatSettings      Json     @default("{\"subscribersOnly\": false, \"slowMode\": 0, \"emoteOnly\": false, \"followersOnly\": false}")
+  
+  // Relationships
+  streamer          User     @relation("StreamerStreams", fields: [streamerId], references: [id])
+  tips              StreamTip[]
+  subscriptions     StreamSubscription[]
+  chatMessages      StreamChatMessage[]
+  viewers           StreamViewer[]
+  
+  // Performance indexes
+  @@index([streamerId])
+  @@index([isLive])
+  @@index([category])
+  @@index([stakes(sort: Desc)])
+  @@index([viewerCount(sort: Desc)])
+  @@index([totalTips(sort: Desc)])
+  @@index([startedAt(sort: Desc)])
+  @@index([isEducational])
+  @@index([isPremium])
+  @@index([minPrestigeToView])
+  @@map("streams")
+}
+
+model StreamTip {
+  id            String   @id @default(cuid())
+  streamId      String
+  tipperId      String
+  amount        Float    // SOL amount
+  message       String?
+  isHighlighted Boolean  @default(false)
+  animationType String   @default("small") // small, medium, large, mega, legendary
+  
+  // Revenue split (97/3)
+  streamerAmount Float   // 97% to streamer
+  platformFee    Float   // 3% to platform
+  
+  createdAt     DateTime @default(now())
+  
+  // Relationships
+  stream        Stream   @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  tipper        User     @relation("StreamTips", fields: [tipperId], references: [id])
+  
+  // Performance indexes
+  @@index([streamId])
+  @@index([tipperId])
+  @@index([amount(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@map("stream_tips")
+}
+
+model StreamSubscription {
+  id            String   @id @default(cuid())
+  streamId      String
+  subscriberId  String
+  tier          Int      @default(1)
+  monthlyAmount Float    // SOL amount per month
+  
+  // Revenue split (97/3)
+  streamerAmount Float   // 97% to streamer per month
+  platformFee    Float   // 3% to platform per month
+  
+  // Subscription status
+  isActive      Boolean  @default(true)
+  autoRenew     Boolean  @default(true)
+  startDate     DateTime @default(now())
+  endDate       DateTime
+  lastPayment   DateTime @default(now())
+  nextPayment   DateTime
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relationships
+  stream        Stream   @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  subscriber    User     @relation("StreamSubscriptions", fields: [subscriberId], references: [id])
+  
+  // Performance indexes
+  @@index([streamId])
+  @@index([subscriberId])
+  @@index([isActive])
+  @@index([nextPayment])
+  @@index([monthlyAmount(sort: Desc)])
+  @@unique([streamId, subscriberId]) // One subscription per user per stream
+  @@map("stream_subscriptions")
+}
+
+model StreamChatMessage {
+  id            String   @id @default(cuid())
+  streamId      String
+  userId        String
+  message       String
+  isHighlighted Boolean  @default(false)
+  tipAmount     Float?   // If this message included a tip
+  
+  createdAt     DateTime @default(now())
+  
+  // Relationships
+  stream        Stream   @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  user          User     @relation("StreamChatMessages", fields: [userId], references: [id])
+  
+  // Performance indexes
+  @@index([streamId])
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
+  @@map("stream_chat_messages")
+}
+
+model StreamViewer {
+  id        String   @id @default(cuid())
+  streamId  String
+  userId    String
+  joinedAt  DateTime @default(now())
+  leftAt    DateTime?
+  watchTime Int      @default(0) // Total watch time in seconds
+  
+  // Relationships
+  stream    Stream   @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  user      User     @relation("StreamViewers", fields: [userId], references: [id])
+  
+  // Performance indexes
+  @@index([streamId])
+  @@index([userId])
+  @@index([joinedAt])
+  @@index([watchTime(sort: Desc)])
+  @@unique([streamId, userId]) // One viewer record per user per stream
+  @@map("stream_viewers")
+}
+
+enum MatchStatus {
+  waiting
+  in_progress
+  completed
+  completed_awaiting_payout  // New status for proper payout flow
+  cancelled
+  disputed
+}
+
+// 🚀 PUMP WARS: Dynamic Token System
+
+// Qualified tokens cache for pump wars
+model QualifiedToken {
+  id                    String   @id @default(cuid())
+  address               String   @unique // Solana mint address
+  symbol                String   // Token symbol (e.g., "SOL", "BONK")
+  name                  String   // Full token name
+  decimals              Int      // Token decimals
+  logoUri               String?  // Token logo URL
+  dailyVolume           Float    @default(0) // 24h trading volume
+  marketCap             Float    @default(0) // Market capitalization
+  priceChange24h        Float    @default(0) // 24h price change percentage
+  tags                  String[] @default([]) // Jupiter tags (verified, etc.)
+  qualifiedForPumpWars  Boolean  @default(true)
+  lastPriceUpdate       DateTime @default(now())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  // Relations
+  pumpWarsRounds        PumpWarsRound[] @relation("TokenRounds")
+  priceHistory          TokenPriceHistory[] @relation("TokenPriceHistory")
+  
+  @@index([address])
+  @@index([symbol])
+  @@index([qualifiedForPumpWars])
+  @@index([dailyVolume(sort: Desc)])
+  @@index([marketCap(sort: Desc)])
+  @@map("qualified_tokens")
+}
+
+// Token price history for analytics
+model TokenPriceHistory {
+  id              String   @id @default(cuid())
+  tokenAddress    String   // Reference to token
+  price           Float    // USD price
+  volume24h       Float    @default(0) // 24h volume
+  priceChange24h  Float    @default(0) // 24h price change %
+  marketCap       Float    @default(0) // Market cap at this time
+  timestamp       DateTime @default(now())
+  
+  // Relations
+  token           QualifiedToken @relation("TokenPriceHistory", fields: [tokenAddress], references: [address])
+  
+  @@index([tokenAddress])
+  @@index([timestamp(sort: Desc)])
+  @@index([tokenAddress, timestamp])
+  @@map("token_price_history")
+}
+
+// Pump wars rounds for detailed tracking
+model PumpWarsRound {
+  id                   String   @id @default(cuid())
+  roundId              String   @unique // UUID for this specific round
+  matchId              String   // Reference to main match
+  tokenAddress         String   // Token being traded
+  tokenSymbol          String   // Token symbol for quick access
+  roundNumber          Int      // Round number in this match
+  startTime            DateTime // When round started
+  endTime              DateTime? // When round ended
+  durationSeconds      Int      // Round duration (usually 60)
+  bettingCloseTime     DateTime? // When betting closed (usually 15s before end)
+  
+  // Price data
+  startPrice           Float?   // Price when round started
+  endPrice             Float?   // Price when round ended
+  priceChange          Float?   // Absolute price change
+  priceChangePercent   Float?   // Percentage price change
+  winningDirection     String?  // "up" or "down"
+  
+  // Pool data
+  totalUpPool          Float    @default(0) // Total SOL bet on "up"
+  totalDownPool        Float    @default(0) // Total SOL bet on "down"
+  totalParticipants    Int      @default(0) // Number of players
+  
+  // Round state
+  status               String   @default("betting") // betting, active, settling, completed
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  
+  // Relations
+  token                QualifiedToken @relation("TokenRounds", fields: [tokenAddress], references: [address])
+  bets                 PumpWarsBet[] @relation("RoundBets")
+  
+  @@index([roundId])
+  @@index([matchId])
+  @@index([tokenAddress])
+  @@index([status])
+  @@index([startTime(sort: Desc)])
+  @@index([roundNumber])
+  @@map("pump_wars_rounds")
+}
+
+// Individual bets in pump wars rounds
+model PumpWarsBet {
+  id               String   @id @default(cuid())
+  betId            String   @unique // UUID for this bet
+  roundId          String   // Which round this bet belongs to
+  matchId          String   // Which match this bet belongs to
+  playerId         String   // User who placed the bet
+  walletAddress    String   // Wallet address for verification
+  betAmount        Float    // Amount wagered in SOL
+  betDirection     String   // "up" or "down"
+  potentialPayout  Float?   // Calculated potential payout
+  actualPayout     Float?   // Actual payout received
+  isWinner         Boolean  @default(false) // Whether this bet won
+  placedAt         DateTime @default(now()) // When bet was placed
+  settledAt        DateTime? // When bet was settled
+  createdAt        DateTime @default(now())
+  
+  // Relations
+  round            PumpWarsRound @relation("RoundBets", fields: [roundId], references: [roundId])
+  player           User @relation("PumpWarsBets", fields: [playerId], references: [id])
+  
+  @@index([betId])
+  @@index([roundId])
+  @@index([matchId])
+  @@index([playerId])
+  @@index([walletAddress])
+  @@index([betDirection])
+  @@index([isWinner])
+  @@index([placedAt(sort: Desc)])
+  @@map("pump_wars_bets")
+} 
