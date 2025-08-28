@@ -92,8 +92,6 @@ vercel projects list --json | jq -r '.[] | "\(.name): \(.id)"'
 vercel projects list --json | jq -r '.[] | select(.name=="n0de-website") | .id'
 # ↑ This is your VERCEL_PROJECT_ID_MAIN
 
-vercel projects list --json | jq -r '.[] | select(.name=="admin-dashboard") | .id'  
-# ↑ This is your VERCEL_PROJECT_ID_ADMIN
 ```
 
 ### 5. Link Local Projects (If Needed)
@@ -103,10 +101,6 @@ cd frontend/n0de-website
 vercel link
 # Choose existing project or create new one
 
-# Link admin dashboard  
-cd ../admin-dashboard
-vercel link
-# Choose existing project or create new one
 ```
 
 ## 💳 Payment Provider Keys (Sandbox/Test Only)
@@ -186,7 +180,6 @@ RAILWAY_SERVICE_ID=your-service-id-here
 VERCEL_TOKEN=your-vercel-token-here
 VERCEL_ORG_ID=your-org-id-here
 VERCEL_PROJECT_ID_MAIN=your-main-project-id
-VERCEL_PROJECT_ID_ADMIN=your-admin-project-id
 
 # Payment Providers (TEST KEYS ONLY)
 STRIPE_TEST_SECRET_KEY=sk_test_your_stripe_test_key

@@ -29,7 +29,6 @@ on:
 env:
   BACKEND_URL: 'https://n0de-backend-production-4e34.up.railway.app'
   FRONTEND_URL: 'https://www.n0de.pro'
-  ADMIN_URL: 'https://admin-n0de.vercel.app'
 
 jobs:
   validate-environment-configs:
@@ -134,7 +133,6 @@ jobs:
         
         VERCEL_CONFIGS=(
           "frontend/n0de-website/vercel.json"
-          "frontend/admin-dashboard/vercel.json"
         )
         
         for config in "${VERCEL_CONFIGS[@]}"; do
@@ -276,8 +274,6 @@ jobs:
         SERVICES=(
           "Backend API|${{ env.BACKEND_URL }}/health"
           "Frontend|${{ env.FRONTEND_URL }}"
-          "Gaming Platform|${{ env.GAMING_URL }}"
-          "Admin Dashboard|${{ env.ADMIN_URL }}"
         )
         
         HEALTHY_SERVICES=0
@@ -445,8 +441,6 @@ jobs:
         ## Service Status
         - Backend API: ${{ env.BACKEND_URL }}
         - Frontend: ${{ env.FRONTEND_URL }}
-        - Gaming Platform: ${{ env.GAMING_URL }}
-        - Admin Dashboard: ${{ env.ADMIN_URL }}
         
         ## Configuration Files
         - ✅ railway.json: Validated

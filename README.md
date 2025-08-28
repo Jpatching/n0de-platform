@@ -9,17 +9,12 @@
 - **Platform**: Railway
 - **Features**: RPC Proxy, Subscriptions, Payment Processing (Stripe/Coinbase/NOWPayments), JWT Authentication, WebSocket Support
 
-### Frontend Applications
+### Frontend Application
 
-#### 1. Main Website (n0de-website)
+#### Main Website (n0de-website)
 - **Live URL**: https://www.n0de.pro
 - **Platform**: Vercel  
 - **Purpose**: Landing page, subscription management, developer portal, billing dashboard
-
-#### 2. Admin Dashboard (admin-dashboard)  
-- **Live URL**: https://admin-n0de.vercel.app
-- **Platform**: Vercel
-- **Purpose**: Administrative interface, user management, analytics, system monitoring
 
 ## 💳 Payment Systems Integration
 
@@ -75,10 +70,6 @@ cd frontend/n0de-website
 npm install
 npm run dev
 
-# Admin dashboard  
-cd frontend/admin-dashboard
-npm install
-npm run dev
 ```
 
 ## 📚 API Documentation
@@ -168,11 +159,10 @@ RATE_LIMIT_TTL=60
 RATE_LIMIT_MAX=1000
 
 # CORS Configuration
-CORS_ORIGINS="https://www.n0de.pro,https://admin-n0de.vercel.app"
+CORS_ORIGINS="https://www.n0de.pro"
 
 # Service URLs
 FRONTEND_URL="https://www.n0de.pro"
-ADMIN_URL="https://admin-n0de.vercel.app"
 ```
 
 ## 🚀 Deployment
@@ -195,9 +185,6 @@ railway up
 cd frontend/n0de-website
 vercel --prod
 
-# Admin dashboard
-cd frontend/admin-dashboard  
-vercel --prod
 ```
 
 ### GitHub Actions CI/CD

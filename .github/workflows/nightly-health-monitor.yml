@@ -27,7 +27,6 @@ on:
 env:
   BACKEND_URL: 'https://n0de-backend-production-4e34.up.railway.app'
   FRONTEND_URL: 'https://www.n0de.pro'
-  ADMIN_URL: 'https://admin-n0de.vercel.app'
   HEALTH_CHECK_TIMEOUT: 30
   ALERT_WEBHOOK: ${{ secrets.HEALTH_ALERT_WEBHOOK }}
 
@@ -50,7 +49,6 @@ jobs:
         SERVICES=(
           "backend|${{ env.BACKEND_URL }}/health"
           "frontend|${{ env.FRONTEND_URL }}"
-          "admin|${{ env.ADMIN_URL }}"
         )
         
         HEALTHY_SERVICES=0
@@ -384,7 +382,6 @@ jobs:
         
         FRONTEND_URLS=(
           "Main Website|${{ env.FRONTEND_URL }}"
-          "Admin Dashboard|${{ env.ADMIN_URL }}"
         )
         
         for url_info in "${FRONTEND_URLS[@]}"; do
@@ -431,7 +428,6 @@ jobs:
         SECURE_URLS=(
           "${{ env.BACKEND_URL }}"
           "${{ env.FRONTEND_URL }}"
-          "${{ env.ADMIN_URL }}"
         )
         
         for url in "${SECURE_URLS[@]}"; do
@@ -545,7 +541,6 @@ jobs:
         ## 📋 Service URLs
         - Backend: ${{ env.BACKEND_URL }}
         - Frontend: ${{ env.FRONTEND_URL }}
-        - Admin: ${{ env.ADMIN_URL }}
         
         ## 🚨 Alerts and Recommendations
         - Monitor services with degraded performance
