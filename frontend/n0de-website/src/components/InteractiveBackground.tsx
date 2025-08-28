@@ -10,7 +10,7 @@ export default function InteractiveBackground() {
       <motion.div
         className="absolute inset-0 w-full h-full"
         style={{
-          backgroundImage: `url('/dithering_texture.png')`,
+          backgroundImage: `url('/ChatGPT Image Aug 7, 2025, 12_12_38 AM.png')`,
           backgroundSize: 'cover',
           backgroundRepeat: 'repeat',
           backgroundPosition: 'center'
