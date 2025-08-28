@@ -103,6 +103,26 @@ interface PaymentStats {
   }>;
 }
 
+interface PaymentMethod {
+  id: string;
+  type: string;
+  last4: string;
+  brand: string;
+  expiryMonth: number;
+  expiryYear: number;
+  isDefault: boolean;
+}
+
+interface BillingAddress {
+  name: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+}
+
 interface PlanOption {
   name: string;
   type: string;
@@ -126,6 +146,9 @@ const BillingPage = () => {
   const [upgrading, setUpgrading] = useState(false);
   const [payingOverage, setPayingOverage] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [billingAddress, setBillingAddress] = useState<BillingAddress | null>(null);
+  const [loadingPaymentData, setLoadingPaymentData] = useState(false);
 
   useEffect(() => {
     loadBillingData();
@@ -155,11 +178,43 @@ const BillingPage = () => {
       setSubscriptionData(usage);
       setPaymentStats(payments);
       setAvailablePlans(plans);
+      
+      // Load payment methods and billing address
+      loadPaymentData();
     } catch (error) {
       console.error('Failed to load billing data:', error);
       toast.error('Failed to load billing information');
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const loadPaymentData = async () => {
+    try {
+      setLoadingPaymentData(true);
+      
+      // Try to load real payment methods and billing address
+      try {
+        const [methods, address] = await Promise.all([
+          api.get<PaymentMethod[]>('/users/payment-methods'),
+          api.get<BillingAddress>('/users/billing-address')
+        ]);
+        
+        if (methods && Array.isArray(methods)) {
+          setPaymentMethods(methods);
+        }
+        
+        if (address && address.name) {
+          setBillingAddress(address);
+        }
+      } catch (apiError) {
+        // If APIs don't exist yet, show empty state instead of placeholder
+        console.log('Payment data APIs not available yet');
+        setPaymentMethods([]);
+        setBillingAddress(null);
+      }
+    } finally {
+      setLoadingPaymentData(false);
     }
   };
   
@@ -175,17 +230,24 @@ const BillingPage = () => {
   const handleUpgrade = async (planType: string) => {
     try {
       setUpgrading(true);
-      const result = await api.post('/subscriptions/upgrade', {
+      
+      // Use secure checkout flow - create payment session first
+      const result = await api.post('/subscriptions/upgrade/checkout', {
         planType,
-        paymentInfo: {} // This would integrate with payment provider
+        paymentProvider: 'STRIPE'
       });
       
-      toast.success(`Successfully upgraded to ${planType} plan!`);
-      setShowUpgrade(false);
-      await Promise.all([loadBillingData(), loadRealTimeUsage()]);
+      if (result.checkoutUrl) {
+        toast.success(`Redirecting to secure checkout for ${result.planName} plan...`);
+        
+        // Redirect to Stripe checkout page
+        window.location.href = result.checkoutUrl;
+      } else {
+        throw new Error('Failed to create checkout session');
+      }
     } catch (error: any) {
       console.error('Upgrade failed:', error);
-      toast.error(error.message || 'Failed to upgrade plan');
+      toast.error(error.response?.data?.message || error.message || 'Failed to create checkout session');
     } finally {
       setUpgrading(false);
     }
@@ -503,31 +565,87 @@ const BillingPage = () => {
               <div className="bg-zinc-950/50 border border-zinc-800 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-white mb-4">Payment Method</h3>
                 
-                <div className="flex items-center space-x-3 p-3 bg-zinc-800/30 rounded-lg mb-4">
-                  <div className="w-8 h-6 bg-gradient-to-r from-blue-500 to-purple-500 rounded"></div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-white">•••• •••• •••• 4242</p>
-                    <p className="text-xs text-zinc-400">Expires 12/25</p>
+                {loadingPaymentData ? (
+                  <div className="text-center py-4">
+                    <p className="text-zinc-400 text-sm">Loading payment methods...</p>
                   </div>
-                  <CheckCircle className="h-4 w-4 text-green-400" />
-                </div>
-                
-                <button className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white hover:bg-zinc-700 transition-colors">
-                  Update Payment Method
-                </button>
+                ) : paymentMethods.length > 0 ? (
+                  <>
+                    {paymentMethods.map((method) => (
+                      <div key={method.id} className="flex items-center space-x-3 p-3 bg-zinc-800/30 rounded-lg mb-4">
+                        <div className="w-8 h-6 bg-gradient-to-r from-blue-500 to-purple-500 rounded flex items-center justify-center">
+                          <span className="text-xs text-white font-bold">{method.brand?.charAt(0)}</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-white">
+                            {method.brand} •••• {method.last4}
+                          </p>
+                          <p className="text-xs text-zinc-400">
+                            Expires {method.expiryMonth}/{method.expiryYear}
+                          </p>
+                        </div>
+                        {method.isDefault && <CheckCircle className="h-4 w-4 text-green-400" />}
+                      </div>
+                    ))}
+                    <button 
+                      onClick={() => window.location.href = '/dashboard/payment-methods'}
+                      className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white hover:bg-zinc-700 transition-colors"
+                    >
+                      Manage Payment Methods
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="p-4 bg-zinc-800/30 rounded-lg mb-4 text-center">
+                      <p className="text-sm text-zinc-400 mb-2">No payment method on file</p>
+                      <p className="text-xs text-zinc-500">Add a payment method to enable automatic billing</p>
+                    </div>
+                    <button 
+                      onClick={() => window.location.href = '/dashboard/payment-methods/add'}
+                      className="w-full px-4 py-2 bg-cyan-500 text-black rounded-lg hover:bg-cyan-400 transition-colors font-medium"
+                    >
+                      Add Payment Method
+                    </button>
+                  </>
+                )}
               </div>
 
               <div className="bg-zinc-950/50 border border-zinc-800 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-white mb-4">Billing Address</h3>
-                <div className="text-sm text-zinc-300 space-y-1">
-                  <p>Acme Corporation</p>
-                  <p>123 Business Ave</p>
-                  <p>San Francisco, CA 94105</p>
-                  <p>United States</p>
-                </div>
-                <button className="mt-3 text-sm text-cyan-400 hover:text-cyan-300 transition-colors">
-                  Update Address
-                </button>
+                {loadingPaymentData ? (
+                  <div className="text-center py-4">
+                    <p className="text-zinc-400 text-sm">Loading billing address...</p>
+                  </div>
+                ) : billingAddress ? (
+                  <>
+                    <div className="text-sm text-zinc-300 space-y-1">
+                      <p>{billingAddress.name}</p>
+                      <p>{billingAddress.line1}</p>
+                      {billingAddress.line2 && <p>{billingAddress.line2}</p>}
+                      <p>{billingAddress.city}, {billingAddress.state} {billingAddress.postalCode}</p>
+                      <p>{billingAddress.country}</p>
+                    </div>
+                    <button 
+                      onClick={() => window.location.href = '/dashboard/billing-address/edit'}
+                      className="mt-3 text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
+                    >
+                      Update Address
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="p-4 bg-zinc-800/30 rounded-lg text-center">
+                      <p className="text-sm text-zinc-400 mb-2">No billing address on file</p>
+                      <p className="text-xs text-zinc-500">Add your billing address for invoices</p>
+                    </div>
+                    <button 
+                      onClick={() => window.location.href = '/dashboard/billing-address/add'}
+                      className="mt-3 w-full px-4 py-2 bg-cyan-500 text-black rounded-lg hover:bg-cyan-400 transition-colors text-sm font-medium"
+                    >
+                      Add Billing Address
+                    </button>
+                  </>
+                )}
               </div>
             </motion.div>
           </div>
