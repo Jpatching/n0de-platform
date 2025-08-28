@@ -57,6 +57,29 @@ export class PaymentsController {
     return this.paymentsService.createPayment(req.user.userId, createPaymentDto);
   }
 
+  @Post('overage')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Pay for usage overage' })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'Overage payment created successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        amount: { type: 'number' },
+        overageAmount: { type: 'number' },
+        paymentUrl: { type: 'string' },
+        expiresAt: { type: 'string', format: 'date-time' },
+      },
+    },
+  })
+  async createOveragePayment(@Request() req) {
+    return this.paymentsService.createOveragePayment(req.user.userId);
+  }
+
   @Get()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

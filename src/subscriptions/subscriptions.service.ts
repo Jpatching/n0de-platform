@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
+import { RedisService } from '../common/redis.service';
 import { SubscriptionType, SubscriptionStatus } from '@prisma/client';
 
 export interface PlanDetails {
@@ -94,7 +95,10 @@ export class SubscriptionsService {
     },
   };
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private redisService: RedisService,
+  ) {}
 
   async getUserSubscription(userId: string) {
     const subscription = await this.prisma.subscription.findFirst({
@@ -150,6 +154,9 @@ export class SubscriptionsService {
   }
 
   async upgradePlan(userId: string, planType: SubscriptionType | string, paymentInfo?: any) {
+    // CRITICAL SECURITY: This method should NOT directly upgrade without payment verification
+    // Instead, it should create a payment intent and return checkout URL
+    
     // Handle both plan ID (string) and plan type (enum)
     let resolvedPlanType: SubscriptionType;
     
@@ -168,6 +175,45 @@ export class SubscriptionsService {
     const plan = this.plans[resolvedPlanType];
     if (!plan) {
       throw new BadRequestException('Invalid plan type');
+    }
+
+    // Check if user already has this plan
+    const currentSubscription = await this.getUserSubscription(userId);
+    if (currentSubscription.planType === resolvedPlanType) {
+      throw new BadRequestException('User already has this plan');
+    }
+
+    // Return error - direct upgrades not allowed without payment
+    throw new BadRequestException('Plan upgrades require payment verification. Use /upgrade/checkout endpoint to initiate payment flow.');
+  }
+
+  // New method for completing upgrade AFTER payment verification
+  async completeUpgradeAfterPayment(
+    userId: string, 
+    planType: SubscriptionType, 
+    paymentId: string,
+    stripeSessionId?: string
+  ) {
+    const plan = this.plans[planType];
+    if (!plan) {
+      throw new BadRequestException('Invalid plan type');
+    }
+
+    // Verify payment exists and is completed
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+
+    if (payment.userId !== userId) {
+      throw new BadRequestException('Payment does not belong to user');
+    }
+
+    if (payment.status !== 'COMPLETED') {
+      throw new BadRequestException('Payment not completed');
     }
 
     // Cancel existing subscription
@@ -191,11 +237,15 @@ export class SubscriptionsService {
       data: {
         userId,
         planName: plan.name,
-        planType: resolvedPlanType,
+        planType: planType,
         status: SubscriptionStatus.ACTIVE,
         currentPeriodStart: now,
         currentPeriodEnd: endDate,
-        metadata: paymentInfo,
+        metadata: {
+          paymentId,
+          stripeSessionId,
+          upgradedFrom: (await this.getUserSubscription(userId)).planType,
+        },
       },
     });
 
@@ -281,25 +331,34 @@ export class SubscriptionsService {
     const subscription = await this.getUserSubscription(userId);
     const plan = this.plans[subscription.planType];
 
-    // Get current period usage
-    const startOfPeriod = subscription.currentPeriodStart;
-    
-    const usage = await this.prisma.usageStats.aggregate({
-      where: {
-        userId,
-        date: { gte: startOfPeriod },
-      },
-      _sum: {
-        requestCount: true,
-      },
-    });
+    // Get real-time usage from Redis
+    const currentPeriodKey = this.getCurrentPeriodKey();
+    const usageKey = `usage:${userId}:${currentPeriodKey}`;
+    const computeKey = `compute:${userId}:${currentPeriodKey}`;
 
-    const apiKeyCount = await this.prisma.apiKey.count({
-      where: {
-        userId,
-        isActive: true,
-      },
-    });
+    const [currentUsage, currentCompute, dbUsage, apiKeyCount] = await Promise.all([
+      this.redisService.get(usageKey),
+      this.redisService.get(computeKey),
+      this.getDatabaseUsage(userId, subscription.currentPeriodStart),
+      this.prisma.apiKey.count({
+        where: {
+          userId,
+          isActive: true,
+        },
+      }),
+    ]);
+
+    const realTimeRequests = currentUsage ? parseInt(currentUsage) : 0;
+    const computeUnits = currentCompute ? parseInt(currentCompute) : 0;
+    const dbRequests = dbUsage._sum.requestCount || 0;
+    
+    // Use the higher of the two (Redis for real-time, DB for historical accuracy)
+    const totalRequests = Math.max(realTimeRequests, dbRequests);
+
+    // Calculate overage
+    const isOverLimit = plan.limits.requests !== -1 && totalRequests > plan.limits.requests;
+    const overageAmount = isOverLimit ? totalRequests - plan.limits.requests : 0;
+    const overageCost = overageAmount * 0.01; // $0.01 per request overage
 
     return {
       subscription: {
@@ -308,23 +367,95 @@ export class SubscriptionsService {
       },
       usage: {
         requests: {
-          used: usage._sum.requestCount || 0,
+          used: totalRequests,
           limit: plan.limits.requests,
           percentage: plan.limits.requests === -1 
             ? 0 
-            : Math.round(((usage._sum.requestCount || 0) / plan.limits.requests) * 100),
+            : Math.round((totalRequests / plan.limits.requests) * 100),
+          overage: overageAmount,
+          overageCost: overageCost.toFixed(2),
+        },
+        computeUnits: {
+          used: computeUnits,
+          cost: (computeUnits * 0.0001).toFixed(4), // $0.0001 per compute unit
         },
         apiKeys: {
           used: apiKeyCount,
           limit: plan.limits.apiKeys,
         },
+        rateLimit: {
+          limit: plan.limits.rateLimit,
+          window: '1 minute',
+        },
       },
       billing: {
         nextBillingDate: subscription.currentPeriodEnd,
         amount: plan.price,
+        estimatedOverage: parseFloat(overageCost.toFixed(2)),
         status: subscription.status,
       },
     };
+  }
+
+  async getRealTimeUsage(userId: string) {
+    const subscription = await this.getUserSubscription(userId);
+    const plan = this.plans[subscription.planType];
+    const currentPeriodKey = this.getCurrentPeriodKey();
+
+    const [usage, compute, rateLimitUsage] = await Promise.all([
+      this.redisService.get(`usage:${userId}:${currentPeriodKey}`),
+      this.redisService.get(`compute:${userId}:${currentPeriodKey}`),
+      this.redisService.get(`ratelimit:${userId}:${Math.floor(Date.now() / 60000)}`),
+    ]);
+
+    const currentRequests = usage ? parseInt(usage) : 0;
+    const currentCompute = compute ? parseInt(compute) : 0;
+    const currentRateLimit = rateLimitUsage ? parseInt(rateLimitUsage) : 0;
+
+    return {
+      requests: {
+        used: currentRequests,
+        limit: plan.limits.requests,
+        percentage: plan.limits.requests === -1 
+          ? 0 
+          : Math.min(Math.round((currentRequests / plan.limits.requests) * 100), 100),
+        remaining: plan.limits.requests === -1 
+          ? 'unlimited' 
+          : Math.max(0, plan.limits.requests - currentRequests),
+      },
+      computeUnits: {
+        used: currentCompute,
+        cost: (currentCompute * 0.0001).toFixed(4),
+      },
+      rateLimit: {
+        used: currentRateLimit,
+        limit: plan.limits.rateLimit,
+        remaining: Math.max(0, plan.limits.rateLimit - currentRateLimit),
+        resetTime: Math.ceil(Date.now() / 60000) * 60000, // Next minute boundary
+      },
+      period: {
+        start: subscription.currentPeriodStart,
+        end: subscription.currentPeriodEnd,
+        daysRemaining: Math.ceil((subscription.currentPeriodEnd.getTime() - Date.now()) / (24 * 60 * 60 * 1000)),
+      },
+    };
+  }
+
+  private async getDatabaseUsage(userId: string, startDate: Date) {
+    return await this.prisma.usageStats.aggregate({
+      where: {
+        userId,
+        date: { gte: startDate },
+      },
+      _sum: {
+        requestCount: true,
+      },
+    });
+  }
+
+  private getCurrentPeriodKey(): string {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   }
 
   async getAllPlans() {

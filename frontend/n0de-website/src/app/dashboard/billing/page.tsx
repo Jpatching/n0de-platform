@@ -42,16 +42,51 @@ interface SubscriptionData {
       used: number;
       limit: number;
       percentage: number;
+      overage: number;
+      overageCost: string;
+    };
+    computeUnits: {
+      used: number;
+      cost: string;
     };
     apiKeys: {
       used: number;
       limit: number;
     };
+    rateLimit: {
+      limit: number;
+      window: string;
+    };
   };
   billing: {
     nextBillingDate: string;
     amount: number;
+    estimatedOverage: number;
     status: string;
+  };
+}
+
+interface RealTimeUsageData {
+  requests: {
+    used: number;
+    limit: number;
+    percentage: number;
+    remaining: number | string;
+  };
+  computeUnits: {
+    used: number;
+    cost: string;
+  };
+  rateLimit: {
+    used: number;
+    limit: number;
+    remaining: number;
+    resetTime: number;
+  };
+  period: {
+    start: string;
+    end: string;
+    daysRemaining: number;
   };
 }
 
@@ -84,13 +119,28 @@ interface PlanOption {
 const BillingPage = () => {
   const [loading, setLoading] = useState(true);
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null);
+  const [realTimeUsage, setRealTimeUsage] = useState<RealTimeUsageData | null>(null);
   const [paymentStats, setPaymentStats] = useState<PaymentStats | null>(null);
   const [availablePlans, setAvailablePlans] = useState<PlanOption[]>([]);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
+  const [payingOverage, setPayingOverage] = useState(false);
+  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadBillingData();
+    loadRealTimeUsage();
+    
+    // Set up real-time data refresh every 30 seconds
+    const interval = setInterval(() => {
+      loadRealTimeUsage();
+    }, 30000);
+    
+    setRefreshInterval(interval);
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, []);
 
   const loadBillingData = async () => {
@@ -112,6 +162,15 @@ const BillingPage = () => {
       setLoading(false);
     }
   };
+  
+  const loadRealTimeUsage = async () => {
+    try {
+      const realtimeData = await api.get<RealTimeUsageData>('/subscriptions/usage/realtime');
+      setRealTimeUsage(realtimeData);
+    } catch (error) {
+      console.error('Failed to load real-time usage:', error);
+    }
+  };
 
   const handleUpgrade = async (planType: string) => {
     try {
@@ -123,12 +182,42 @@ const BillingPage = () => {
       
       toast.success(`Successfully upgraded to ${planType} plan!`);
       setShowUpgrade(false);
-      await loadBillingData();
+      await Promise.all([loadBillingData(), loadRealTimeUsage()]);
     } catch (error: any) {
       console.error('Upgrade failed:', error);
       toast.error(error.message || 'Failed to upgrade plan');
     } finally {
       setUpgrading(false);
+    }
+  };
+
+  const handleOveragePayment = async () => {
+    if (!subscriptionData || subscriptionData.usage.requests.overage <= 0) {
+      toast.error('No overage to pay for');
+      return;
+    }
+    
+    try {
+      setPayingOverage(true);
+      const result = await api.post('/payments/overage');
+      
+      toast.success('Overage payment created! Redirecting to payment...');
+      
+      // Redirect to payment URL
+      if (result.paymentUrl) {
+        window.open(result.paymentUrl, '_blank');
+      }
+      
+      // Refresh data after payment creation
+      setTimeout(async () => {
+        await Promise.all([loadBillingData(), loadRealTimeUsage()]);
+      }, 1000);
+      
+    } catch (error: any) {
+      console.error('Overage payment failed:', error);
+      toast.error(error.response?.data?.message || 'Failed to create overage payment');
+    } finally {
+      setPayingOverage(false);
     }
   };
 
@@ -206,6 +295,12 @@ const BillingPage = () => {
                 <p className="text-sm text-zinc-400 mt-1">
                   Next billing date: {new Date(subscriptionData.billing.nextBillingDate).toLocaleDateString()}
                 </p>
+                {subscriptionData.billing.estimatedOverage > 0 && (
+                  <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-xs">
+                    <AlertCircle className="h-3 w-3 text-yellow-400 inline mr-1" />
+                    <span className="text-yellow-400">Estimated overage: ${subscriptionData.billing.estimatedOverage.toFixed(2)}</span>
+                  </div>
+                )}
               </div>
               <div className="text-right">
                 <div className="flex space-x-2 mb-2">
@@ -218,18 +313,32 @@ const BillingPage = () => {
                   </button>
                 </div>
                 <p className="text-sm text-zinc-400">
-                  {subscriptionData.usage.requests.used.toLocaleString()} / {subscriptionData.usage.requests.limit === -1 ? '∞' : subscriptionData.usage.requests.limit.toLocaleString()} requests used
+                  {realTimeUsage ? realTimeUsage.requests.used.toLocaleString() : subscriptionData.usage.requests.used.toLocaleString()} / {subscriptionData.usage.requests.limit === -1 ? '∞' : subscriptionData.usage.requests.limit.toLocaleString()} requests used
+                  {realTimeUsage && realTimeUsage.requests.remaining !== 'unlimited' && (
+                    <span className="block text-xs">{realTimeUsage.requests.remaining.toLocaleString()} remaining</span>
+                  )}
                 </p>
                 <div className="w-32 h-2 bg-zinc-700 rounded-full mt-1">
                   <div 
-                    className="h-2 bg-cyan-400 rounded-full transition-all duration-300"
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      realTimeUsage && realTimeUsage.requests.percentage >= 90 
+                        ? 'bg-red-400' 
+                        : realTimeUsage && realTimeUsage.requests.percentage >= 75 
+                        ? 'bg-yellow-400' 
+                        : 'bg-cyan-400'
+                    }`}
                     style={{
                       width: subscriptionData.usage.requests.limit === -1 
                         ? '100%' 
-                        : `${Math.min(subscriptionData.usage.requests.percentage, 100)}%`
+                        : `${Math.min(realTimeUsage?.requests.percentage || subscriptionData.usage.requests.percentage, 100)}%`
                     }}
                   ></div>
                 </div>
+                {subscriptionData.usage.requests.overage > 0 && (
+                  <p className="text-xs text-red-400 mt-1">
+                    Overage: {subscriptionData.usage.requests.overage.toLocaleString()} requests (+${subscriptionData.usage.requests.overageCost})
+                  </p>
+                )}
               </div>
             </div>
           </motion.div>
@@ -244,21 +353,48 @@ const BillingPage = () => {
             >
               <h3 className="text-lg font-semibold text-white mb-4">Usage This Month</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div className="p-4 bg-zinc-800/30 rounded-lg">
                   <div className="flex items-center space-x-2 mb-2">
                     <TrendingUp className="h-4 w-4 text-green-400" />
                     <span className="text-sm font-medium text-white">API Requests</span>
                   </div>
-                  <p className="text-xl font-bold text-white">{subscriptionData.usage.requests.used.toLocaleString()}</p>
+                  <p className="text-xl font-bold text-white">
+                    {realTimeUsage ? realTimeUsage.requests.used.toLocaleString() : subscriptionData.usage.requests.used.toLocaleString()}
+                  </p>
                   <p className="text-xs text-zinc-400">
                     of {subscriptionData.usage.requests.limit === -1 ? '∞' : subscriptionData.usage.requests.limit.toLocaleString()} included
                   </p>
+                  {realTimeUsage && realTimeUsage.requests.percentage > 0 && (
+                    <div className="w-full h-1 bg-zinc-700 rounded-full mt-2">
+                      <div 
+                        className={`h-1 rounded-full transition-all duration-300 ${
+                          realTimeUsage.requests.percentage >= 90 ? 'bg-red-400' 
+                          : realTimeUsage.requests.percentage >= 75 ? 'bg-yellow-400' 
+                          : 'bg-green-400'
+                        }`}
+                        style={{ width: `${Math.min(realTimeUsage.requests.percentage, 100)}%` }}
+                      ></div>
+                    </div>
+                  )}
                 </div>
                 
                 <div className="p-4 bg-zinc-800/30 rounded-lg">
                   <div className="flex items-center space-x-2 mb-2">
                     <Zap className="h-4 w-4 text-blue-400" />
+                    <span className="text-sm font-medium text-white">Compute Units</span>
+                  </div>
+                  <p className="text-xl font-bold text-white">
+                    {realTimeUsage ? realTimeUsage.computeUnits.used.toLocaleString() : subscriptionData.usage.computeUnits.used.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-zinc-400">
+                    Cost: ${realTimeUsage ? realTimeUsage.computeUnits.cost : subscriptionData.usage.computeUnits.cost}
+                  </p>
+                </div>
+                
+                <div className="p-4 bg-zinc-800/30 rounded-lg">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <CreditCard className="h-4 w-4 text-purple-400" />
                     <span className="text-sm font-medium text-white">API Keys</span>
                   </div>
                   <p className="text-xl font-bold text-white">{subscriptionData.usage.apiKeys.used}</p>
@@ -269,13 +405,84 @@ const BillingPage = () => {
                 
                 <div className="p-4 bg-zinc-800/30 rounded-lg">
                   <div className="flex items-center space-x-2 mb-2">
-                    <Calendar className="h-4 w-4 text-purple-400" />
+                    <Calendar className="h-4 w-4 text-orange-400" />
                     <span className="text-sm font-medium text-white">Rate Limit</span>
                   </div>
-                  <p className="text-xl font-bold text-white">{subscriptionData.subscription.plan.limits.rateLimit.toLocaleString()}</p>
-                  <p className="text-xs text-zinc-400">requests/minute</p>
+                  <p className="text-xl font-bold text-white">
+                    {realTimeUsage ? `${realTimeUsage.rateLimit.remaining}/${realTimeUsage.rateLimit.limit}` : subscriptionData.subscription.plan.limits.rateLimit.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-zinc-400">
+                    {realTimeUsage ? `Resets in ${Math.ceil((realTimeUsage.rateLimit.resetTime - Date.now()) / 1000)}s` : 'requests/minute'}
+                  </p>
+                  {realTimeUsage && (
+                    <div className="w-full h-1 bg-zinc-700 rounded-full mt-2">
+                      <div 
+                        className="h-1 bg-orange-400 rounded-full transition-all duration-300"
+                        style={{ width: `${(realTimeUsage.rateLimit.used / realTimeUsage.rateLimit.limit) * 100}%` }}
+                      ></div>
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {/* Live Usage Summary */}
+              <div className="bg-gradient-to-r from-cyan-500/5 to-blue-500/5 border border-cyan-500/10 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-medium text-white">Current Billing Period</h4>
+                  <div className="flex items-center space-x-2 text-xs text-zinc-400">
+                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                    <span>Live updates every 30s</span>
+                  </div>
+                </div>
+                {realTimeUsage && (
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-zinc-400">Period: </span>
+                      <span className="text-white">
+                        {new Date(realTimeUsage.period.start).toLocaleDateString()} - {new Date(realTimeUsage.period.end).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-zinc-400">Days remaining: </span>
+                      <span className="text-white">{realTimeUsage.period.daysRemaining}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Overage Warning */}
+              {subscriptionData.usage.requests.overage > 0 && (
+                <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/20 rounded-lg p-4 mb-4">
+                  <div className="flex items-center space-x-3">
+                    <AlertCircle className="h-5 w-5 text-red-400" />
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-white mb-1">Plan Limit Exceeded</h4>
+                      <p className="text-xs text-zinc-300">
+                        You've used {subscriptionData.usage.requests.overage.toLocaleString()} requests beyond your plan limit. 
+                        Additional usage will be charged at $0.01 per request.
+                      </p>
+                      <p className="text-xs text-red-400 mt-1 font-medium">
+                        Estimated overage charge: ${subscriptionData.usage.requests.overageCost}
+                      </p>
+                    </div>
+                    <div className="flex flex-col space-y-2">
+                      <button 
+                        onClick={handleOveragePayment}
+                        disabled={payingOverage}
+                        className="px-3 py-1 bg-cyan-500 text-black rounded text-xs hover:bg-cyan-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                      >
+                        {payingOverage ? 'Processing...' : 'Pay Overage'}
+                      </button>
+                      <button 
+                        onClick={() => setShowUpgrade(true)}
+                        className="px-3 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-400 transition-colors"
+                      >
+                        Upgrade Plan
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="h-48 bg-zinc-900/50 rounded-lg flex items-center justify-center border-2 border-dashed border-zinc-700">
                 <div className="text-center">

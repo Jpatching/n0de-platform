@@ -72,6 +72,7 @@ export class UsageService {
     success: boolean;
     userIp: string;
     network: string;
+    computeUnits?: number;
     error?: string;
   }) {
     try {

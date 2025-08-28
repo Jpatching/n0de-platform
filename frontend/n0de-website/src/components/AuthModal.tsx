@@ -156,7 +156,7 @@ export default function AuthModal({ isOpen, onClose, mode, onModeChange }: AuthM
             <div className="text-center mb-8">
               <div className="flex items-center justify-center space-x-3 mb-4">
                 <img 
-                  src="/ChatGPT Image Aug 6, 2025, 10_20_26 PM.png" 
+                  src="/globe.svg" 
                   alt="N0DE Logo" 
                   className="h-10 w-auto"
                 />

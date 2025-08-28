@@ -22,6 +22,7 @@ import { MetricsModule } from './metrics/metrics.module';
 import { WebsocketModule } from './websocket/websocket.module';
 import { HealthModule } from './health/health.module';
 import { ErrorsModule } from './errors/errors.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { ErrorsModule } from './errors/errors.module';
     WebsocketModule,
     HealthModule,
     ErrorsModule,
+    NotificationsModule,
   ],
   controllers: [],
   providers: [],

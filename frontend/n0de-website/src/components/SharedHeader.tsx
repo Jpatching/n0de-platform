@@ -49,7 +49,7 @@ export default function SharedHeader({
             {/* Logo */}
             <Link href="/" className="flex items-center space-x-3 group">
               <img 
-                src="/ChatGPT Image Aug 6, 2025, 10_20_26 PM.png" 
+                src="/globe.svg" 
                 alt="N0DE Logo" 
                 className="h-8 w-auto group-hover:scale-105 transition-transform duration-300"
               />

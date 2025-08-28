@@ -186,8 +186,63 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  // Additional Redis operations
+  async incr(key: string): Promise<number> {
+    if (!this.client) return 0;
+    try {
+      return await this.client.incr(key);
+    } catch (error) {
+      console.error('Redis incr error:', error.message);
+      return 0;
+    }
+  }
+
+  async increment(key: string, amount: number = 1, ttl?: number): Promise<number> {
+    if (!this.client) return 0;
+    try {
+      const result = await this.client.incrby(key, amount);
+      if (ttl) {
+        await this.client.expire(key, ttl);
+      }
+      return result;
+    } catch (error) {
+      console.error('Redis increment error:', error.message);
+      return 0;
+    }
+  }
+
+  async expire(key: string, seconds: number): Promise<void> {
+    if (!this.client) return;
+    try {
+      await this.client.expire(key, seconds);
+    } catch (error) {
+      console.error('Redis expire error:', error.message);
+    }
+  }
+
+  async zadd(key: string, score: number, member: string): Promise<number> {
+    if (!this.client) return 0;
+    try {
+      return await this.client.zadd(key, score, member);
+    } catch (error) {
+      console.error('Redis zadd error:', error.message);
+      return 0;
+    }
+  }
+
+  async zremrangebyscore(key: string, min: string, max: string): Promise<number> {
+    if (!this.client) return 0;
+    try {
+      return await this.client.zremrangebyscore(key, min, max);
+    } catch (error) {
+      console.error('Redis zremrangebyscore error:', error.message);
+      return 0;
+    }
+  }
+
   // Health check
   async isHealthy(): Promise<boolean> {
+    if (!this.client) return false;
     try {
       const result = await this.client.ping();
       return result === 'PONG';

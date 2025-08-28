@@ -321,20 +321,16 @@ export class PaymentsService {
       },
     });
 
-    // If payment completed, activate subscription
+    // If payment completed, activate subscription using secure payment-verified method
     if (newStatus === PaymentStatus.COMPLETED && payment.planType) {
-      await this.subscriptionsService.upgradePlan(
+      await this.subscriptionsService.completeUpgradeAfterPayment(
         payment.userId,
         payment.planType,
-        {
-          paymentId: payment.id,
-          provider: payment.provider,
-          amount: payment.amount,
-          currency: payment.currency,
-        }
+        payment.id,
+        payment.providerPaymentId
       );
 
-      this.logger.log(`Subscription upgraded for user ${payment.userId} to ${payment.planType}`);
+      this.logger.log(`Subscription upgraded for user ${payment.userId} to ${payment.planType} after payment verification`);
     }
 
     return { processed: true, status: newStatus };
@@ -419,6 +415,81 @@ export class PaymentsService {
       successRate: totalPayments > 0 ? (completedPayments / totalPayments) * 100 : 0,
       totalRevenue: revenue._sum.amount || 0,
       recentPayments,
+    };
+  }
+
+  async createOveragePayment(userId: string) {
+    // Get current usage and check for overage
+    const usage = await this.subscriptionsService.getUsageStats(userId);
+    
+    if (!usage.usage.requests.overage || usage.usage.requests.overage <= 0) {
+      throw new BadRequestException('No overage to pay for');
+    }
+
+    const overageAmount = parseFloat(usage.usage.requests.overageCost);
+    if (overageAmount <= 0) {
+      throw new BadRequestException('Invalid overage amount');
+    }
+
+    // Create overage payment record
+    const payment = await this.prisma.payment.create({
+      data: {
+        userId,
+        provider: PaymentProvider.STRIPE, // Default to Stripe for overage payments
+        amount: overageAmount,
+        currency: 'USD',
+        status: PaymentStatus.PENDING,
+        planType: SubscriptionType.FREE, // Overage payments don't change plan
+        metadata: {
+          type: 'overage',
+          requestsOverage: usage.usage.requests.overage,
+          overageCost: usage.usage.requests.overageCost,
+          billingPeriod: {
+            start: usage.subscription.currentPeriodStart,
+            end: usage.subscription.currentPeriodEnd,
+          },
+        },
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+      },
+    });
+
+    // Create payment with Stripe for overage
+    let paymentUrl: string;
+    try {
+      const result = await this.stripeService.createPayment({
+        amount: overageAmount,
+        currency: 'USD',
+        description: `Usage overage payment - ${usage.usage.requests.overage} requests`,
+        metadata: {
+          paymentId: payment.id,
+          userId,
+          type: 'overage',
+        },
+      });
+      
+      paymentUrl = result.checkoutUrl || result.paymentUrl;
+    } catch (error) {
+      this.logger.error('Failed to create Stripe payment for overage:', error);
+      // Fallback to a simple checkout URL
+      paymentUrl = `/checkout/overage/${payment.id}`;
+    }
+
+    // Update payment with external URLs
+    await this.prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        paymentUrl,
+        chargeUrl: paymentUrl,
+      },
+    });
+
+    return {
+      id: payment.id,
+      amount: overageAmount,
+      overageAmount: usage.usage.requests.overage,
+      paymentUrl,
+      expiresAt: payment.expiresAt,
+      message: `Payment created for ${usage.usage.requests.overage} overage requests`,
     };
   }
 }

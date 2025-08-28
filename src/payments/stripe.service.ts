@@ -124,6 +124,55 @@ export class StripeService {
     }
   }
 
+  async createPayment(options: {
+    amount: number;
+    currency: string;
+    description: string;
+    metadata?: any;
+  }) {
+    if (!this.stripe) {
+      throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.');
+    }
+
+    try {
+      // Create a checkout session for one-time payment
+      const session = await this.stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        mode: 'payment',
+        line_items: [
+          {
+            price_data: {
+              currency: options.currency.toLowerCase(),
+              product_data: {
+                name: 'N0DE API Usage Overage',
+                description: options.description,
+                images: ['https://n0de.pro/logo.png'],
+              },
+              unit_amount: Math.round(options.amount * 100), // Convert to cents
+            },
+            quantity: 1,
+          },
+        ],
+        success_url: `${this.configService.get('FRONTEND_URL')}/payment/success?session_id={CHECKOUT_SESSION_ID}&type=overage`,
+        cancel_url: `${this.configService.get('FRONTEND_URL')}/dashboard/billing`,
+        metadata: options.metadata || {},
+      });
+
+      this.logger.log(`Created Stripe payment session: ${session.id}`);
+
+      return {
+        id: session.id,
+        url: session.url,
+        sessionId: session.id,
+        checkoutUrl: session.url,
+        paymentUrl: session.url,
+      };
+    } catch (error) {
+      this.logger.error(`Stripe payment creation failed: ${error.message}`);
+      throw new Error(`Failed to create Stripe payment: ${error.message}`);
+    }
+  }
+
   async retrieveSession(sessionId: string) {
     if (!this.stripe) {
       throw new Error('Stripe is not configured');

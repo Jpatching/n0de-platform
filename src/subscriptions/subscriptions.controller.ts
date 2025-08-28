@@ -8,17 +8,22 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SubscriptionsService } from './subscriptions.service';
+import { PaymentsService } from '../payments/payments.service';
 import { UpgradeSubscriptionDto } from './dto/subscription.dto';
 import { SubscriptionType } from '@prisma/client';
 
 @ApiTags('subscriptions')
 @Controller('subscriptions')
 export class SubscriptionsController {
-  constructor(private subscriptionsService: SubscriptionsService) {}
+  constructor(
+    private subscriptionsService: SubscriptionsService,
+    private paymentsService: PaymentsService,
+  ) {}
 
   @Get('plans')
   @ApiOperation({ summary: 'Get all available subscription plans' })
@@ -45,6 +50,16 @@ export class SubscriptionsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getUsageStats(@Request() req) {
     return this.subscriptionsService.getUsageStats(req.user.userId);
+  }
+
+  @Get('usage/realtime')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get real-time usage statistics' })
+  @ApiResponse({ status: 200, description: 'Real-time usage stats retrieved successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getRealTimeUsage(@Request() req) {
+    return this.subscriptionsService.getRealTimeUsage(req.user.userId);
   }
 
   @Post('upgrade')
@@ -89,15 +104,23 @@ export class SubscriptionsController {
   ) {
     const plan = await this.subscriptionsService.getPlanByType(body.planType as any);
     if (!plan) {
-      throw new Error('Invalid plan type');
+      throw new BadRequestException('Invalid plan type');
     }
 
-    // Return checkout URL - in production this would create actual payment session
+    // Create actual payment session with PaymentsService
+    const payment = await this.paymentsService.createPayment(req.user.userId, {
+      provider: 'STRIPE',
+      planType: body.planType,
+      amount: plan.price,
+      currency: 'USD',
+    });
+
     return {
-      checkoutUrl: `/checkout?plan=${plan.id}`,
+      checkoutUrl: payment.paymentUrl || payment.chargeUrl,
+      paymentId: payment.id,
       planName: plan.name,
       planPrice: plan.price,
-      message: `Redirecting to checkout for ${plan.name} plan upgrade`,
+      message: `Redirecting to Stripe checkout for ${plan.name} plan upgrade`,
     };
   }
 

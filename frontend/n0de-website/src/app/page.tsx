@@ -84,7 +84,7 @@ export default function HomePage() {
                 }}
               >
                 <img 
-                  src="/ChatGPT Image Aug 6, 2025, 10_20_26 PM.png" 
+                  src="/globe.svg" 
                   alt="N0DE Logo" 
                   className="w-full h-full object-cover"
                 />
