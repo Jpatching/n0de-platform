@@ -27,7 +27,6 @@ on:
 env:
   BACKEND_URL: 'https://n0de-backend-production-4e34.up.railway.app'
   FRONTEND_URL: 'https://www.n0de.pro'
-  GAMING_URL: 'https://pv3-production.vercel.app'
   ADMIN_URL: 'https://admin-n0de.vercel.app'
   HEALTH_CHECK_TIMEOUT: 30
   ALERT_WEBHOOK: ${{ secrets.HEALTH_ALERT_WEBHOOK }}
@@ -51,7 +50,6 @@ jobs:
         SERVICES=(
           "backend|${{ env.BACKEND_URL }}/health"
           "frontend|${{ env.FRONTEND_URL }}"
-          "gaming|${{ env.GAMING_URL }}"
           "admin|${{ env.ADMIN_URL }}"
         )
         
@@ -386,7 +384,6 @@ jobs:
         
         FRONTEND_URLS=(
           "Main Website|${{ env.FRONTEND_URL }}"
-          "Gaming Platform|${{ env.GAMING_URL }}"
           "Admin Dashboard|${{ env.ADMIN_URL }}"
         )
         
@@ -434,7 +431,6 @@ jobs:
         SECURE_URLS=(
           "${{ env.BACKEND_URL }}"
           "${{ env.FRONTEND_URL }}"
-          "${{ env.GAMING_URL }}"
           "${{ env.ADMIN_URL }}"
         )
         
@@ -549,7 +545,6 @@ jobs:
         ## 📋 Service URLs
         - Backend: ${{ env.BACKEND_URL }}
         - Frontend: ${{ env.FRONTEND_URL }}
-        - Gaming: ${{ env.GAMING_URL }}
         - Admin: ${{ env.ADMIN_URL }}
         
         ## 🚨 Alerts and Recommendations

@@ -28,7 +28,6 @@ env:
   NODE_VERSION: '20'
   BACKEND_URL: 'https://n0de-backend-production-4e34.up.railway.app'
   FRONTEND_URL: 'https://www.n0de.pro'
-  GAMING_URL: 'https://pv3-production.vercel.app'
   ADMIN_URL: 'https://admin-n0de.vercel.app'
 
 jobs:
@@ -439,7 +438,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [backend, frontend, gaming, admin]
+        service: [backend, frontend, admin]
     
     steps:
     - uses: actions/checkout@v4
@@ -476,15 +475,6 @@ jobs:
         working-directory: ./frontend/n0de-website
         vercel-args: '--prod --force'
     
-    - name: Deploy Gaming Platform to Vercel
-      if: matrix.service == 'gaming'
-      uses: amondnet/vercel-action@v25
-      with:
-        vercel-token: ${{ secrets.VERCEL_TOKEN }}
-        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_GAMING }}
-        working-directory: ./frontend/frontend
-        vercel-args: '--prod --force'
     
     - name: Deploy Admin Dashboard to Vercel
       if: matrix.service == 'admin'
@@ -515,7 +505,7 @@ jobs:
         echo "🔍 Running comprehensive health checks..."
         
         HEALTH_CHECKS_PASSED=0
-        TOTAL_HEALTH_CHECKS=4
+        TOTAL_HEALTH_CHECKS=3
         
         # Backend API Health Check
         echo "🚂 Testing Backend API..."
@@ -535,15 +525,6 @@ jobs:
           echo "❌ Main website health check failed"
         fi
         
-        # Gaming Platform Health Check
-        echo "🎮 Testing Gaming Platform..."
-        if curl -f "${{ env.GAMING_URL }}" --max-time 15; then
-          echo "✅ Gaming platform is accessible"
-          ((HEALTH_CHECKS_PASSED++))
-        else
-          echo "❌ Gaming platform health check failed"
-        fi
-        
         # Admin Dashboard Health Check
         echo "👨‍💼 Testing Admin Dashboard..."
         if curl -f "${{ env.ADMIN_URL }}" --max-time 15; then
@@ -555,7 +536,7 @@ jobs:
         
         echo "📊 Health Check Results: $HEALTH_CHECKS_PASSED/$TOTAL_HEALTH_CHECKS services healthy"
         
-        if [ $HEALTH_CHECKS_PASSED -ge 3 ]; then
+        if [ $HEALTH_CHECKS_PASSED -ge 2 ]; then
           echo "✅ Deployment successful - majority of services are healthy"
         else
           echo "⚠️ Deployment concerns - multiple services failing health checks"

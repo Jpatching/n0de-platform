@@ -1,339 +1,322 @@
-# 🚀 N0DE Platform - Complete RPC & Gaming Ecosystem
+# 🚀 N0DE Platform - Professional Solana RPC Infrastructure
 
-The fastest, most reliable Solana RPC infrastructure with integrated gaming platform, full payment processing, and multi-application deployment system.
+**The fastest, most reliable Solana RPC infrastructure with enterprise-grade subscription management and comprehensive payment processing.**
 
 ## 🏗️ Architecture Overview
 
 ### Backend API (NestJS)
 - **Live URL**: https://n0de-backend-production-4e34.up.railway.app  
 - **Platform**: Railway
-- **Features**: Subscriptions, Payments (Stripe/Coinbase/NOWPayments), WebSockets, Authentication
+- **Features**: RPC Proxy, Subscriptions, Payment Processing (Stripe/Coinbase/NOWPayments), JWT Authentication, WebSocket Support
 
 ### Frontend Applications
 
 #### 1. Main Website (n0de-website)
 - **Live URL**: https://www.n0de.pro
 - **Platform**: Vercel  
-- **Purpose**: Primary landing page, subscription management, billing
+- **Purpose**: Landing page, subscription management, developer portal, billing dashboard
 
-#### 2. Gaming Platform (frontend)
-- **Live URL**: https://pv3-production.vercel.app
-- **Platform**: Vercel
-- **Purpose**: Interactive gaming platform with real-time features
-
-#### 3. Admin Dashboard (admin-dashboard)  
+#### 2. Admin Dashboard (admin-dashboard)  
 - **Live URL**: https://admin-n0de.vercel.app
 - **Platform**: Vercel
-- **Purpose**: Administrative interface for platform management
+- **Purpose**: Administrative interface, user management, analytics, system monitoring
 
-## 🚀 Complete Deployment
-
-### Deploy Entire Ecosystem
-```bash
-# Deploy all services simultaneously  
-./deploy-all.sh
-```
-
-### Individual Service Deployment
-```bash
-# Backend only
-railway up
-
-# Main website
-cd frontend/n0de-website && vercel --prod
-
-# Gaming platform  
-cd frontend/frontend && vercel --prod
-
-# Admin dashboard
-cd frontend/admin-dashboard && vercel --prod
-```
-
-### Synchronize Environment Variables
-```bash
-./sync-env-vars.sh
-```
-
-### Test Deployment
-```bash
-./test-deployment.sh
-```
-
-## 💰 Payment Systems Integration
+## 💳 Payment Systems Integration
 
 ### Supported Payment Providers
-- ✅ **Stripe** - Credit card processing
-- ✅ **Coinbase Commerce** - Major cryptocurrencies  
-- ✅ **NOWPayments** - 200+ cryptocurrency support
+- ✅ **Stripe** - Credit card processing with subscription management
+- ✅ **Coinbase Commerce** - Bitcoin, Ethereum, and major cryptocurrencies  
+- ✅ **NOWPayments** - 200+ cryptocurrency payment options
 
-### Revenue Features
-- 📊 Real-time subscription tracking
-- 💳 Seamless plan upgrades between FREE/STARTER/PROFESSIONAL/ENTERPRISE
-- 🔄 WebSocket billing updates
-- 📈 Usage-based billing alerts
+### Subscription Tiers
+- 🆓 **FREE** - 100K requests/month, community support
+- 🚀 **STARTER** - $49/month, 1M requests, priority support  
+- 💼 **PROFESSIONAL** - $299/month, 10M requests, advanced analytics
+- 🏢 **ENTERPRISE** - $999/month, unlimited requests, dedicated infrastructure
 
 ## 🚀 Quick Start
 
-### Complete Ecosystem Setup
-1. **Clone and setup:**
+### Complete Platform Setup
+1. **Clone and install dependencies:**
    ```bash
-   git clone <repository>
+   git clone https://github.com/your-repo/n0de-platform.git
    cd n0de-deploy
    npm install
    ```
 
-2. **Environment setup:**
+2. **Environment configuration:**
    ```bash
-   ./sync-env-vars.sh
-   # Edit .env with your actual API keys
+   cp .env.example .env
+   # Edit .env with your actual API keys and database URLs
    ```
 
 3. **Database setup:**
    ```bash
-   npx prisma migrate dev
+   npx prisma migrate deploy
    npx prisma generate
    npm run seed
    ```
 
-4. **Deploy everything:**
+4. **Development server:**
    ```bash
-   ./deploy-all.sh
+   npm run start:dev
    ```
 
-5. **Test deployment:**
+5. **Production deployment:**
    ```bash
-   ./test-deployment.sh
+   npm run build
+   railway up  # Backend deployment
    ```
 
-### Railway Deployment
+### Frontend Development
+```bash
+# Main website
+cd frontend/n0de-website
+npm install
+npm run dev
 
-1. **Create Railway project:**
-   ```bash
-   railway login
-   railway init
-   ```
-
-2. **Add services:**
-   - PostgreSQL database
-   - Redis cache
-   - Web service (this backend)
-
-3. **Set environment variables:**
-   ```bash
-   railway variables set JWT_SECRET=your-super-secret-jwt-key
-   railway variables set NODE_ENV=production
-   # Add other variables from env.example
-   ```
-
-4. **Deploy:**
-   ```bash
-   railway up
-   ```
+# Admin dashboard  
+cd frontend/admin-dashboard
+npm install
+npm run dev
+```
 
 ## 📚 API Documentation
 
 ### Authentication Endpoints
-- `POST /api/v1/auth/register` - Register new user
-- `POST /api/v1/auth/login` - Login user
-- `POST /api/v1/auth/logout` - Logout user
-- `GET /api/v1/auth/profile` - Get user profile
-- `PUT /api/v1/auth/profile` - Update profile
-- `PUT /api/v1/auth/change-password` - Change password
+- `POST /api/auth/register` - Register new user account
+- `POST /api/auth/login` - User authentication
+- `GET /api/auth/profile` - Get user profile
+- `PUT /api/auth/profile` - Update user profile
 
 ### API Key Management
-- `GET /api/v1/api-keys` - List user's API keys
-- `POST /api/v1/api-keys` - Create new API key
-- `GET /api/v1/api-keys/:id` - Get specific API key
-- `PUT /api/v1/api-keys/:id` - Update API key
-- `DELETE /api/v1/api-keys/:id` - Delete API key
+- `GET /api/api-keys` - List user's API keys
+- `POST /api/api-keys` - Generate new API key
+- `DELETE /api/api-keys/:id` - Revoke API key
 
-### Usage Statistics
-- `GET /api/v1/stats/usage` - Get usage statistics
-- `GET /api/v1/stats/history` - Get usage history
+### Subscription Management
+- `GET /api/subscriptions/plans` - List available plans
+- `GET /api/subscriptions/current` - Get current subscription
+- `POST /api/subscriptions/upgrade` - Upgrade subscription plan
+- `POST /api/subscriptions/cancel` - Cancel subscription
 
-### Support System
-- `GET /api/v1/support/tickets` - List support tickets
-- `POST /api/v1/support/tickets` - Create support ticket
-- `GET /api/v1/support/tickets/:id` - Get specific ticket
-- `PUT /api/v1/support/tickets/:id` - Update ticket
+### Payment Processing
+- `POST /api/payments` - Create payment session
+- `GET /api/payments/history` - Payment history
+- `POST /api/payments/stripe/webhook` - Stripe webhook handler
+- `POST /api/payments/coinbase/webhook` - Coinbase webhook handler
 
-### RPC Proxy
-- `POST /api/v1/rpc/test` - Test RPC calls
-- `POST /api/v1/rpc/mainnet` - Mainnet RPC proxy
-- `POST /api/v1/rpc/devnet` - Devnet RPC proxy
-- `POST /api/v1/rpc/testnet` - Testnet RPC proxy
+### RPC Proxy Endpoints
+- `POST /api/rpc/mainnet` - Mainnet RPC proxy
+- `POST /api/rpc/devnet` - Devnet RPC proxy  
+- `POST /api/rpc/testnet` - Testnet RPC proxy
+- `GET /api/rpc/health` - RPC endpoint health check
 
-### Performance Metrics
-- `GET /api/v1/metrics/performance` - Get performance metrics
-- `GET /api/v1/metrics/regions` - Get regional metrics
+### Usage Analytics
+- `GET /api/usage/stats` - Usage statistics and limits
+- `GET /api/usage/history` - Historical usage data
+- `GET /api/metrics/performance` - Performance metrics
 
 ### System Health
 - `GET /health` - System health check
+- `GET /health/db` - Database connectivity
+- `GET /health/cache` - Redis cache status
 
-## 🏗️ Architecture
+## 🏗️ Tech Stack
 
-### Tech Stack
+### Backend Infrastructure
 - **Framework:** NestJS with TypeScript
 - **Database:** PostgreSQL with Prisma ORM
 - **Cache:** Redis for sessions and rate limiting
-- **Authentication:** JWT with session validation
-- **Documentation:** Swagger/OpenAPI
-- **Deployment:** Railway with Docker
+- **Authentication:** JWT with secure session management
+- **API Documentation:** Swagger/OpenAPI
+- **Deployment:** Railway with automated CI/CD
 
-### Database Schema
-- **Users:** User accounts and profiles
-- **API Keys:** API key management with permissions
-- **Usage Stats:** Request tracking and analytics
-- **Support Tickets:** Customer support system
-- **System Metrics:** Performance monitoring
-- **Audit Logs:** Security and change tracking
+### Frontend Stack
+- **Framework:** Next.js 14 with TypeScript
+- **Styling:** Tailwind CSS with shadcn/ui components
+- **State Management:** React Context + Custom Hooks
+- **Payment Integration:** Stripe Elements, Coinbase SDK
+- **Deployment:** Vercel with automatic deployments
 
-### Security Features
-- Password hashing with bcrypt
-- JWT token authentication
-- Session validation with Redis
-- Rate limiting per API key
-- Audit logging for all actions
-- Input validation and sanitization
-- CORS protection
-- Helmet security headers
+## 🔧 Environment Configuration
 
-## 🔧 Configuration
-
-### Environment Variables
 ```bash
-# Database
-DATABASE_URL="postgresql://user:pass@localhost:5432/n0de_db"
-
-# JWT
-JWT_SECRET="your-super-secret-jwt-key"
-JWT_EXPIRES_IN="7d"
-
-# Redis
+# Database Configuration
+DATABASE_URL="postgresql://user:password@host:5432/n0de_db"
 REDIS_URL="redis://localhost:6379"
 
-# API
-API_PORT=3000
-NODE_ENV=production
+# JWT Security
+JWT_SECRET="your-super-secure-jwt-secret-key"
+JWT_EXPIRES_IN="7d"
 
-# Solana RPC
+# Solana RPC Configuration  
 SOLANA_MAINNET_RPC="https://api.mainnet-beta.solana.com"
 SOLANA_DEVNET_RPC="https://api.devnet.solana.com"
 SOLANA_TESTNET_RPC="https://api.testnet.solana.com"
+
+# Payment Provider Configuration
+STRIPE_SECRET_KEY="sk_live_..."
+STRIPE_WEBHOOK_SECRET="whsec_..."
+COINBASE_COMMERCE_API_KEY="..."
+COINBASE_COMMERCE_WEBHOOK_SECRET="..."
+NOWPAYMENTS_API_KEY="..."
+NOWPAYMENTS_IPN_SECRET="..."
 
 # Rate Limiting
 RATE_LIMIT_TTL=60
 RATE_LIMIT_MAX=1000
 
-# CORS
-CORS_ORIGINS="https://n0de.com,https://www.n0de.com"
-```
+# CORS Configuration
+CORS_ORIGINS="https://www.n0de.pro,https://admin-n0de.vercel.app"
 
-### Railway Variables
-Set these in your Railway project:
-- `DATABASE_URL` (auto-provided by PostgreSQL service)
-- `REDIS_URL` (auto-provided by Redis service)
-- `JWT_SECRET`
-- `NODE_ENV=production`
-- `CORS_ORIGINS`
-- All other environment variables
+# Service URLs
+FRONTEND_URL="https://www.n0de.pro"
+ADMIN_URL="https://admin-n0de.vercel.app"
+```
 
 ## 🚀 Deployment
 
-### Railway Deployment Steps
-1. Connect GitHub repository to Railway
-2. Add PostgreSQL and Redis services
-3. Set environment variables
-4. Deploy automatically on push
-
-### Custom Domain Setup
-1. Add custom domain in Railway dashboard
-2. Update CORS_ORIGINS environment variable
-3. Update frontend API_URL to point to your domain
-
-## 📊 Monitoring
-
-### Health Checks
-- Database connectivity
-- Redis connectivity
-- Memory usage
-- Response times
-- System uptime
-
-### Logging
-- Structured JSON logging
-- Request/response logging
-- Error tracking with stack traces
-- Security event logging
-- Performance metrics logging
-
-### Metrics
-- API request counts
-- Response times
-- Error rates
-- Database query performance
-- Cache hit rates
-
-## 🧪 Testing
+### Railway Backend Deployment
+1. **Connect repository to Railway**
+2. **Add PostgreSQL and Redis services**
+3. **Configure environment variables**
+4. **Deploy with automatic CI/CD**
 
 ```bash
-# Unit tests
-npm run test
-
-# E2E tests
-npm run test:e2e
-
-# Test coverage
-npm run test:cov
+railway login
+railway init
+railway up
 ```
 
-## 📈 Performance
+### Vercel Frontend Deployment
+```bash
+# Main website
+cd frontend/n0de-website
+vercel --prod
 
-### Optimizations
-- Redis caching for sessions and API keys
-- Database connection pooling
-- Response compression
-- Rate limiting to prevent abuse
-- Efficient database queries with Prisma
+# Admin dashboard
+cd frontend/admin-dashboard  
+vercel --prod
+```
 
-### Scaling
-- Horizontal scaling ready
-- Stateless design
-- Redis for shared state
-- Database connection pooling
-- Load balancer compatible
+### GitHub Actions CI/CD
+Automated workflows handle:
+- ✅ Comprehensive testing (unit, integration, E2E)
+- ✅ Payment system validation
+- ✅ Synchronized multi-service deployment
+- ✅ Health monitoring and alerts
+- ✅ Environment configuration validation
 
-## 🔒 Security
+## 📊 Monitoring & Analytics
 
-### Best Practices
-- Password hashing with bcrypt (12 rounds)
-- JWT tokens with expiration
-- Session validation
-- Input validation and sanitization
-- CORS protection
-- Rate limiting
-- Audit logging
-- Security headers with Helmet
+### Health Monitoring
+- **System Health:** Database, Redis, API response times
+- **Payment Health:** All payment providers, webhook status
+- **Performance Metrics:** Request latency, throughput, error rates
+- **Usage Analytics:** API key usage, subscription metrics
 
-### API Key Security
-- Hashed storage in database
-- Preview-only display in UI
-- Permission-based access control
-- Rate limiting per key
-- Usage tracking and monitoring
+### Logging & Security
+- **Structured JSON logging** with request tracing
+- **Security event logging** for authentication and authorization
+- **Audit trails** for all subscription and payment changes
+- **Rate limiting** and DDoS protection
+
+## 🔒 Security Features
+
+### Authentication & Authorization
+- **bcrypt password hashing** (12 rounds)
+- **JWT tokens** with secure expiration handling
+- **Redis session management** for scalability
+- **API key authentication** with granular permissions
+
+### API Security
+- **Input validation** and sanitization on all endpoints
+- **CORS protection** with whitelist configuration
+- **Rate limiting** per user and API key
+- **Security headers** with Helmet middleware
+- **SQL injection protection** with Prisma ORM
+
+### Payment Security
+- **PCI DSS compliance** through Stripe
+- **Webhook signature verification** for all providers
+- **Secure credential storage** with environment variables
+- **Payment audit logging** for compliance
+
+## 📈 Performance Optimizations
+
+### Backend Optimizations
+- **Redis caching** for sessions and frequently accessed data
+- **Database connection pooling** for optimal resource usage
+- **Response compression** to reduce bandwidth
+- **Efficient database queries** with Prisma optimization
+- **Horizontal scaling** ready architecture
+
+### Frontend Optimizations
+- **Next.js SSR/SSG** for optimal loading performance
+- **Code splitting** and lazy loading
+- **Image optimization** with automatic WebP conversion
+- **CDN distribution** through Vercel Edge Network
+
+## 🧪 Testing Strategy
+
+```bash
+# Backend testing
+npm run test           # Unit tests
+npm run test:e2e       # End-to-end tests
+npm run test:cov       # Coverage report
+
+# Frontend testing
+cd frontend/n0de-website
+npm run test           # Jest unit tests
+npx playwright test    # E2E payment flow tests
+```
+
+### Test Coverage
+- ✅ **Payment Flow Testing** - Complete user journey validation
+- ✅ **API Integration Testing** - All endpoints and error conditions
+- ✅ **Authentication Testing** - Security and session management
+- ✅ **Subscription Testing** - Plan upgrades, cancellations, billing
+- ✅ **Performance Testing** - Load testing for high-traffic scenarios
+
+## 📞 Support & Documentation
+
+### Developer Resources
+- **API Documentation:** Available at `/api/docs` (Swagger UI)
+- **Postman Collection:** Complete API collection for testing
+- **SDK Examples:** Code examples in multiple languages
+- **Rate Limit Guide:** Best practices for API usage
+
+### Support Channels
+- **Technical Documentation:** Comprehensive guides and tutorials
+- **Developer Support:** Priority email support for subscribers
+- **System Status:** Real-time status page for all services
+- **Community Forum:** Developer community and discussions
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create feature branch
-3. Make changes
-4. Add tests
-5. Submit pull request
+1. **Fork the repository**
+2. **Create feature branch:** `git checkout -b feature/amazing-feature`
+3. **Commit changes:** `git commit -m 'Add amazing feature'`
+4. **Run tests:** `npm run test && npm run test:e2e`
+5. **Submit pull request**
 
 ## 📄 License
 
-Private - n0de Team Only
+**Private - N0DE Team Only**
 
 ---
 
-**Built with ❤️ by the n0de team**
+## 🎯 Getting Started Checklist
+
+- [ ] Clone repository and install dependencies
+- [ ] Configure environment variables  
+- [ ] Set up PostgreSQL and Redis databases
+- [ ] Run database migrations
+- [ ] Configure payment provider webhooks
+- [ ] Deploy backend to Railway
+- [ ] Deploy frontend to Vercel
+- [ ] Test payment flows end-to-end
+- [ ] Configure monitoring and alerts
+
+**Built with ❤️ for the Solana ecosystem**

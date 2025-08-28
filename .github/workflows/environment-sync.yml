@@ -29,7 +29,6 @@ on:
 env:
   BACKEND_URL: 'https://n0de-backend-production-4e34.up.railway.app'
   FRONTEND_URL: 'https://www.n0de.pro'
-  GAMING_URL: 'https://pv3-production.vercel.app'
   ADMIN_URL: 'https://admin-n0de.vercel.app'
 
 jobs:
