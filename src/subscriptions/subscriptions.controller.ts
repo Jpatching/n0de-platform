@@ -12,6 +12,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SubscriptionsService } from './subscriptions.service';
+import { UpgradeSubscriptionDto } from './dto/subscription.dto';
 import { SubscriptionType } from '@prisma/client';
 
 @ApiTags('subscriptions')
@@ -56,13 +57,48 @@ export class SubscriptionsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async upgradePlan(
     @Request() req,
-    @Body() body: { planType: SubscriptionType; paymentInfo?: any },
+    @Body() body: UpgradeSubscriptionDto,
   ) {
     return this.subscriptionsService.upgradePlan(
       req.user.userId,
       body.planType,
       body.paymentInfo,
     );
+  }
+
+  @Post('upgrade/checkout')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get checkout URL for plan upgrade' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Checkout URL created successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        checkoutUrl: { type: 'string' },
+        planName: { type: 'string' },
+        planPrice: { type: 'number' },
+        message: { type: 'string' },
+      },
+    },
+  })
+  async getUpgradeCheckoutUrl(
+    @Request() req,
+    @Body() body: UpgradeSubscriptionDto,
+  ) {
+    const plan = await this.subscriptionsService.getPlanByType(body.planType as any);
+    if (!plan) {
+      throw new Error('Invalid plan type');
+    }
+
+    // Return checkout URL - in production this would create actual payment session
+    return {
+      checkoutUrl: `/checkout?plan=${plan.id}`,
+      planName: plan.name,
+      planPrice: plan.price,
+      message: `Redirecting to checkout for ${plan.name} plan upgrade`,
+    };
   }
 
   @Put('cancel')

@@ -3,9 +3,12 @@ import { PrismaService } from '../common/prisma.service';
 import { SubscriptionType, SubscriptionStatus } from '@prisma/client';
 
 export interface PlanDetails {
+  id: string;
   name: string;
   type: SubscriptionType;
   price: number;
+  interval: string;
+  currency: string;
   limits: {
     requests: number;
     apiKeys: number;
@@ -13,15 +16,20 @@ export interface PlanDetails {
     networks: string[];
     features: string[];
   };
+  popular?: boolean;
+  enterprise?: boolean;
 }
 
 @Injectable()
 export class SubscriptionsService {
   private plans: Record<SubscriptionType, PlanDetails> = {
     FREE: {
+      id: 'FREE',
       name: 'Free',
       type: SubscriptionType.FREE,
       price: 0,
+      interval: 'month',
+      currency: 'USD',
       limits: {
         requests: 100000,
         apiKeys: 1,
@@ -31,9 +39,13 @@ export class SubscriptionsService {
       },
     },
     STARTER: {
+      id: 'STARTER',
       name: 'Starter',
       type: SubscriptionType.STARTER,
       price: 49,
+      interval: 'month',
+      currency: 'USD',
+      popular: true,
       limits: {
         requests: 1000000,
         apiKeys: 3,
@@ -43,9 +55,12 @@ export class SubscriptionsService {
       },
     },
     PROFESSIONAL: {
+      id: 'PROFESSIONAL',
       name: 'Professional',
       type: SubscriptionType.PROFESSIONAL,
       price: 299,
+      interval: 'month',
+      currency: 'USD',
       limits: {
         requests: 10000000,
         apiKeys: 10,
@@ -55,9 +70,13 @@ export class SubscriptionsService {
       },
     },
     ENTERPRISE: {
+      id: 'ENTERPRISE',
       name: 'Enterprise',
       type: SubscriptionType.ENTERPRISE,
       price: 999,
+      interval: 'month',
+      currency: 'USD',
+      enterprise: true,
       limits: {
         requests: -1, // Unlimited
         apiKeys: -1, // Unlimited
@@ -130,12 +149,23 @@ export class SubscriptionsService {
     };
   }
 
-  async upgradePlan(userId: string, planType: SubscriptionType, paymentInfo?: any) {
-    if (planType === SubscriptionType.FREE) {
+  async upgradePlan(userId: string, planType: SubscriptionType | string, paymentInfo?: any) {
+    // Handle both plan ID (string) and plan type (enum)
+    let resolvedPlanType: SubscriptionType;
+    
+    if (typeof planType === 'string' && planType in SubscriptionType) {
+      resolvedPlanType = SubscriptionType[planType as keyof typeof SubscriptionType];
+    } else if (Object.values(SubscriptionType).includes(planType as SubscriptionType)) {
+      resolvedPlanType = planType as SubscriptionType;
+    } else {
+      throw new BadRequestException('Invalid plan type');
+    }
+
+    if (resolvedPlanType === SubscriptionType.FREE) {
       throw new BadRequestException('Cannot downgrade to free plan');
     }
 
-    const plan = this.plans[planType];
+    const plan = this.plans[resolvedPlanType];
     if (!plan) {
       throw new BadRequestException('Invalid plan type');
     }
@@ -161,7 +191,7 @@ export class SubscriptionsService {
       data: {
         userId,
         planName: plan.name,
-        planType: plan.type,
+        planType: resolvedPlanType,
         status: SubscriptionStatus.ACTIVE,
         currentPeriodStart: now,
         currentPeriodEnd: endDate,

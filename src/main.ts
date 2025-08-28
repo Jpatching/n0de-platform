@@ -24,20 +24,43 @@ async function bootstrap() {
   // Compression
   app.use(compression());
 
-  // CORS configuration
+  // Enhanced CORS configuration
   const corsOrigins = configService.get('CORS_ORIGINS')?.split(',') || [
-    'https://n0de.com',
-    'https://www.n0de.com',
-    'http://localhost:3000',
-    'http://localhost:3001',
+    'https://n0de.pro',
+    'https://www.n0de.pro',
   ];
 
   app.use(cors({
     origin: corsOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    allowedHeaders: [
+      'Content-Type', 
+      'Authorization', 
+      'Accept', 
+      'Origin', 
+      'X-Requested-With',
+      'X-CC-Webhook-Signature',
+      'x-nowpayments-sig',
+      'stripe-signature'
+    ],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+    maxAge: 86400, // 24 hours
   }));
+
+  // Additional preflight handler for complex requests
+  app.use((req, res, next) => {
+    if (req.method === 'OPTIONS') {
+      res.header('Access-Control-Allow-Origin', corsOrigins.includes(req.get('origin')) ? req.get('origin') : corsOrigins[0]);
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With, X-CC-Webhook-Signature, x-nowpayments-sig, stripe-signature');
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Max-Age', '86400');
+      return res.sendStatus(204);
+    }
+    next();
+  });
 
   // Global prefix
   app.setGlobalPrefix('api/v1');
@@ -96,11 +119,15 @@ async function bootstrap() {
   
   await app.listen(port, '0.0.0.0');
   
+  const baseUrl = configService.get('NODE_ENV') === 'production' 
+    ? configService.get('BASE_URL') || `https://n0de-backend-production-4e34.up.railway.app`
+    : `http://localhost:${port}`;
+    
   console.log(`
 🚀 n0de RPC Backend is running!
-📍 Server: http://localhost:${port}
-📚 API Docs: http://localhost:${port}/api/docs
-🏥 Health: http://localhost:${port}/health
+📍 Server: ${baseUrl}
+📚 API Docs: ${baseUrl}/api/docs
+🏥 Health: ${baseUrl}/health
 🌍 Environment: ${configService.get('NODE_ENV')}
   `);
 }

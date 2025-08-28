@@ -20,5 +20,15 @@
     "paths": {
       "@/*": ["src/*"]
     }
-  }
+  },
+  "include": [
+    "src/**/*",
+    "prisma/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "frontend/**/*",
+    "backend-archive/**/*"
+  ]
 }

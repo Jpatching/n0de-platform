@@ -21,6 +21,7 @@ import { RpcModule } from './rpc/rpc.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { WebsocketModule } from './websocket/websocket.module';
 import { HealthModule } from './health/health.module';
+import { ErrorsModule } from './errors/errors.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { HealthModule } from './health/health.module';
     MetricsModule,
     WebsocketModule,
     HealthModule,
+    ErrorsModule,
   ],
   controllers: [],
   providers: [],
