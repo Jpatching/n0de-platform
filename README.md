@@ -1,21 +1,91 @@
-# n0de RPC Backend
+# 🚀 N0DE Platform - Complete RPC & Gaming Ecosystem
 
-The fastest, most reliable Solana RPC infrastructure backend API.
+The fastest, most reliable Solana RPC infrastructure with integrated gaming platform, full payment processing, and multi-application deployment system.
+
+## 🏗️ Architecture Overview
+
+### Backend API (NestJS)
+- **Live URL**: https://n0de-backend-production-4e34.up.railway.app  
+- **Platform**: Railway
+- **Features**: Subscriptions, Payments (Stripe/Coinbase/NOWPayments), WebSockets, Authentication
+
+### Frontend Applications
+
+#### 1. Main Website (n0de-website)
+- **Live URL**: https://www.n0de.pro
+- **Platform**: Vercel  
+- **Purpose**: Primary landing page, subscription management, billing
+
+#### 2. Gaming Platform (frontend)
+- **Live URL**: https://pv3-production.vercel.app
+- **Platform**: Vercel
+- **Purpose**: Interactive gaming platform with real-time features
+
+#### 3. Admin Dashboard (admin-dashboard)  
+- **Live URL**: https://admin-n0de.vercel.app
+- **Platform**: Vercel
+- **Purpose**: Administrative interface for platform management
+
+## 🚀 Complete Deployment
+
+### Deploy Entire Ecosystem
+```bash
+# Deploy all services simultaneously  
+./deploy-all.sh
+```
+
+### Individual Service Deployment
+```bash
+# Backend only
+railway up
+
+# Main website
+cd frontend/n0de-website && vercel --prod
+
+# Gaming platform  
+cd frontend/frontend && vercel --prod
+
+# Admin dashboard
+cd frontend/admin-dashboard && vercel --prod
+```
+
+### Synchronize Environment Variables
+```bash
+./sync-env-vars.sh
+```
+
+### Test Deployment
+```bash
+./test-deployment.sh
+```
+
+## 💰 Payment Systems Integration
+
+### Supported Payment Providers
+- ✅ **Stripe** - Credit card processing
+- ✅ **Coinbase Commerce** - Major cryptocurrencies  
+- ✅ **NOWPayments** - 200+ cryptocurrency support
+
+### Revenue Features
+- 📊 Real-time subscription tracking
+- 💳 Seamless plan upgrades between FREE/STARTER/PROFESSIONAL/ENTERPRISE
+- 🔄 WebSocket billing updates
+- 📈 Usage-based billing alerts
 
 ## 🚀 Quick Start
 
-### Local Development
-
+### Complete Ecosystem Setup
 1. **Clone and setup:**
    ```bash
-   cd n0de-backend
+   git clone <repository>
+   cd n0de-deploy
    npm install
    ```
 
 2. **Environment setup:**
    ```bash
-   cp env.example .env
-   # Edit .env with your database and Redis URLs
+   ./sync-env-vars.sh
+   # Edit .env with your actual API keys
    ```
 
 3. **Database setup:**
@@ -25,15 +95,15 @@ The fastest, most reliable Solana RPC infrastructure backend API.
    npm run seed
    ```
 
-4. **Start development server:**
+4. **Deploy everything:**
    ```bash
-   npm run start:dev
+   ./deploy-all.sh
    ```
 
-5. **Access the API:**
-   - API: http://localhost:3000/api/v1
-   - Docs: http://localhost:3000/api/docs
-   - Health: http://localhost:3000/health
+5. **Test deployment:**
+   ```bash
+   ./test-deployment.sh
+   ```
 
 ### Railway Deployment
 
