@@ -34,7 +34,7 @@
 ### Complete Platform Setup
 1. **Clone and install dependencies:**
    ```bash
-   git clone https://github.com/your-repo/n0de-platform.git
+   git clone https://github.com/Jpatching/n0de-platform.git
    cd n0de-deploy
    npm install
    ```
