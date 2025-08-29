@@ -40,8 +40,12 @@ model User {
   auditLogs         AuditLog[]
   subscriptions     Subscription[]
   payments          Payment[]
+  paymentHistory    PaymentHistory[]
   adminActions      AdminAction[]
   notifications     Notification[]
+  billingUsage      BillingUsage[]
+  realTimeUsage     RealTimeUsage?
+  billingAnalytics  BillingAnalytics[]
   
   @@map("users")
 }
@@ -212,24 +216,28 @@ model SystemMetrics {
 }
 
 model Subscription {
-  id              String            @id @default(cuid())
-  userId          String
-  planName        String
-  planType        SubscriptionType  @default(FREE)
-  status          SubscriptionStatus @default(ACTIVE)
-  currentPeriodStart DateTime
-  currentPeriodEnd   DateTime
-  cancelAt        DateTime?
-  canceledAt      DateTime?
-  trialStart      DateTime?
-  trialEnd        DateTime?
-  metadata        Json?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  id                    String            @id @default(cuid())
+  userId                String            @unique
+  planName              String
+  planType              SubscriptionType  @default(FREE)
+  status                SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart    DateTime
+  currentPeriodEnd      DateTime
+  cancelAt              DateTime?
+  canceledAt            DateTime?
+  cancelAtPeriodEnd     Boolean           @default(false)
+  trialStart            DateTime?
+  trialEnd              DateTime?
+  stripeSubscriptionId  String?           @unique
+  stripeCustomerId      String?
+  metadata              Json?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
 
   // Relations
   user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   payments        Payment[]
+  billingUsage    BillingUsage[]
 
   @@map("subscriptions")
 }
@@ -284,15 +292,21 @@ model Payment {
 }
 
 model PaymentHistory {
-  id              String            @id @default(cuid())
-  paymentId       String
-  status          PaymentStatus
-  statusReason    String?
-  providerData    Json?
-  timestamp       DateTime          @default(now())
+  id                String            @id @default(cuid())
+  userId            String?           // Temporarily optional for migration
+  paymentId         String?
+  stripeInvoiceId   String?           @unique
+  amount            Int?              // Temporarily optional for migration
+  currency          String            @default("usd")
+  status            PaymentStatus
+  failureReason     String?
+  description       String?
+  paidAt            DateTime?
+  createdAt         DateTime          @default(now())
 
   // Relations
-  payment         Payment           @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  user              User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment           Payment?          @relation(fields: [paymentId], references: [id], onDelete: SetNull)
 
   @@map("payment_history")
 }
@@ -314,6 +328,19 @@ model WebhookEvent {
   payment         Payment?          @relation(fields: [paymentId], references: [id], onDelete: SetNull)
 
   @@map("webhook_events")
+}
+
+model WebhookLog {
+  id              String            @id @default(cuid())
+  stripeEventId   String            @unique
+  eventType       String
+  processed       Boolean           @default(false)
+  processedAt     DateTime?
+  payload         Json
+  errorMessage    String?
+  createdAt       DateTime          @default(now())
+
+  @@map("webhook_logs")
 }
 
 model AdminAction {
@@ -434,4 +461,64 @@ model Notification {
   @@index([userId, isRead])
   @@index([createdAt])
   @@map("notifications")
+}
+
+model BillingUsage {
+  id              String    @id @default(cuid())
+  userId          String
+  subscriptionId  String?
+  periodStart     DateTime
+  periodEnd       DateTime
+  requestsUsed    Int       @default(0)
+  computeUnits    Int       @default(0)
+  overageRequests Int       @default(0)
+  overageCost     Float     @default(0)
+  totalCost       Float     @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription    Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, periodStart, periodEnd])
+  @@map("billing_usage")
+}
+
+model RealTimeUsage {
+  id              String    @id @default(cuid())
+  userId          String
+  requestsUsed    Int       @default(0)
+  computeUnits    Int       @default(0)
+  rateLimit       Int       @default(0)
+  rateLimitUsed   Int       @default(0)
+  resetTime       DateTime?
+  lastUpdated     DateTime  @default(now())
+
+  // Relations  
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
+  @@map("real_time_usage")
+}
+
+model BillingAnalytics {
+  id                String    @id @default(cuid())
+  userId            String
+  date              DateTime  @db.Date
+  requestCount      Int       @default(0)
+  computeUnits      Int       @default(0)
+  cost              Float     @default(0)
+  network           String?
+  endpoint          String?
+  latency           Float     @default(0)
+  success           Boolean   @default(true)
+  metadata          Json?
+  createdAt         DateTime  @default(now())
+
+  // Relations
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, endpoint, network])
+  @@map("billing_analytics")
 }
