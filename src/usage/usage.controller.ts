@@ -4,13 +4,13 @@ import { UsageService } from './usage.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('usage')
-@Controller('stats')
+@Controller('usage')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class UsageController {
   constructor(private usageService: UsageService) {}
 
-  @Get('usage')
+  @Get()
   @ApiOperation({ summary: 'Get user usage statistics' })
   @ApiResponse({ status: 200, description: 'Usage statistics retrieved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })

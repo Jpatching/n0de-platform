@@ -10,6 +10,8 @@ interface ApiOptions extends RequestInit {
 class ApiClient {
   private baseURL: string;
   private refreshPromise: Promise<string | null> | null = null;
+  private requestQueue: Array<{ resolve: Function; reject: Function; request: () => Promise<any> }> = [];
+  private isRefreshing = false;
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
@@ -41,9 +43,25 @@ class ApiClient {
       return this.refreshPromise;
     }
 
+    // If already refreshing, queue this request
+    if (this.isRefreshing) {
+      return new Promise((resolve, reject) => {
+        this.requestQueue.push({
+          resolve,
+          reject,
+          request: () => this.refreshToken()
+        });
+      });
+    }
+
+    this.isRefreshing = true;
+    
     this.refreshPromise = (async () => {
       const refreshToken = localStorage.getItem('n0de_refresh_token');
-      if (!refreshToken) return null;
+      if (!refreshToken) {
+        this.processQueue(null, new Error('No refresh token'));
+        return null;
+      }
 
       try {
         const response = await fetch(`${this.baseURL}/auth/refresh`, {
@@ -54,28 +72,47 @@ class ApiClient {
 
         if (response.ok) {
           const data = await response.json();
-          localStorage.setItem('n0de_token', data.accessToken);
+          const newToken = data.accessToken;
+          
+          localStorage.setItem('n0de_token', newToken);
           localStorage.setItem('n0de_token_timestamp', Date.now().toString());
           
           if (data.user) {
             localStorage.setItem('n0de_user', JSON.stringify(data.user));
           }
           
-          return data.accessToken;
+          // Process queued requests with new token
+          this.processQueue(newToken, null);
+          
+          return newToken;
         } else {
           // Refresh failed, clear auth and redirect to login
           this.clearAuth();
+          this.processQueue(null, new Error('Token refresh failed'));
           return null;
         }
       } catch (error) {
         console.error('Token refresh failed:', error);
+        this.processQueue(null, error);
         return null;
       } finally {
         this.refreshPromise = null;
+        this.isRefreshing = false;
       }
     })();
 
     return this.refreshPromise;
+  }
+
+  private processQueue(token: string | null, error: any) {
+    this.requestQueue.forEach(({ resolve, reject }) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(token);
+      }
+    });
+    this.requestQueue = [];
   }
 
   private clearAuth() {
@@ -217,7 +254,7 @@ class ApiClient {
 }
 
 // Create singleton instance
-const api = new ApiClient('https://n0de-backend-production-4e34.up.railway.app');
+const api = new ApiClient('https://n0de-backend-production-4e34.up.railway.app/api/v1');
 
 export default api;
 

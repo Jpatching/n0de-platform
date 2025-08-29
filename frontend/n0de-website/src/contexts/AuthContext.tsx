@@ -34,11 +34,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isHydrated, setIsHydrated] = useState(false);
   const router = useRouter();
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
   const retryCountRef = useRef(0);
   const maxRetries = 3;
   const refreshAccessTokenRef = useRef<(() => Promise<string | null>) | null>(null);
+  const lastFailureRef = useRef<number>(0);
+  const circuitBreakerRef = useRef<boolean>(false);
+
+  // Handle client-side hydration
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   // Refresh access token - must not have dependencies to avoid circular refs
   const refreshAccessToken = useCallback(async (): Promise<string | null> => {
@@ -46,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!storedRefreshToken) return null;
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://n0de-backend-production-4e34.up.railway.app';
+      const apiUrl = process.env.NEXT_PUBLIC_AUTH_URL || 'https://n0de-backend-production-4e34.up.railway.app';
       const response = await fetch(`${apiUrl}/api/v1/auth/refresh`, {
         method: 'POST',
         headers: {
@@ -134,44 +142,85 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, TOKEN_REFRESH_INTERVAL);
   }, []);
 
-  // Fetch user profile with token
+  // Fetch user profile with token - with circuit breaker
   const fetchUserProfile = async (authToken: string, retry = true): Promise<any> => {
+    // Circuit breaker: if we've had failures recently, don't retry immediately
+    const now = Date.now();
+    const timeSinceLastFailure = now - lastFailureRef.current;
+    
+    if (circuitBreakerRef.current && timeSinceLastFailure < 30000) { // 30 second cooldown
+      console.log('Circuit breaker active, skipping profile fetch');
+      return null;
+    }
+    
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://n0de-backend-production-4e34.up.railway.app';
+      const apiUrl = process.env.NEXT_PUBLIC_AUTH_URL || 'https://n0de-backend-production-4e34.up.railway.app';
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const response = await fetch(`${apiUrl}/api/v1/auth/profile`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
 
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
         localStorage.setItem('n0de_user', JSON.stringify(userData));
+        // Reset circuit breaker on success
+        circuitBreakerRef.current = false;
+        retryCountRef.current = 0;
         return userData;
       } else if (response.status === 401 && retry) {
-        // Token expired, try to refresh
+        // Token expired, try to refresh once
         console.log('Token expired, attempting refresh...');
         const newToken = await refreshAccessToken();
         if (newToken) {
           return fetchUserProfile(newToken, false);
         }
         throw new Error('Authentication failed');
+      } else if (response.status >= 500 || response.status === 429) {
+        // Server error or rate limit - activate circuit breaker
+        console.warn(`Server error ${response.status}, activating circuit breaker`);
+        lastFailureRef.current = now;
+        circuitBreakerRef.current = true;
+        throw new Error(`Server temporarily unavailable: ${response.status}`);
       } else {
         console.error('Profile fetch failed with status:', response.status);
-        throw new Error('Invalid token');
+        throw new Error(`Request failed: ${response.status}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch user profile:', error);
-      if (retry) {
-        // Try once more after a delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Check if it's a network error that suggests resource exhaustion
+      if (error.name === 'AbortError' || error.message?.includes('ERR_INSUFFICIENT_RESOURCES') || error.message?.includes('Failed to fetch')) {
+        console.warn('Network/resource error detected, activating circuit breaker');
+        lastFailureRef.current = now;
+        circuitBreakerRef.current = true;
+        
+        // Don't retry on resource exhaustion
+        return null;
+      }
+      
+      if (retry && retryCountRef.current < maxRetries) {
+        retryCountRef.current++;
+        const backoffDelay = Math.min(1000 * Math.pow(2, retryCountRef.current), 10000); // Exponential backoff, max 10s
+        console.log(`Retrying profile fetch in ${backoffDelay}ms (attempt ${retryCountRef.current}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, backoffDelay));
         return fetchUserProfile(authToken, false);
       }
-      // Don't logout immediately - might be a network issue
-      console.error('Profile fetch failed after retry, logging out');
-      logout();
-      throw error;
+      
+      // Max retries exceeded or non-retryable error
+      console.error('Profile fetch failed after all retries');
+      lastFailureRef.current = now;
+      circuitBreakerRef.current = true;
+      
+      // Don't logout on network errors - just return null
+      return null;
     }
   };
 
@@ -199,14 +248,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('n0de_user', JSON.stringify(userData));
       }
       
-      // Always try to fetch fresh profile to ensure we have complete data
+      // Try to fetch fresh profile, but don't fail login if it's unavailable
       try {
-        await fetchUserProfile(authToken);
+        const freshProfile = await fetchUserProfile(authToken);
+        if (!freshProfile && userData) {
+          // Fallback to OAuth data if profile fetch fails
+          setUser(userData);
+          localStorage.setItem('n0de_user', JSON.stringify(userData));
+        }
       } catch (profileError) {
         console.error('Failed to fetch profile during login:', profileError);
-        // If we have userData from OAuth, continue with that
-        if (!userData) {
-          throw profileError;
+        // Continue with OAuth userData if available, don't block login
+        if (userData) {
+          setUser(userData);
+          localStorage.setItem('n0de_user', JSON.stringify(userData));
         }
       }
       
@@ -253,8 +308,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('n0de_user', JSON.stringify(userData));
   };
 
-  // Check for existing session on mount
+  // Check for existing session on mount (only after hydration)
   useEffect(() => {
+    if (!isHydrated) return; // Wait for client-side hydration
+    
     const initAuth = async () => {
       const storedToken = localStorage.getItem('n0de_token');
       const storedRefreshToken = localStorage.getItem('n0de_refresh_token');
@@ -345,7 +402,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearTimeout(refreshTimerRef.current);
       }
     };
-  }, [token]);
+  }, [isHydrated, scheduleTokenRefresh, refreshAccessToken, fetchUserProfile, router, token]);
 
   return (
     <AuthContext.Provider value={{ user, token, refreshToken, isLoading, login, logout, updateUser }}>

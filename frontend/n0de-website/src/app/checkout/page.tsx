@@ -86,17 +86,8 @@ function CheckoutContent() {
 
   useEffect(() => {
     const planParam = searchParams.get('plan');
-    if (planParam) {
-      // First try direct lookup by key (STARTER, PROFESSIONAL, etc.)
-      if (PLANS[planParam]) {
-        setSelectedPlan(PLANS[planParam]);
-      } else {
-        // Fallback: find by type field if direct lookup fails
-        const planByType = Object.values(PLANS).find(p => p.type === planParam);
-        if (planByType) {
-          setSelectedPlan(planByType);
-        }
-      }
+    if (planParam && PLANS[planParam]) {
+      setSelectedPlan(PLANS[planParam]);
     }
   }, [searchParams]);
 

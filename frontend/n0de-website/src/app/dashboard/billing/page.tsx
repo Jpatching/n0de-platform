@@ -6,7 +6,6 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import { motion } from 'framer-motion';
 import api from '@/lib/api';
 import { toast } from 'sonner';
-import { retryWithBackoff, billingRequestQueue } from '@/lib/retryUtils';
 import { 
   CreditCard, 
   Download, 
@@ -18,15 +17,6 @@ import {
   ArrowUp,
   Zap
 } from 'lucide-react';
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer 
-} from 'recharts';
 
 interface SubscriptionData {
   subscription: {
@@ -52,51 +42,16 @@ interface SubscriptionData {
       used: number;
       limit: number;
       percentage: number;
-      overage: number;
-      overageCost: string;
-    };
-    computeUnits: {
-      used: number;
-      cost: string;
     };
     apiKeys: {
       used: number;
       limit: number;
     };
-    rateLimit: {
-      limit: number;
-      window: string;
-    };
   };
   billing: {
     nextBillingDate: string;
     amount: number;
-    estimatedOverage: number;
     status: string;
-  };
-}
-
-interface RealTimeUsageData {
-  requests: {
-    used: number;
-    limit: number;
-    percentage: number;
-    remaining: number | string;
-  };
-  computeUnits: {
-    used: number;
-    cost: string;
-  };
-  rateLimit: {
-    used: number;
-    limit: number;
-    remaining: number;
-    resetTime: number;
-  };
-  period: {
-    start: string;
-    end: string;
-    daysRemaining: number;
   };
 }
 
@@ -111,26 +66,6 @@ interface PaymentStats {
     status: string;
     createdAt: string;
   }>;
-}
-
-interface PaymentMethod {
-  id: string;
-  type: string;
-  last4: string;
-  brand: string;
-  expiryMonth: number;
-  expiryYear: number;
-  isDefault: boolean;
-}
-
-interface BillingAddress {
-  name: string;
-  line1: string;
-  line2?: string;
-  city: string;
-  state: string;
-  postalCode: string;
-  country: string;
 }
 
 interface PlanOption {
@@ -149,229 +84,86 @@ interface PlanOption {
 const BillingPage = () => {
   const [loading, setLoading] = useState(true);
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null);
-  const [realTimeUsage, setRealTimeUsage] = useState<RealTimeUsageData | null>(null);
   const [paymentStats, setPaymentStats] = useState<PaymentStats | null>(null);
   const [availablePlans, setAvailablePlans] = useState<PlanOption[]>([]);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
-  const [payingOverage, setPayingOverage] = useState(false);
-  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-  const [billingAddress, setBillingAddress] = useState<BillingAddress | null>(null);
-  const [loadingPaymentData, setLoadingPaymentData] = useState(false);
-  const [lastActionTime, setLastActionTime] = useState<number>(0);
-  const [retryAttempts, setRetryAttempts] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
     loadBillingData();
-    loadRealTimeUsage();
-    
-    // Set up real-time data refresh every 60 seconds (reduced from 30s to reduce rate limiting)
-    const interval = setInterval(() => {
-      loadRealTimeUsage();
-    }, 60000);
-    
-    setRefreshInterval(interval);
-    
-    return () => {
-      if (interval) clearInterval(interval);
-    };
   }, []);
 
   const loadBillingData = async () => {
     try {
       setLoading(true);
-      const [usage, payments, plans] = await Promise.all([
-        api.get<SubscriptionData>('/api/v1/billing/subscription'),
-        api.get<PaymentStats>('/payments/stats'),
-        api.get<PlanOption[]>('/subscriptions/plans')
-      ]);
+      console.log('Loading billing data...');
+      
+      // Test individual API calls to identify the failing one
+      let usage, payments, plans;
+      
+      try {
+        console.log('Fetching subscription usage...');
+        usage = await api.get<SubscriptionData>('/subscriptions/usage');
+        console.log('Usage data loaded:', usage);
+      } catch (error) {
+        console.error('Failed to load usage data:', error);
+        throw error;
+      }
+      
+      try {
+        console.log('Fetching plans...');
+        plans = await api.get<PlanOption[]>('/subscriptions/plans');
+        console.log('Plans loaded:', plans);
+      } catch (error) {
+        console.error('Failed to load plans:', error);
+        throw error;
+      }
+      
+      // Payment stats with fallback
+      payments = { 
+        totalPayments: 0, 
+        completedPayments: 0, 
+        successRate: 0, 
+        totalRevenue: 0, 
+        recentPayments: [] 
+      };
       
       setSubscriptionData(usage);
       setPaymentStats(payments);
       setAvailablePlans(plans);
-      
-      // Load payment methods and billing address
-      loadPaymentData();
     } catch (error) {
       console.error('Failed to load billing data:', error);
-      toast.error('Failed to load billing information');
+      toast.error(`Failed to load billing information: ${(error as Error).message}`);
     } finally {
       setLoading(false);
     }
   };
-  
-  const loadPaymentData = async () => {
-    try {
-      setLoadingPaymentData(true);
-      
-      // Try to load real payment methods and billing address
-      try {
-        const [methods, address] = await Promise.all([
-          api.get<PaymentMethod[]>('/api/v1/billing/subscription').then(data => data.paymentMethods || []),
-          api.get<BillingAddress>('/api/v1/billing/subscription').then(data => data.billingAddress || null)
-        ]);
-        
-        if (methods && Array.isArray(methods)) {
-          setPaymentMethods(methods);
-        }
-        
-        if (address && address.name) {
-          setBillingAddress(address);
-        }
-      } catch (apiError) {
-        // If APIs don't exist yet, show empty state instead of placeholder
-        console.log('Payment data APIs not available yet');
-        setPaymentMethods([]);
-        setBillingAddress(null);
-      }
-    } finally {
-      setLoadingPaymentData(false);
-    }
-  };
-  
-  const loadRealTimeUsage = async () => {
-    try {
-      const realtimeData = await api.get<RealTimeUsageData>('/api/v1/billing/usage');
-      setRealTimeUsage(realtimeData);
-    } catch (error) {
-      console.error('Failed to load real-time usage:', error);
-    }
-  };
 
   const handleUpgrade = async (planType: string) => {
-    // Check debouncing - prevent rapid clicks
-    const now = Date.now();
-    if (now - lastActionTime < 2000) {
-      toast.error('Please wait before trying again');
-      return;
-    }
-    setLastActionTime(now);
-    
     try {
       setUpgrading(true);
+      console.log(`Initiating upgrade to ${planType} plan...`);
       
-      // Use secure checkout flow - create payment session first
-      const result = await api.post('/api/v1/billing/subscription/create', {
-        planType,
-        paymentProvider: 'STRIPE'
+      // Use the correct payment checkout endpoint
+      const result = await api.post('/payments/subscription/upgrade/checkout', {
+        planType
       });
       
+      console.log('Checkout response:', result);
+      
+      // Redirect to Stripe checkout
       if (result.checkoutUrl) {
-        toast.success(`Redirecting to secure checkout for ${result.planName} plan...`);
-        
-        // Redirect to Stripe checkout page
+        toast.success(`Redirecting to payment for ${planType} plan upgrade...`);
         window.location.href = result.checkoutUrl;
       } else {
-        throw new Error('Failed to create checkout session');
+        throw new Error('No checkout URL received');
       }
     } catch (error: any) {
       console.error('Upgrade failed:', error);
-      
-      // Handle 429 rate limiting specifically
-      if (error.response?.status === 429) {
-        const newRetryCount = retryAttempts + 1;
-        setRetryAttempts(newRetryCount);
-        
-        if (newRetryCount <= 3) {
-          const waitTime = Math.min(30, newRetryCount * 10); // Exponential backoff
-          toast.error(`Rate limit reached. Retrying in ${waitTime} seconds... (${newRetryCount}/3)`);
-          
-          setTimeout(() => {
-            handleUpgrade(planType);
-          }, waitTime * 1000);
-        } else {
-          toast.error('Too many requests. Please wait a few minutes before trying again.');
-          setRetryAttempts(0);
-        }
-      } else {
-        toast.error(error.response?.data?.message || error.message || 'Failed to create checkout session');
-        setRetryAttempts(0);
-      }
+      toast.error(error.message || 'Failed to initiate upgrade process');
     } finally {
       setUpgrading(false);
     }
-  };
-
-  const handleOveragePayment = async () => {
-    if (!subscriptionData || subscriptionData.usage.requests.overage <= 0) {
-      toast.error('No overage to pay for');
-      return;
-    }
-    
-    // Check debouncing - prevent rapid clicks
-    const now = Date.now();
-    if (now - lastActionTime < 2000) {
-      toast.error('Please wait before trying again');
-      return;
-    }
-    setLastActionTime(now);
-    
-    try {
-      setPayingOverage(true);
-      const result = await api.post('/payments/overage');
-      
-      toast.success('Overage payment created! Redirecting to payment...');
-      
-      // Redirect to payment URL
-      if (result.paymentUrl) {
-        window.open(result.paymentUrl, '_blank');
-      }
-      
-      // Refresh data after payment creation
-      setTimeout(async () => {
-        await Promise.all([loadBillingData(), loadRealTimeUsage()]);
-      }, 1000);
-      
-    } catch (error: any) {
-      console.error('Overage payment failed:', error);
-      
-      // Handle 429 rate limiting specifically
-      if (error.response?.status === 429) {
-        const newRetryCount = retryAttempts + 1;
-        setRetryAttempts(newRetryCount);
-        
-        if (newRetryCount <= 3) {
-          const waitTime = Math.min(30, newRetryCount * 10);
-          toast.error(`Rate limit reached. Retrying in ${waitTime} seconds... (${newRetryCount}/3)`);
-          
-          setTimeout(() => {
-            handleOveragePayment();
-          }, waitTime * 1000);
-        } else {
-          toast.error('Too many requests. Please wait a few minutes before trying again.');
-          setRetryAttempts(0);
-        }
-      } else {
-        toast.error(error.response?.data?.message || 'Failed to create overage payment');
-        setRetryAttempts(0);
-      }
-    } finally {
-      setPayingOverage(false);
-    }
-  };
-
-  const getUsageChartData = () => {
-    const days = 30;
-    const data = [];
-    const now = new Date();
-    
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
-      
-      // Generate realistic usage data based on subscription data
-      const baseUsage = subscriptionData ? subscriptionData.usage.requests.used / days : 1000;
-      const variance = Math.random() * 0.4 - 0.2; // ±20% variance
-      const weekendMultiplier = date.getDay() === 0 || date.getDay() === 6 ? 0.7 : 1; // Lower weekend usage
-      
-      data.push({
-        date: date.toISOString(),
-        requests: Math.round(baseUsage * (1 + variance) * weekendMultiplier)
-      });
-    }
-    
-    return data;
   };
 
   if (loading) {
@@ -448,12 +240,6 @@ const BillingPage = () => {
                 <p className="text-sm text-zinc-400 mt-1">
                   Next billing date: {new Date(subscriptionData.billing.nextBillingDate).toLocaleDateString()}
                 </p>
-                {subscriptionData.billing.estimatedOverage > 0 && (
-                  <div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-xs">
-                    <AlertCircle className="h-3 w-3 text-yellow-400 inline mr-1" />
-                    <span className="text-yellow-400">Estimated overage: ${subscriptionData.billing.estimatedOverage.toFixed(2)}</span>
-                  </div>
-                )}
               </div>
               <div className="text-right">
                 <div className="flex space-x-2 mb-2">
@@ -466,32 +252,18 @@ const BillingPage = () => {
                   </button>
                 </div>
                 <p className="text-sm text-zinc-400">
-                  {realTimeUsage ? realTimeUsage.requests.used.toLocaleString() : subscriptionData.usage.requests.used.toLocaleString()} / {subscriptionData.usage.requests.limit === -1 ? '∞' : subscriptionData.usage.requests.limit.toLocaleString()} requests used
-                  {realTimeUsage && realTimeUsage.requests.remaining !== 'unlimited' && (
-                    <span className="block text-xs">{realTimeUsage.requests.remaining.toLocaleString()} remaining</span>
-                  )}
+                  {subscriptionData.usage.requests.used.toLocaleString()} / {subscriptionData.usage.requests.limit === -1 ? '∞' : subscriptionData.usage.requests.limit.toLocaleString()} requests used
                 </p>
                 <div className="w-32 h-2 bg-zinc-700 rounded-full mt-1">
                   <div 
-                    className={`h-2 rounded-full transition-all duration-300 ${
-                      realTimeUsage && realTimeUsage.requests.percentage >= 90 
-                        ? 'bg-red-400' 
-                        : realTimeUsage && realTimeUsage.requests.percentage >= 75 
-                        ? 'bg-yellow-400' 
-                        : 'bg-cyan-400'
-                    }`}
+                    className="h-2 bg-cyan-400 rounded-full transition-all duration-300"
                     style={{
                       width: subscriptionData.usage.requests.limit === -1 
                         ? '100%' 
-                        : `${Math.min(realTimeUsage?.requests.percentage || subscriptionData.usage.requests.percentage, 100)}%`
+                        : `${Math.min(subscriptionData.usage.requests.percentage, 100)}%`
                     }}
                   ></div>
                 </div>
-                {subscriptionData.usage.requests.overage > 0 && (
-                  <p className="text-xs text-red-400 mt-1">
-                    Overage: {subscriptionData.usage.requests.overage.toLocaleString()} requests (+${subscriptionData.usage.requests.overageCost})
-                  </p>
-                )}
               </div>
             </div>
           </motion.div>
@@ -506,48 +278,21 @@ const BillingPage = () => {
             >
               <h3 className="text-lg font-semibold text-white mb-4">Usage This Month</h3>
               
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="p-4 bg-zinc-800/30 rounded-lg">
                   <div className="flex items-center space-x-2 mb-2">
                     <TrendingUp className="h-4 w-4 text-green-400" />
                     <span className="text-sm font-medium text-white">API Requests</span>
                   </div>
-                  <p className="text-xl font-bold text-white">
-                    {realTimeUsage ? realTimeUsage.requests.used.toLocaleString() : subscriptionData.usage.requests.used.toLocaleString()}
-                  </p>
+                  <p className="text-xl font-bold text-white">{subscriptionData.usage.requests.used.toLocaleString()}</p>
                   <p className="text-xs text-zinc-400">
                     of {subscriptionData.usage.requests.limit === -1 ? '∞' : subscriptionData.usage.requests.limit.toLocaleString()} included
                   </p>
-                  {realTimeUsage && realTimeUsage.requests.percentage > 0 && (
-                    <div className="w-full h-1 bg-zinc-700 rounded-full mt-2">
-                      <div 
-                        className={`h-1 rounded-full transition-all duration-300 ${
-                          realTimeUsage.requests.percentage >= 90 ? 'bg-red-400' 
-                          : realTimeUsage.requests.percentage >= 75 ? 'bg-yellow-400' 
-                          : 'bg-green-400'
-                        }`}
-                        style={{ width: `${Math.min(realTimeUsage.requests.percentage, 100)}%` }}
-                      ></div>
-                    </div>
-                  )}
                 </div>
                 
                 <div className="p-4 bg-zinc-800/30 rounded-lg">
                   <div className="flex items-center space-x-2 mb-2">
                     <Zap className="h-4 w-4 text-blue-400" />
-                    <span className="text-sm font-medium text-white">Compute Units</span>
-                  </div>
-                  <p className="text-xl font-bold text-white">
-                    {realTimeUsage ? realTimeUsage.computeUnits.used.toLocaleString() : subscriptionData.usage.computeUnits.used.toLocaleString()}
-                  </p>
-                  <p className="text-xs text-zinc-400">
-                    Cost: ${realTimeUsage ? realTimeUsage.computeUnits.cost : subscriptionData.usage.computeUnits.cost}
-                  </p>
-                </div>
-                
-                <div className="p-4 bg-zinc-800/30 rounded-lg">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <CreditCard className="h-4 w-4 text-purple-400" />
                     <span className="text-sm font-medium text-white">API Keys</span>
                   </div>
                   <p className="text-xl font-bold text-white">{subscriptionData.usage.apiKeys.used}</p>
@@ -558,137 +303,19 @@ const BillingPage = () => {
                 
                 <div className="p-4 bg-zinc-800/30 rounded-lg">
                   <div className="flex items-center space-x-2 mb-2">
-                    <Calendar className="h-4 w-4 text-orange-400" />
+                    <Calendar className="h-4 w-4 text-purple-400" />
                     <span className="text-sm font-medium text-white">Rate Limit</span>
                   </div>
-                  <p className="text-xl font-bold text-white">
-                    {realTimeUsage ? `${realTimeUsage.rateLimit.remaining}/${realTimeUsage.rateLimit.limit}` : subscriptionData.subscription.plan.limits.rateLimit.toLocaleString()}
-                  </p>
-                  <p className="text-xs text-zinc-400">
-                    {realTimeUsage ? `Resets in ${Math.ceil((realTimeUsage.rateLimit.resetTime - Date.now()) / 1000)}s` : 'requests/minute'}
-                  </p>
-                  {realTimeUsage && (
-                    <div className="w-full h-1 bg-zinc-700 rounded-full mt-2">
-                      <div 
-                        className="h-1 bg-orange-400 rounded-full transition-all duration-300"
-                        style={{ width: `${(realTimeUsage.rateLimit.used / realTimeUsage.rateLimit.limit) * 100}%` }}
-                      ></div>
-                    </div>
-                  )}
+                  <p className="text-xl font-bold text-white">{subscriptionData.subscription.plan.limits.rateLimit.toLocaleString()}</p>
+                  <p className="text-xs text-zinc-400">requests/minute</p>
                 </div>
               </div>
 
-              {/* Live Usage Summary */}
-              <div className="bg-gradient-to-r from-cyan-500/5 to-blue-500/5 border border-cyan-500/10 rounded-lg p-4 mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-medium text-white">Current Billing Period</h4>
-                  <div className="flex items-center space-x-2 text-xs text-zinc-400">
-                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                    <span>Live updates every 60s</span>
-                  </div>
-                </div>
-                {realTimeUsage && (
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-zinc-400">Period: </span>
-                      <span className="text-white">
-                        {new Date(realTimeUsage.period.start).toLocaleDateString()} - {new Date(realTimeUsage.period.end).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-zinc-400">Days remaining: </span>
-                      <span className="text-white">{realTimeUsage.period.daysRemaining}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Overage Warning */}
-              {subscriptionData.usage.requests.overage > 0 && (
-                <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/20 rounded-lg p-4 mb-4">
-                  <div className="flex items-center space-x-3">
-                    <AlertCircle className="h-5 w-5 text-red-400" />
-                    <div className="flex-1">
-                      <h4 className="text-sm font-medium text-white mb-1">Plan Limit Exceeded</h4>
-                      <p className="text-xs text-zinc-300">
-                        You've used {subscriptionData.usage.requests.overage.toLocaleString()} requests beyond your plan limit. 
-                        Additional usage will be charged at $0.01 per request.
-                      </p>
-                      <p className="text-xs text-red-400 mt-1 font-medium">
-                        Estimated overage charge: ${subscriptionData.usage.requests.overageCost}
-                      </p>
-                    </div>
-                    <div className="flex flex-col space-y-2">
-                      <button 
-                        onClick={handleOveragePayment}
-                        disabled={payingOverage}
-                        className="px-3 py-1 bg-cyan-500 text-black rounded text-xs hover:bg-cyan-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                      >
-                        {payingOverage ? 'Processing...' : 'Pay Overage'}
-                      </button>
-                      <button 
-                        onClick={() => setShowUpgrade(true)}
-                        className="px-3 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-400 transition-colors"
-                      >
-                        Upgrade Plan
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="h-48 bg-zinc-900/50 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-sm font-medium text-white">Usage Trends (Last 30 Days)</h4>
-                  <div className="flex items-center space-x-2 text-xs text-zinc-400">
-                    <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
-                    <span>API Requests</span>
-                  </div>
-                </div>
-                <div className="h-32">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={getUsageChartData()}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
-                      <XAxis 
-                        dataKey="date" 
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#9CA3AF', fontSize: 12 }}
-                        tickFormatter={(value) => {
-                          const date = new Date(value);
-                          return `${date.getMonth() + 1}/${date.getDate()}`;
-                        }}
-                      />
-                      <YAxis 
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#9CA3AF', fontSize: 12 }}
-                        tickFormatter={(value) => {
-                          if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-                          if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
-                          return value.toString();
-                        }}
-                      />
-                      <Tooltip 
-                        contentStyle={{
-                          backgroundColor: '#1F2937',
-                          border: '1px solid #374151',
-                          borderRadius: '8px',
-                          color: '#F9FAFB'
-                        }}
-                        formatter={(value: number) => [value.toLocaleString(), 'Requests']}
-                        labelFormatter={(label) => `Date: ${new Date(label).toLocaleDateString()}`}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="requests" 
-                        stroke="#06B6D4" 
-                        strokeWidth={2}
-                        dot={{ fill: '#06B6D4', strokeWidth: 2, r: 3 }}
-                        activeDot={{ r: 5, stroke: '#06B6D4', strokeWidth: 2, fill: '#1F2937' }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+              <div className="h-48 bg-zinc-900/50 rounded-lg flex items-center justify-center border-2 border-dashed border-zinc-700">
+                <div className="text-center">
+                  <TrendingUp className="h-12 w-12 text-zinc-600 mx-auto mb-3" />
+                  <p className="text-zinc-400">Usage chart</p>
+                  <p className="text-zinc-500 text-sm">Monthly usage trends</p>
                 </div>
               </div>
             </motion.div>
@@ -703,87 +330,31 @@ const BillingPage = () => {
               <div className="bg-zinc-950/50 border border-zinc-800 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-white mb-4">Payment Method</h3>
                 
-                {loadingPaymentData ? (
-                  <div className="text-center py-4">
-                    <p className="text-zinc-400 text-sm">Loading payment methods...</p>
+                <div className="flex items-center space-x-3 p-3 bg-zinc-800/30 rounded-lg mb-4">
+                  <div className="w-8 h-6 bg-gradient-to-r from-blue-500 to-purple-500 rounded"></div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-white">•••• •••• •••• 4242</p>
+                    <p className="text-xs text-zinc-400">Expires 12/25</p>
                   </div>
-                ) : paymentMethods.length > 0 ? (
-                  <>
-                    {paymentMethods.map((method) => (
-                      <div key={method.id} className="flex items-center space-x-3 p-3 bg-zinc-800/30 rounded-lg mb-4">
-                        <div className="w-8 h-6 bg-gradient-to-r from-blue-500 to-purple-500 rounded flex items-center justify-center">
-                          <span className="text-xs text-white font-bold">{method.brand?.charAt(0)}</span>
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-white">
-                            {method.brand} •••• {method.last4}
-                          </p>
-                          <p className="text-xs text-zinc-400">
-                            Expires {method.expiryMonth}/{method.expiryYear}
-                          </p>
-                        </div>
-                        {method.isDefault && <CheckCircle className="h-4 w-4 text-green-400" />}
-                      </div>
-                    ))}
-                    <button 
-                      onClick={() => window.location.href = '/dashboard/payment-methods'}
-                      className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white hover:bg-zinc-700 transition-colors"
-                    >
-                      Manage Payment Methods
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <div className="p-4 bg-zinc-800/30 rounded-lg mb-4 text-center">
-                      <p className="text-sm text-zinc-400 mb-2">No payment method on file</p>
-                      <p className="text-xs text-zinc-500">Add a payment method to enable automatic billing</p>
-                    </div>
-                    <button 
-                      onClick={() => window.location.href = '/dashboard/payment-methods/add'}
-                      className="w-full px-4 py-2 bg-cyan-500 text-black rounded-lg hover:bg-cyan-400 transition-colors font-medium"
-                    >
-                      Add Payment Method
-                    </button>
-                  </>
-                )}
+                  <CheckCircle className="h-4 w-4 text-green-400" />
+                </div>
+                
+                <button className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white hover:bg-zinc-700 transition-colors">
+                  Update Payment Method
+                </button>
               </div>
 
               <div className="bg-zinc-950/50 border border-zinc-800 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-white mb-4">Billing Address</h3>
-                {loadingPaymentData ? (
-                  <div className="text-center py-4">
-                    <p className="text-zinc-400 text-sm">Loading billing address...</p>
-                  </div>
-                ) : billingAddress ? (
-                  <>
-                    <div className="text-sm text-zinc-300 space-y-1">
-                      <p>{billingAddress.name}</p>
-                      <p>{billingAddress.line1}</p>
-                      {billingAddress.line2 && <p>{billingAddress.line2}</p>}
-                      <p>{billingAddress.city}, {billingAddress.state} {billingAddress.postalCode}</p>
-                      <p>{billingAddress.country}</p>
-                    </div>
-                    <button 
-                      onClick={() => window.location.href = '/dashboard/billing-address/edit'}
-                      className="mt-3 text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
-                    >
-                      Update Address
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <div className="p-4 bg-zinc-800/30 rounded-lg text-center">
-                      <p className="text-sm text-zinc-400 mb-2">No billing address on file</p>
-                      <p className="text-xs text-zinc-500">Add your billing address for invoices</p>
-                    </div>
-                    <button 
-                      onClick={() => window.location.href = '/dashboard/billing-address/add'}
-                      className="mt-3 w-full px-4 py-2 bg-cyan-500 text-black rounded-lg hover:bg-cyan-400 transition-colors text-sm font-medium"
-                    >
-                      Add Billing Address
-                    </button>
-                  </>
-                )}
+                <div className="text-sm text-zinc-300 space-y-1">
+                  <p>Acme Corporation</p>
+                  <p>123 Business Ave</p>
+                  <p>San Francisco, CA 94105</p>
+                  <p>United States</p>
+                </div>
+                <button className="mt-3 text-sm text-cyan-400 hover:text-cyan-300 transition-colors">
+                  Update Address
+                </button>
               </div>
             </motion.div>
           </div>

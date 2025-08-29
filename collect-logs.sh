@@ -5,7 +5,7 @@
 # Usage: ./collect-logs.sh [service] [timeframe]
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-LOG_DIR="/root/n0de-deploy/logs"
+LOG_DIR="/home/sol/n0de-deploy/logs"
 SERVICE=${1:-all}
 TIMEFRAME=${2:-24h}
 

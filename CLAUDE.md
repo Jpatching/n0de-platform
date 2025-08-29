@@ -55,3 +55,4 @@ vercel --prod          # Deploy to production
 - Database: PostgreSQL (production) / SQLite (development)
 - Payments: Stripe integration
 - Hosting: Vercel (frontend) + Railway (backend)
+- don't use get-logs for railway mcp it doesn't work

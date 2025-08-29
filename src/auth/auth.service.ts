@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { PrismaService } from '../common/prisma.service';
 import { LoggerService } from '../common/logger.service';
+import { RedisService } from '../common/redis.service';
 import { RegisterDto, LoginDto } from './dto/auth.dto';
 
 @Injectable()
@@ -16,6 +17,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private logger: LoggerService,
+    private redis: RedisService,
   ) {
     this.bcryptRounds = parseInt(this.configService.get('BCRYPT_ROUNDS')) || 12;
   }
@@ -285,40 +287,94 @@ export class AuthService {
   }
 
   async validateSession(sessionId: string) {
-    // Check database directly (Redis cache removed)
-    const session = await this.prisma.userSession.findUnique({
-      where: { sessionId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            username: true,
-            firstName: true,
-            lastName: true,
-            avatar: true,
-            emailVerified: true,
-            isActive: true,
-            isSuspended: true,
+    try {
+      // Check Redis cache first
+      const cacheKey = `session:${sessionId}`;
+      const cached = await this.redis.get(cacheKey);
+      
+      if (cached) {
+        const sessionData = JSON.parse(cached);
+        // Verify not expired
+        if (sessionData.expiresAt && new Date(sessionData.expiresAt) > new Date()) {
+          return sessionData;
+        }
+      }
+
+      // Cache miss or expired - check database
+      const session = await this.prisma.userSession.findUnique({
+        where: { sessionId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              username: true,
+              firstName: true,
+              lastName: true,
+              avatar: true,
+              emailVerified: true,
+              isActive: true,
+              isSuspended: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    if (!session || !session.isActive || session.expiresAt < new Date()) {
-      return null;
+      if (!session || !session.isActive || session.expiresAt < new Date()) {
+        // Cache negative result briefly to prevent repeated DB hits
+        await this.redis.set(`session:invalid:${sessionId}`, 'true', 60);
+        return null;
+      }
+
+      if (!session.user.isActive || session.user.isSuspended) {
+        await this.redis.set(`session:invalid:${sessionId}`, 'true', 60);
+        return null;
+      }
+
+      // Cache valid session for 5 minutes (shorter than JWT expiry)
+      const sessionData = {
+        userId: session.user.id,
+        email: session.user.email,
+        username: session.user.username,
+        expiresAt: session.expiresAt,
+      };
+      
+      await this.redis.set(cacheKey, JSON.stringify(sessionData), 300);
+      
+      return {
+        userId: session.user.id,
+        email: session.user.email,
+        username: session.user.username,
+      };
+    } catch (error) {
+      // On Redis error, fall back to database but log the issue
+      this.logger.error('Redis error in validateSession, falling back to database:', error);
+      
+      const session = await this.prisma.userSession.findUnique({
+        where: { sessionId },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              username: true,
+              isActive: true,
+              isSuspended: true,
+            },
+          },
+        },
+      });
+
+      if (!session || !session.isActive || session.expiresAt < new Date() || !session.user.isActive || session.user.isSuspended) {
+        return null;
+      }
+
+      return {
+        userId: session.user.id,
+        email: session.user.email,
+        username: session.user.username,
+      };
     }
-
-    if (!session.user.isActive || session.user.isSuspended) {
-      return null;
-    }
-
-    // Return session data (Redis cache removed)
-    return {
-      userId: session.user.id,
-      email: session.user.email,
-      username: session.user.username,
-    };
   }
 
   async getUserProfile(userId: string) {

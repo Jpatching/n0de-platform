@@ -1,0 +1,36 @@
+{
+  "backend": {
+    "health": "PASS",
+    "environment": "PASS",
+    "uptime": 0,
+    "subscription_plans": "PASS",
+    "performance_metrics": "PASS",
+    "auth_status": "WARN"
+  },
+  "frontend": {
+    "loading": "PASS",
+    "tailwind_css": "PASS",
+    "brand_colors": "PASS",
+    "hero_section": "PASS",
+    "navigation": "PASS"
+  },
+  "database": {
+    "connection": "PASS",
+    "plans_count": 4
+  },
+  "redis": {},
+  "email": {
+    "integration": "PASS"
+  },
+  "websocket": {
+    "endpoint": "CONFIGURED"
+  },
+  "oauth": {
+    "google": "PASS",
+    "github": "PASS"
+  },
+  "payments": {},
+  "webhooks": {},
+  "overall": "EXCELLENT",
+  "overall_integration": "PARTIAL"
+}

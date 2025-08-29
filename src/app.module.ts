@@ -25,6 +25,7 @@ import { ErrorsModule } from './errors/errors.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { UsersModule } from './users/users.module';
 import { BillingModule } from './billing/billing.module';
+import { MonitoringModule } from './monitoring/monitoring.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { BillingModule } from './billing/billing.module';
     NotificationsModule,
     UsersModule,
     BillingModule,
+    MonitoringModule,
   ],
   controllers: [],
   providers: [],

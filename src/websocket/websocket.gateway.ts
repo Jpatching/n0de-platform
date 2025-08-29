@@ -10,6 +10,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { MetricsService } from '../metrics/metrics.service';
 
 interface SubscriptionUpdate {
   userId: string;
@@ -51,6 +52,8 @@ export class WebsocketGateway implements OnGatewayConnection, OnGatewayDisconnec
 
   private readonly logger = new Logger(WebsocketGateway.name);
   private userSockets = new Map<string, string[]>(); // userId -> socketIds[]
+
+  constructor(private metricsService: MetricsService) {}
 
   handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
@@ -96,17 +99,26 @@ export class WebsocketGateway implements OnGatewayConnection, OnGatewayDisconnec
   }
 
   @SubscribeMessage('get_live_metrics')
-  handleGetLiveMetrics(@ConnectedSocket() client: Socket) {
-    // Send real-time metrics (placeholder data)
-    const metrics = {
-      responseTime: Math.floor(Math.random() * 100) + 50,
-      requestsPerSecond: Math.floor(Math.random() * 1000) + 500,
-      successRate: 99.5 + Math.random() * 0.5,
-      activeConnections: Math.floor(Math.random() * 100) + 50,
-      timestamp: Date.now(),
-    };
-    
-    client.emit('live_metrics', metrics);
+  async handleGetLiveMetrics(@ConnectedSocket() client: Socket) {
+    try {
+      // Get real-time metrics from the metrics service
+      const metrics = await this.metricsService.getLiveMetrics();
+      client.emit('live_metrics', metrics);
+    } catch (error) {
+      this.logger.error('Failed to get live metrics for WebSocket client', error);
+      // Send fallback metrics on error
+      const fallbackMetrics = {
+        responseTime: 50,
+        requestsPerSecond: 100,
+        successRate: 99.0,
+        activeConnections: this.getActiveUserCount(),
+        uptime: Math.round(process.uptime()),
+        status: 'operational',
+        timestamp: Date.now(),
+        error: 'metrics_unavailable'
+      };
+      client.emit('live_metrics', fallbackMetrics);
+    }
   }
 
   // Broadcast subscription updates to specific user

@@ -349,8 +349,26 @@ export default function Dashboard() {
   const [isLoadingBilling, setIsLoadingBilling] = useState(true);
 
   // Support tickets data
-  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
-  const [isLoadingTickets, setIsLoadingTickets] = useState(true);
+  const supportTickets: SupportTicket[] = [
+    {
+      id: '1',
+      subject: 'API latency increased after 2PM today',
+      status: 'in_progress',
+      priority: 'high',
+      created: '2025-01-20 14:30',
+      lastUpdate: '2025-01-20 16:45',
+      category: 'technical'
+    },
+    {
+      id: '2',
+      subject: 'Billing question about rate limits',
+      status: 'resolved',
+      priority: 'medium',
+      created: '2025-01-19 09:15',
+      lastUpdate: '2025-01-19 11:20',
+      category: 'billing'
+    }
+  ];
 
   // Enterprise Mock Data
   const teamMembers: TeamMember[] = [
@@ -1741,13 +1759,6 @@ response = requests.post(url, json=data, headers=headers)` },
                 <div className="card">
                   <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
                   <div className="space-y-3">
-                    <button 
-                      onClick={() => router.push('/dashboard/api-keys')}
-                      className="w-full text-left p-3 hover:bg-bg-hover rounded-lg flex items-center space-x-3 transition-colors"
-                    >
-                      <Key className="w-4 h-4 text-n0de-cyan" />
-                      <span>Manage API Keys</span>
-                    </button>
                     <button className="w-full text-left p-3 hover:bg-bg-hover rounded-lg flex items-center space-x-3">
                       <FileText className="w-4 h-4" />
                       <span>API Documentation</span>

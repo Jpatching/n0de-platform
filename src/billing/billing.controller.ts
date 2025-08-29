@@ -1,21 +1,17 @@
 import { Controller, Get, Post, Put, Body, Param, UseGuards, Request, HttpStatus, HttpException } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { BillingSyncService } from './billing-sync.service';
-import { StripeMCPService } from './stripe-mcp.service';
+import { StripeService } from './stripe.service';
 import { UsageAnalyticsService } from './usage-analytics.service';
-import { ModernPatternsService } from './modern-patterns.service';
 import { Logger } from '@nestjs/common';
 
 /**
- * BillingController: MCP-Powered Billing API
+ * BillingController: Clean Billing API
  * 
- * This controller exposes N0DE's advanced billing capabilities:
- * - Real-time usage tracking and billing sync
- * - Stripe MCP integration for payment processing
- * - Advanced usage analytics and cost optimization
- * - Modern pattern recommendations via Context7 MCP
- * 
- * All operations are secured and audited for compliance.
+ * This controller exposes N0DE's billing capabilities:
+ * - Usage tracking and billing sync
+ * - Stripe integration for payment processing
+ * - Usage analytics
  */
 @Controller('billing')
 @UseGuards(JwtAuthGuard)
@@ -24,9 +20,8 @@ export class BillingController {
 
   constructor(
     private billingSyncService: BillingSyncService,
-    private stripeMCPService: StripeMCPService,
+    private stripeService: StripeService,
     private usageAnalyticsService: UsageAnalyticsService,
-    private modernPatternsService: ModernPatternsService,
   ) {}
 
   /**
@@ -53,7 +48,7 @@ export class BillingController {
 
   /**
    * GET /api/v1/billing/subscription
-   * Current subscription details with Stripe MCP integration
+   * Current subscription details with Stripe integration
    */
   @Get('subscription')
   async getSubscription(@Request() req) {
@@ -66,13 +61,13 @@ export class BillingController {
         return { subscription: null, paymentMethods: [], billingAddress: null };
       }
 
-      // Get real payment methods via Stripe MCP
-      const paymentMethods = await this.stripeMCPService.getCustomerPaymentMethods(
+      // Get payment methods via Stripe
+      const paymentMethods = await this.stripeService.getCustomerPaymentMethods(
         subscription.stripeCustomerId
       );
 
-      // Get billing address via Stripe MCP
-      const billingAddress = await this.stripeMCPService.getCustomerBillingAddress(
+      // Get billing address via Stripe
+      const billingAddress = await this.stripeService.getCustomerBillingAddress(
         subscription.stripeCustomerId
       );
 
@@ -89,7 +84,7 @@ export class BillingController {
 
   /**
    * POST /api/v1/billing/subscription/create
-   * Create new subscription with Stripe MCP
+   * Create new subscription with Stripe
    */
   @Post('subscription/create')
   async createSubscription(@Request() req, @Body() createData: any) {
@@ -97,26 +92,24 @@ export class BillingController {
       const userId = req.user.id;
       const userEmail = req.user.email;
 
-      // Create Stripe customer via MCP
-      const stripeCustomerId = await this.stripeMCPService.createCustomerForUser(
+      // Create Stripe customer
+      const stripeCustomerId = await this.stripeService.createOrGetCustomer(
         userId, 
-        userEmail, 
-        createData.metadata
+        userEmail
       );
 
-      // Create subscription via MCP
-      const subscription = await this.stripeMCPService.createSubscription(
+      // Create checkout session for subscription
+      const session = await this.stripeService.createCheckoutSession(
         stripeCustomerId,
-        createData.planId,
-        createData.paymentMethodId
+        createData.planType,
+        `${process.env.FRONTEND_URL}/payment/success`,
+        `${process.env.FRONTEND_URL}/checkout`
       );
-
-      // Sync to local database
-      await this.billingSyncService.syncSubscriptionFromStripe(subscription);
 
       return {
-        subscription,
-        message: 'Subscription created successfully',
+        checkoutUrl: session.url,
+        sessionId: session.id,
+        message: 'Checkout session created successfully',
       };
     } catch (error) {
       this.logger.error('Failed to create subscription:', error);
@@ -179,51 +172,6 @@ export class BillingController {
   }
 
   /**
-   * GET /api/v1/billing/patterns/stripe
-   * Latest Stripe patterns via Context7 MCP
-   */
-  @Get('patterns/stripe')
-  async getLatestStripePatterns() {
-    try {
-      const patterns = await this.modernPatternsService.getLatestStripePatterns();
-      return { patterns, source: 'Context7 MCP' };
-    } catch (error) {
-      this.logger.error('Failed to get Stripe patterns:', error);
-      throw new HttpException('Failed to retrieve Stripe patterns', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  /**
-   * GET /api/v1/billing/patterns/react
-   * Latest React/Next.js billing patterns via Context7 MCP
-   */
-  @Get('patterns/react')
-  async getLatestReactPatterns() {
-    try {
-      const patterns = await this.modernPatternsService.getLatestReactBillingPatterns();
-      return { patterns, source: 'Context7 MCP' };
-    } catch (error) {
-      this.logger.error('Failed to get React patterns:', error);
-      throw new HttpException('Failed to retrieve React patterns', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  /**
-   * GET /api/v1/billing/patterns/security
-   * Latest security patterns via Context7 MCP
-   */
-  @Get('patterns/security')
-  async getLatestSecurityPatterns() {
-    try {
-      const patterns = await this.modernPatternsService.getLatestSecurityPatterns();
-      return { patterns, source: 'Context7 MCP' };
-    } catch (error) {
-      this.logger.error('Failed to get security patterns:', error);
-      throw new HttpException('Failed to retrieve security patterns', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  /**
    * GET /api/v1/billing/health
    * Billing system health check
    */
@@ -233,9 +181,8 @@ export class BillingController {
       // Check all services are responsive
       const checks = {
         billingSyncService: await this.checkServiceHealth('billing'),
-        stripeMCPService: await this.checkServiceHealth('stripe'),
+        stripeService: await this.checkServiceHealth('stripe'),
         usageAnalyticsService: await this.checkServiceHealth('analytics'),
-        modernPatternsService: await this.checkServiceHealth('patterns'),
       };
 
       const allHealthy = Object.values(checks).every(check => check.status === 'healthy');
@@ -264,16 +211,11 @@ export class BillingController {
           return { status: 'healthy' };
         
         case 'stripe':
-          // Test Stripe MCP connectivity
-          // For now, just check if service is initialized
+          // Test Stripe connectivity
           return { status: 'healthy' };
           
         case 'analytics':
           // Test analytics service
-          return { status: 'healthy' };
-          
-        case 'patterns':
-          // Test Context7 MCP connectivity
           return { status: 'healthy' };
           
         default:

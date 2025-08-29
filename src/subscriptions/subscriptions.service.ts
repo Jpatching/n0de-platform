@@ -136,11 +136,19 @@ export class SubscriptionsService {
     const endDate = new Date();
     endDate.setFullYear(endDate.getFullYear() + 100); // Free forever
 
-    const subscription = await this.prisma.subscription.create({
-      data: {
+    // Use upsert to prevent duplicate free subscriptions
+    const subscription = await this.prisma.subscription.upsert({
+      where: { userId },
+      create: {
         userId,
         planName: 'Free',
         planType: SubscriptionType.FREE,
+        status: SubscriptionStatus.ACTIVE,
+        currentPeriodStart: now,
+        currentPeriodEnd: endDate,
+      },
+      update: {
+        // If subscription exists, ensure it's active and up to date
         status: SubscriptionStatus.ACTIVE,
         currentPeriodStart: now,
         currentPeriodEnd: endDate,
@@ -254,25 +262,17 @@ export class SubscriptionsService {
       throw new BadRequestException('Payment not completed');
     }
 
-    // Cancel existing subscription
-    await this.prisma.subscription.updateMany({
-      where: {
-        userId,
-        status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING] },
-      },
-      data: {
-        status: SubscriptionStatus.CANCELED,
-        canceledAt: new Date(),
-      },
-    });
-
-    // Create new subscription
+    // Get the current subscription to avoid null reference
+    const currentSubscription = await this.getUserSubscription(userId).catch(() => null);
+    
     const now = new Date();
     const endDate = new Date();
     endDate.setMonth(endDate.getMonth() + 1); // Monthly billing
 
-    const subscription = await this.prisma.subscription.create({
-      data: {
+    // Use upsert to safely handle subscription upgrades and prevent duplicates
+    const subscription = await this.prisma.subscription.upsert({
+      where: { userId },
+      create: {
         userId,
         planName: plan.name,
         planType: planType,
@@ -282,7 +282,19 @@ export class SubscriptionsService {
         metadata: {
           paymentId,
           stripeSessionId,
-          upgradedFrom: (await this.getUserSubscription(userId)).planType,
+          upgradedFrom: currentSubscription?.planType || SubscriptionType.FREE,
+        },
+      },
+      update: {
+        planName: plan.name,
+        planType: planType,
+        status: SubscriptionStatus.ACTIVE,
+        currentPeriodStart: now,
+        currentPeriodEnd: endDate,
+        metadata: {
+          paymentId,
+          stripeSessionId,
+          upgradedFrom: currentSubscription?.planType || SubscriptionType.FREE,
         },
       },
     });

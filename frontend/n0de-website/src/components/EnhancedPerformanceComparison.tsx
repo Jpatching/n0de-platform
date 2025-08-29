@@ -1276,7 +1276,7 @@ export default function EnhancedPerformanceComparison() {
                 ].map((item, index) => (
                   <div key={index} className="flex items-center gap-3">
                     <span className="text-lg">{item.icon}</span>
-                    <span className="text-sm text-gray-300">{item.feature?.replace(item.icon + ' ', '') || item.feature}</span>
+                    <span className="text-sm text-gray-300">{item.feature.replace(item.icon + ' ', '')}</span>
                   </div>
                 ))}
               </CardContent>

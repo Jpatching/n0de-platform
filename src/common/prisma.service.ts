@@ -7,12 +7,32 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     super({
       log: ['query', 'info', 'warn', 'error'],
       errorFormat: 'pretty',
+      datasources: {
+        db: {
+          url: process.env.DATABASE_URL,
+        },
+      },
+      // Optimize connection pooling for Railway
+      __internal: {
+        engine: {
+          connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT || '10'),
+          poolTimeout: parseInt(process.env.DB_POOL_TIMEOUT || '60'),
+          idleTimeout: parseInt(process.env.DB_IDLE_TIMEOUT || '300'),
+        },
+      },
     });
   }
 
   async onModuleInit() {
-    await this.$connect();
-    console.log('🗄️  Database connected successfully');
+    try {
+      await this.$connect();
+      // Verify connection pool is working
+      await this.$queryRaw`SELECT 1 as connection_test`;
+      console.log('🗄️  Database connected with optimized connection pool');
+    } catch (error) {
+      console.error('❌ Database connection failed:', error);
+      throw error;
+    }
   }
 
   async onModuleDestroy() {

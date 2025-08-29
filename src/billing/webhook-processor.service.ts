@@ -2,8 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { RedisService } from '../common/redis.service';
 import { ConfigService } from '@nestjs/config';
-import { StripeMCPService } from './stripe-mcp.service';
+import { StripeService } from './stripe.service';
 import { BillingSyncService } from './billing-sync.service';
+import { EmailService } from '../email/email.service';
 
 /**
  * WebhookProcessorService: Mission-Critical Event Processing
@@ -62,8 +63,9 @@ export class WebhookProcessorService {
     private prisma: PrismaService,
     private redis: RedisService,
     private config: ConfigService,
-    private stripeMCP: StripeMCPService,
+    private stripeService: StripeService,
     private billingSync: BillingSyncService,
+    private emailService: EmailService,
   ) {}
 
   /**
@@ -173,6 +175,10 @@ export class WebhookProcessorService {
         await this.handlePaymentIntentSucceeded(event);
         break;
 
+      case 'checkout.session.completed':
+        await this.handleCheckoutSessionCompleted(event);
+        break;
+
       // USAGE-BASED BILLING
       case 'invoice.created':
         await this.handleInvoiceCreated(event);
@@ -222,7 +228,7 @@ export class WebhookProcessorService {
     const customerId = subscription.customer;
     
     // Get the N0DE user ID from customer metadata
-    const customer = await this.stripeMCP.getCustomer(customerId);
+    const customer = await this.stripeService.getCustomer(customerId);
     const n0deUserId = customer.metadata.n0de_user_id;
     
     if (!n0deUserId) {
@@ -263,7 +269,7 @@ export class WebhookProcessorService {
     const previous = event.data.previous_attributes;
     
     // Get N0DE user
-    const customer = await this.stripeMCP.getCustomer(subscription.customer);
+    const customer = await this.stripeService.getCustomer(subscription.customer);
     const n0deUserId = customer.metadata.n0de_user_id;
     
     if (!n0deUserId) return;
@@ -311,7 +317,7 @@ export class WebhookProcessorService {
   private async handleSubscriptionCanceled(event: WebhookEvent): Promise<void> {
     const subscription = event.data.object;
     
-    const customer = await this.stripeMCP.getCustomer(subscription.customer);
+    const customer = await this.stripeService.getCustomer(subscription.customer);
     const n0deUserId = customer.metadata.n0de_user_id;
     
     if (!n0deUserId) return;
@@ -337,7 +343,7 @@ export class WebhookProcessorService {
   private async handlePaymentSucceeded(event: WebhookEvent): Promise<void> {
     const invoice = event.data.object;
     
-    const customer = await this.stripeMCP.getCustomer(invoice.customer);
+    const customer = await this.stripeService.getCustomer(invoice.customer);
     const n0deUserId = customer.metadata.n0de_user_id;
     
     if (!n0deUserId) return;
@@ -364,7 +370,7 @@ export class WebhookProcessorService {
   private async handlePaymentFailed(event: WebhookEvent): Promise<void> {
     const invoice = event.data.object;
     
-    const customer = await this.stripeMCP.getCustomer(invoice.customer);
+    const customer = await this.stripeService.getCustomer(invoice.customer);
     const n0deUserId = customer.metadata.n0de_user_id;
     
     if (!n0deUserId) return;
@@ -499,6 +505,53 @@ export class WebhookProcessorService {
     this.logger.log(`Payment failed notification sent to user ${userId}`);
   }
 
+  private async sendPaymentSuccessNotification(
+    user: { id: string; email: string; firstName: string; lastName: string },
+    payment: any,
+    paymentIntent: any
+  ): Promise<void> {
+    const planNames = {
+      'STARTER': 'Starter Plan',
+      'PROFESSIONAL': 'Professional Plan', 
+      'ENTERPRISE': 'Enterprise Plan'
+    };
+    
+    const planName = planNames[payment.planType] || payment.planType;
+    const userName = user.firstName ? `${user.firstName} ${user.lastName}`.trim() : user.email;
+    
+    // For now, log the email content - in production, integrate with email service
+    const emailContent = {
+      to: user.email,
+      subject: `Payment Successful - Welcome to N0DE ${planName}!`,
+      template: 'payment-success',
+      data: {
+        userName,
+        planName,
+        amount: (payment.amount / 100).toFixed(2),
+        currency: payment.currency.toUpperCase(),
+        paymentDate: new Date().toLocaleDateString(),
+        paymentIntentId: paymentIntent.id,
+        dashboardUrl: 'https://www.n0de.pro/dashboard',
+        supportEmail: 'support@n0de.pro',
+      },
+    };
+    
+    // Send payment success email
+    try {
+      await this.emailService.sendPaymentSuccessEmail({
+        userEmail: user.email,
+        userName,
+        planName,
+        amount: payment.amount,
+        currency: payment.currency,
+      });
+      this.logger.log(`Payment success email sent to ${user.email}`);
+    } catch (emailError) {
+      this.logger.error(`Failed to send payment success email to ${user.email}:`, emailError);
+      // Don't fail the webhook processing if email fails
+    }
+  }
+
   // Additional placeholder methods
   private async handleInvoiceCreated(event: WebhookEvent): Promise<void> {
     this.logger.log(`Invoice created: ${event.data.object.id}`);
@@ -532,7 +585,211 @@ export class WebhookProcessorService {
     this.logger.log(`Payment action required: ${event.data.object.id}`);
   }
 
+  private async handleCheckoutSessionCompleted(event: WebhookEvent): Promise<void> {
+    const session = event.data.object;
+    const sessionId = session.id;
+    
+    this.logger.log(`Checkout session completed: ${sessionId}`);
+    
+    try {
+      // Get the payment intent from the session
+      const paymentIntentId = session.payment_intent;
+      
+      if (!paymentIntentId) {
+        this.logger.warn(`No payment intent found for session: ${sessionId}`);
+        return;
+      }
+
+      // Find the N0DE payment record by session metadata
+      let n0dePayment = null;
+      
+      // First try to find by paymentId in metadata
+      if (session.metadata?.paymentId) {
+        n0dePayment = await this.prisma.payment.findUnique({
+          where: { id: session.metadata.paymentId },
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        });
+      }
+
+      if (!n0dePayment) {
+        this.logger.warn(`No N0DE payment found for checkout session: ${sessionId}`);
+        return;
+      }
+
+      // Update the payment record with Stripe data
+      await this.prisma.payment.update({
+        where: { id: n0dePayment.id },
+        data: {
+          providerPaymentId: paymentIntentId,
+          status: 'COMPLETED',
+          paidAt: new Date(),
+          metadata: {
+            ...(n0dePayment.metadata as any || {}),
+            stripeSessionId: sessionId,
+            stripePaymentIntentId: paymentIntentId,
+            customerEmail: session.customer_email,
+            amountTotal: session.amount_total,
+            paymentStatus: session.payment_status,
+            processedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      // Upgrade user's subscription
+      if (n0dePayment.planType && n0dePayment.planType !== 'FREE') {
+        const { SubscriptionsService } = await import('../subscriptions/subscriptions.service');
+        const subscriptionsService = new SubscriptionsService(this.prisma, this.redis);
+        
+        await subscriptionsService.completeUpgradeAfterPayment(
+          n0dePayment.userId,
+          n0dePayment.planType as any,
+          n0dePayment.id,
+          sessionId
+        );
+        
+        this.logger.log(`Successfully upgraded user ${n0dePayment.userId} to ${n0dePayment.planType} via checkout session`);
+      }
+
+      // Clear Redis cache
+      await this.redis.del(`subscription:${n0dePayment.userId}`);
+      await this.redis.del(`usage:${n0dePayment.userId}:*`);
+
+      // Send success email
+      await this.sendPaymentSuccessNotification(
+        n0dePayment.user,
+        n0dePayment,
+        { id: paymentIntentId, amount_received: session.amount_total }
+      );
+
+      this.logger.log(`Checkout session processing completed for user ${n0dePayment.userId}`);
+      
+    } catch (error) {
+      this.logger.error(`Failed to process checkout session ${sessionId}:`, error);
+      throw error;
+    }
+  }
+
   private async handlePaymentIntentSucceeded(event: WebhookEvent): Promise<void> {
-    this.logger.log(`Payment intent succeeded: ${event.data.object.id}`);
+    const paymentIntent = event.data.object;
+    const paymentIntentId = paymentIntent.id;
+    
+    this.logger.log(`Payment intent succeeded: ${paymentIntentId}`);
+    
+    try {
+      // 1. Find the N0DE payment record by Stripe payment intent ID
+      const n0dePayment = await this.prisma.payment.findFirst({
+        where: {
+          providerPaymentId: paymentIntentId,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+      });
+
+      if (!n0dePayment) {
+        this.logger.warn(`No N0DE payment found for Stripe payment intent: ${paymentIntentId}`);
+        return;
+      }
+
+      // 2. Update payment status to COMPLETED
+      await this.prisma.payment.update({
+        where: { id: n0dePayment.id },
+        data: {
+          status: 'COMPLETED',
+          paidAt: new Date(),
+          metadata: {
+            ...(n0dePayment.metadata as any || {}),
+            stripePaymentIntentId: paymentIntentId,
+            amountReceived: paymentIntent.amount_received,
+            currency: paymentIntent.currency,
+            paymentMethod: paymentIntent.payment_method,
+            processedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      // 3. Upgrade user's subscription using the subscriptions service
+      if (n0dePayment.planType && n0dePayment.planType !== 'FREE') {
+        const { SubscriptionsService } = await import('../subscriptions/subscriptions.service');
+        const subscriptionsService = new SubscriptionsService(this.prisma, this.redis);
+        
+        await subscriptionsService.completeUpgradeAfterPayment(
+          n0dePayment.userId,
+          n0dePayment.planType as any,
+          n0dePayment.id,
+          paymentIntentId
+        );
+        
+        this.logger.log(`Successfully upgraded user ${n0dePayment.userId} to ${n0dePayment.planType}`);
+      }
+
+      // 4. Clear any Redis cache for user's subscription
+      await this.redis.del(`subscription:${n0dePayment.userId}`);
+      await this.redis.del(`usage:${n0dePayment.userId}:*`);
+
+      // 5. Send success email notification
+      await this.sendPaymentSuccessNotification(
+        n0dePayment.user,
+        n0dePayment,
+        paymentIntent
+      );
+
+      // 6. Log the successful upgrade
+      await this.prisma.auditLog.create({
+        data: {
+          userId: n0dePayment.userId,
+          action: 'PAYMENT_SUCCESS',
+          resource: 'SUBSCRIPTION',
+          resourceId: n0dePayment.id,
+          newValues: JSON.stringify({
+            paymentIntentId,
+            planType: n0dePayment.planType,
+            amount: n0dePayment.amount,
+            currency: n0dePayment.currency,
+          }),
+          ipAddress: null,
+          userAgent: 'stripe-webhook',
+        },
+      });
+
+      this.logger.log(`Payment processing completed successfully for user ${n0dePayment.userId}`);
+      
+    } catch (error) {
+      this.logger.error(`Failed to process payment intent ${paymentIntentId}:`, error);
+      
+      // Log the failure for debugging
+      await this.prisma.auditLog.create({
+        data: {
+          userId: null,
+          action: 'PAYMENT_PROCESSING_FAILED',
+          resource: 'WEBHOOK',
+          resourceId: paymentIntentId,
+          newValues: JSON.stringify({
+            error: error.message,
+            paymentIntentId,
+          }),
+          ipAddress: null,
+          userAgent: 'stripe-webhook',
+        },
+      }).catch(() => {}); // Don't fail if audit log fails
+      
+      throw error; // Re-throw to trigger webhook retry
+    }
   }
 }

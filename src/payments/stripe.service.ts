@@ -3,8 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 
 @Injectable()
-export class StripeService {
-  private readonly logger = new Logger(StripeService.name);
+export class PaymentsStripeService {
+  private readonly logger = new Logger(PaymentsStripeService.name);
   private stripe: Stripe;
 
   constructor(private configService: ConfigService) {

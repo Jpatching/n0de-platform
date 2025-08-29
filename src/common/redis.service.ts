@@ -18,14 +18,20 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       return;
     }
     
+    // Railway-optimized connection configuration
+    const connectionOptions = {
+      maxRetriesPerRequest: 5,
+      lazyConnect: true,
+      connectTimeout: 10000, // Increased for Railway networking
+      enableReadyCheck: true,
+      keepAlive: 30000,
+      retryDelayOnFailover: 100,
+      family: 0, // Allow both IPv4 and IPv6
+    };
+    
     try {
-      this.client = new Redis(redisUrl, {
-        maxRetriesPerRequest: 3,
-        lazyConnect: true,
-        connectTimeout: 5000,
-        enableReadyCheck: true,
-        keepAlive: 30000,
-      });
+      console.log('🔌 Attempting Redis connection with Railway variable reference...');
+      this.client = new Redis(redisUrl, connectionOptions);
 
       this.client.on('connect', () => {
         console.log('✅ Redis connected successfully');
@@ -33,6 +39,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
       this.client.on('error', (error) => {
         console.log(`⚠️  Redis connection error: ${error.message}`);
+        console.log('🔄 Railway Redis networking issue - app will continue without cache');
         // Don't crash the app, continue without Redis
         this.client = null;
       });
@@ -41,14 +48,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         console.log('📴 Redis connection closed');
       });
 
-      // Try to connect with timeout
+      // Try to connect with increased timeout for Railway
       const connectPromise = this.client.connect();
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Connection timeout')), 5000);
+        setTimeout(() => reject(new Error('Railway Redis connection timeout (15s)')), 15000);
       });
       
       await Promise.race([connectPromise, timeoutPromise]);
-      console.log('✅ Redis initialization completed');
+      console.log('✅ Redis initialization completed - Railway variable reference resolved');
       
     } catch (error) {
       console.log(`⚠️  Failed to initialize Redis: ${error.message}`);

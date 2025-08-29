@@ -73,7 +73,7 @@ export class AuthErrorBoundary extends Component<Props, State> {
   logErrorToService(error: Error, errorInfo: ErrorInfo) {
     // Implement error logging to service like Sentry, LogRocket, etc.
     try {
-      fetch('https://n0de-production.up.railway.app/api/v1/errors/log', {
+      fetch('https://n0de-backend-production-4e34.up.railway.app/api/v1/errors/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

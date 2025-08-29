@@ -12,18 +12,26 @@ import {
   HttpStatus,
   ParseIntPipe,
   DefaultValuePipe,
+  BadRequestException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { PaymentsService } from './payments.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreatePaymentDto, WebhookPayloadDto } from './dto/payments.dto';
-import { PaymentProvider } from '@prisma/client';
+import { PaymentProvider, SubscriptionType } from '@prisma/client';
 
 @ApiTags('payments')
 @Controller('payments')
 export class PaymentsController {
-  constructor(private paymentsService: PaymentsService) {}
+  constructor(
+    private paymentsService: PaymentsService,
+    @Inject(forwardRef(() => SubscriptionsService))
+    private subscriptionsService: SubscriptionsService,
+  ) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
@@ -77,6 +85,59 @@ export class PaymentsController {
   })
   async createOveragePayment(@Request() req) {
     return this.paymentsService.createOveragePayment(req.user.userId);
+  }
+
+  @Post('subscription/upgrade/checkout')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get checkout URL for subscription plan upgrade' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Checkout URL created successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        checkoutUrl: { type: 'string' },
+        paymentId: { type: 'string' },
+        planName: { type: 'string' },
+        planPrice: { type: 'number' },
+        message: { type: 'string' },
+      },
+    },
+  })
+  async getSubscriptionUpgradeCheckoutUrl(
+    @Request() req,
+    @Body() body: { planType: string },
+  ) {
+    const plan = await this.subscriptionsService.getPlanByType(body.planType as any);
+    if (!plan) {
+      throw new BadRequestException('Invalid plan type');
+    }
+
+    // Convert planType string to SubscriptionType enum
+    const subscriptionType = Object.values(SubscriptionType).find(
+      type => type === body.planType
+    ) as SubscriptionType;
+    
+    if (!subscriptionType) {
+      throw new BadRequestException('Invalid plan type');
+    }
+
+    // Create actual payment session
+    const payment = await this.paymentsService.createPayment(req.user.userId, {
+      provider: PaymentProvider.STRIPE,
+      planType: subscriptionType,
+      amount: plan.price,
+      currency: 'USD',
+    });
+
+    return {
+      checkoutUrl: payment.paymentUrl || payment.chargeUrl,
+      paymentId: payment.id,
+      planName: plan.name,
+      planPrice: plan.price,
+      message: `Redirecting to Stripe checkout for ${plan.name} plan upgrade`,
+    };
   }
 
   @Get()

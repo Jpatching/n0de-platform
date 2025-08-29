@@ -147,7 +147,7 @@ const SubscriptionManagementPage = () => {
       }
 
       try {
-        const usageData = await api.get<UsageMetrics>('/subscriptions/usage');
+        const usageData = await api.get<UsageMetrics>('/stats/usage');
         // Map the usage data to our expected format
         setUsage({
           currentRequests: usageData.requestsToday || 0,
@@ -189,33 +189,12 @@ const SubscriptionManagementPage = () => {
   };
 
   const handleUpgradePlan = async (planId: string) => {
+    // For now, redirect to checkout page with the selected plan
     const plan = plans.find(p => p.id === planId);
-    if (!plan) {
-      toast.error('Selected plan not found');
-      return;
+    if (plan) {
+      router.push(`/checkout?plan=${plan.type}`);
     }
-
-    setIsUpdating(true);
-    try {
-      // Get checkout URL from backend
-      const response = await api.post('/subscriptions/upgrade/checkout', {
-        planType: plan.id,
-        paymentProvider: 'STRIPE'
-      });
-      
-      // Redirect to frontend checkout page
-      router.push(response.checkoutUrl);
-      setShowUpgradeDialog(false);
-    } catch (error: any) {
-      console.error('Failed to initiate upgrade:', error);
-      toast.error(error.message || 'Failed to start upgrade process');
-      
-      // Fallback to direct navigation
-      router.push(`/checkout?plan=${plan.id}`);
-      setShowUpgradeDialog(false);
-    } finally {
-      setIsUpdating(false);
-    }
+    setShowUpgradeDialog(false);
   };
 
   const handleCancelSubscription = async () => {
@@ -556,7 +535,7 @@ const SubscriptionManagementPage = () => {
                 <div className="grid lg:grid-cols-3 gap-6">
                   {plans.map((plan) => {
                     const IconComponent = getPlanIcon(plan.name);
-                    const isCurrentPlan = subscription?.plan === plan.name || subscription?.planType === plan.id;
+                    const isCurrentPlan = subscription?.plan === plan.name;
                     
                     return (
                       <motion.div

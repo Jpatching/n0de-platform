@@ -76,7 +76,7 @@ const LiveMetrics: React.FC<LiveMetricsProps> = ({
 
   // Use WebSocket data if available, otherwise fallback data
   const currentMetrics = metrics || {
-    responseTime: fallbackData?.health?.responseTime ? parseInt(String(fallbackData.health.responseTime).replace('ms', '')) : 0,
+    responseTime: fallbackData?.health?.responseTime ? parseInt(fallbackData.health.responseTime.replace('ms', '')) : 0,
     requestsPerSecond: 0,
     successRate: 100,
     activeConnections: 1,

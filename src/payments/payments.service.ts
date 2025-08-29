@@ -1,9 +1,9 @@
-import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { PaymentProvider, PaymentStatus, SubscriptionType } from '@prisma/client';
 import { CoinbaseCommerceService } from './coinbase-commerce.service';
 import { NOWPaymentsService } from './nowpayments.service';
-import { StripeService } from './stripe.service';
+import { PaymentsStripeService } from './stripe.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CreatePaymentDto, PaymentCallbackDto } from './dto/payments.dto';
 
@@ -15,7 +15,8 @@ export class PaymentsService {
     private prisma: PrismaService,
     private coinbaseService: CoinbaseCommerceService,
     private nowPaymentsService: NOWPaymentsService,
-    private stripeService: StripeService,
+    private stripeService: PaymentsStripeService,
+    @Inject(forwardRef(() => SubscriptionsService))
     private subscriptionsService: SubscriptionsService,
   ) {}
 
@@ -33,6 +34,21 @@ export class PaymentsService {
       throw new BadRequestException('Payment amount does not match plan price');
     }
 
+    // Get user details for payment processing
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('User not found');
+    }
+
     // Create payment record
     const payment = await this.prisma.payment.create({
       data: {
@@ -45,6 +61,8 @@ export class PaymentsService {
         metadata: {
           planName: plan.name,
           features: plan.limits.features,
+          userEmail: user.email,
+          userName: user.firstName ? `${user.firstName} ${user.lastName}`.trim() : user.email,
         },
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
       },

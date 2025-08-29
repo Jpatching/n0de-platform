@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/prisma.service';
 import { RedisService } from '../common/redis.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import { StripeMCPService } from './stripe-mcp.service';
+import { StripeService } from './stripe.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
 /**
@@ -16,7 +16,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
  * ARCHITECTURE:
  * - Redis: Real-time counters for sub-second tracking
  * - PostgreSQL: Authoritative billing records and sync state
- * - Stripe MCP: Production billing operations
+ * - Stripe: Production billing operations
  * - Queue System: Reliable async processing
  */
 
@@ -61,7 +61,7 @@ export class BillingSyncService {
     private prisma: PrismaService,
     private redis: RedisService,
     private subscriptions: SubscriptionsService,
-    private stripeMCP: StripeMCPService,
+    private stripeService: StripeService,
   ) {}
 
   /**
@@ -162,7 +162,7 @@ export class BillingSyncService {
     // Convert N0DE usage to Stripe metered billing
     const usageRecords = this.convertToStripeUsage(usage, subscription);
     
-    // Use Stripe MCP to record usage
+    // Use Stripe to record usage
     for (const record of usageRecords) {
       await this.recordStripeUsage(record);
     }
@@ -284,7 +284,7 @@ export class BillingSyncService {
   }
   
   private async recordStripeUsage(record: StripeUsageRecord): Promise<void> {
-    // This will use Stripe MCP when we integrate it
+    // This will use Stripe when we integrate it
     // For now, log the usage record
     this.logger.log(`Would record Stripe usage:`, record);
   }
@@ -417,15 +417,15 @@ export class BillingSyncService {
     try {
       this.logger.log(`Syncing subscription from Stripe: ${subscription.id}`);
       
-      // Use Stripe MCP to get latest subscription data
-      const stripeData = await this.stripeMCP.stripeGetSubscription(subscription.stripeId || subscription.id);
+      // Use Stripe to get latest subscription data
+      const stripeData = await this.stripeService.getSubscription(subscription.stripeId || subscription.id);
       
       // Update local subscription data
       await this.prisma.subscription.update({
         where: { userId: subscription.userId },
         data: {
           status: this.mapStripeStatus(stripeData.status),
-          currentPeriodEnd: new Date(stripeData.current_period_end * 1000),
+          currentPeriodEnd: new Date((stripeData as any).current_period_end * 1000),
           metadata: { ...subscription.metadata as any, lastSync: new Date() }
         }
       });

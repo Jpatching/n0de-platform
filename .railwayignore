@@ -9,3 +9,4 @@ docs/
 *.md
 LICENSE
 .gitignore
+frontend/

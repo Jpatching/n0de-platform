@@ -82,7 +82,7 @@ export default function AuthModal({ isOpen, onClose, mode, onModeChange }: AuthM
           password,
           ...(mode === 'signup' && { 
             firstName: email.split('@')[0],
-            username: email.split('@')[0]?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'user'
+            username: email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '')
           })
         }),
       });
@@ -115,9 +115,7 @@ export default function AuthModal({ isOpen, onClose, mode, onModeChange }: AuthM
   const handleSocialLogin = (provider: 'github' | 'google') => {
     // Don't set loading state - we're leaving the page
     // Use the correct backend URL from environment or fallback
-    const apiUrl = process.env.NEXT_PUBLIC_AUTH_URL || 
-                    (process.env.NEXT_PUBLIC_API_BASE_URL ? process.env.NEXT_PUBLIC_API_BASE_URL.replace('/api/v1', '') : null) || 
-                    'https://n0de-backend-production-4e34.up.railway.app';
+    const apiUrl = process.env.NEXT_PUBLIC_AUTH_URL || process.env.NEXT_PUBLIC_API_BASE_URL?.replace('/api/v1', '') || 'https://n0de-backend-production-4e34.up.railway.app';
     const frontendUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
     
     // Force redirect to OAuth endpoint - no need for custom redirect_uri as backend handles it
@@ -156,7 +154,7 @@ export default function AuthModal({ isOpen, onClose, mode, onModeChange }: AuthM
             <div className="text-center mb-8">
               <div className="flex items-center justify-center space-x-3 mb-4">
                 <img 
-                  src="/globe.svg" 
+                  src="/ChatGPT Image Aug 6, 2025, 10_20_26 PM.png" 
                   alt="N0DE Logo" 
                   className="h-10 w-auto"
                 />

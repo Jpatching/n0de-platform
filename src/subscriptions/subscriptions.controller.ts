@@ -13,7 +13,6 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { SubscriptionsService } from './subscriptions.service';
-import { PaymentsService } from '../payments/payments.service';
 import { UpgradeSubscriptionDto } from './dto/subscription.dto';
 import { SubscriptionType } from '@prisma/client';
 
@@ -22,7 +21,6 @@ import { SubscriptionType } from '@prisma/client';
 export class SubscriptionsController {
   constructor(
     private subscriptionsService: SubscriptionsService,
-    private paymentsService: PaymentsService,
   ) {}
 
   @Get('plans')
@@ -81,57 +79,6 @@ export class SubscriptionsController {
     );
   }
 
-  @Post('upgrade/checkout')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get checkout URL for plan upgrade' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Checkout URL created successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        checkoutUrl: { type: 'string' },
-        planName: { type: 'string' },
-        planPrice: { type: 'number' },
-        message: { type: 'string' },
-      },
-    },
-  })
-  async getUpgradeCheckoutUrl(
-    @Request() req,
-    @Body() body: UpgradeSubscriptionDto,
-  ) {
-    const plan = await this.subscriptionsService.getPlanByType(body.planType as any);
-    if (!plan) {
-      throw new BadRequestException('Invalid plan type');
-    }
-
-    // Convert planType string to SubscriptionType enum
-    const subscriptionType = Object.values(SubscriptionType).find(
-      type => type === body.planType
-    ) as SubscriptionType;
-    
-    if (!subscriptionType) {
-      throw new BadRequestException('Invalid plan type');
-    }
-
-    // Create actual payment session with PaymentsService
-    const payment = await this.paymentsService.createPayment(req.user.userId, {
-      provider: 'STRIPE' as any,
-      planType: subscriptionType,
-      amount: plan.price,
-      currency: 'USD',
-    });
-
-    return {
-      checkoutUrl: payment.paymentUrl || payment.chargeUrl,
-      paymentId: payment.id,
-      planName: plan.name,
-      planPrice: plan.price,
-      message: `Redirecting to Stripe checkout for ${plan.name} plan upgrade`,
-    };
-  }
 
   @Put('cancel')
   @UseGuards(JwtAuthGuard)
