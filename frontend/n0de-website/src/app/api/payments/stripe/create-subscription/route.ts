@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
+// In-memory cache for checkout sessions (5 minute expiry)
+const sessionCache = new Map<string, { session: Stripe.Checkout.Session; expires: number }>();
+
 function getStripe() {
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (!secretKey) {
@@ -18,11 +21,40 @@ interface CreateSubscriptionRequest {
   paymentMethodTypes: string[];
 }
 
+function getCacheKey(customerId: string, priceId: string): string {
+  return `${customerId}_${priceId}`;
+}
+
+function cleanExpiredSessions() {
+  const now = Date.now();
+  for (const [key, value] of sessionCache.entries()) {
+    if (value.expires < now) {
+      sessionCache.delete(key);
+    }
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
+    // Clean expired cache entries
+    cleanExpiredSessions();
+    
     const stripe = getStripe();
     const body: CreateSubscriptionRequest = await request.json();
     const { planId, priceId, customerId, paymentMethodTypes } = body;
+
+    // Check cache for existing session
+    const cacheKey = getCacheKey(customerId, priceId);
+    const cached = sessionCache.get(cacheKey);
+    
+    if (cached && cached.expires > Date.now()) {
+      console.log('Returning cached checkout session for:', cacheKey);
+      return NextResponse.json({ 
+        sessionId: cached.session.id,
+        sessionUrl: cached.session.url,
+        fromCache: true
+      });
+    }
 
     // Create or retrieve customer
     let customer: Stripe.Customer;
@@ -67,9 +99,17 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Cache the session for 5 minutes
+    sessionCache.set(cacheKey, {
+      session,
+      expires: Date.now() + 5 * 60 * 1000 // 5 minutes
+    });
+
+    console.log('Created new checkout session for:', cacheKey);
     return NextResponse.json({ 
       sessionId: session.id,
       sessionUrl: session.url,
+      fromCache: false
     });
 
   } catch (error) {

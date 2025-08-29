@@ -187,6 +187,44 @@ export class SubscriptionsService {
     throw new BadRequestException('Plan upgrades require payment verification. Use /upgrade/checkout endpoint to initiate payment flow.');
   }
 
+  // Admin-only method for direct subscription upgrades
+  async adminUpgradeSubscription(userId: string, planType: SubscriptionType, adminOptions: any) {
+    const plan = this.plans[planType];
+    if (!plan) {
+      throw new BadRequestException('Invalid plan type');
+    }
+
+    // Update subscription directly for admin upgrades
+    const subscription = await this.prisma.subscription.upsert({
+      where: { userId },
+      create: {
+        userId,
+        planName: plan.name,
+        planType,
+        status: 'ACTIVE',
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        metadata: {
+          adminUpgrade: true,
+          adminUserId: adminOptions.adminUserId,
+          upgradeDate: new Date().toISOString(),
+        },
+      },
+      update: {
+        planName: plan.name,
+        planType,
+        status: 'ACTIVE',
+        metadata: {
+          adminUpgrade: true,
+          adminUserId: adminOptions.adminUserId,
+          upgradeDate: new Date().toISOString(),
+        },
+      },
+    });
+
+    return subscription;
+  }
+
   // New method for completing upgrade AFTER payment verification
   async completeUpgradeAfterPayment(
     userId: string, 

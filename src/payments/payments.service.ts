@@ -84,10 +84,12 @@ export class PaymentsService {
       // Create payment history entry
       await this.prisma.paymentHistory.create({
         data: {
+          userId: payment.userId,
           paymentId: payment.id,
+          amount: Math.round(payment.amount * 100), // Convert to cents
+          currency: payment.currency,
           status: PaymentStatus.PENDING,
-          statusReason: 'Payment created with provider',
-          providerData: paymentData,
+          description: 'Payment created with provider',
         },
       });
 
@@ -122,7 +124,7 @@ export class PaymentsService {
           },
         },
         paymentHistory: {
-          orderBy: { timestamp: 'desc' },
+          orderBy: { createdAt: 'desc' },
         },
       },
     });
@@ -147,7 +149,7 @@ export class PaymentsService {
         where: { userId },
         include: {
           paymentHistory: {
-            orderBy: { timestamp: 'desc' },
+            orderBy: { createdAt: 'desc' },
             take: 1,
           },
         },
@@ -314,10 +316,12 @@ export class PaymentsService {
     // Create payment history entry
     await this.prisma.paymentHistory.create({
       data: {
+        userId: payment.userId,
         paymentId: payment.id,
+        amount: Math.round(payment.amount * 100), // Convert to cents
+        currency: payment.currency,
         status: newStatus,
-        statusReason: `Webhook: ${eventType}`,
-        providerData: payload,
+        description: `Webhook: ${eventType}`,
       },
     });
 

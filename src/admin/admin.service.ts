@@ -336,17 +336,18 @@ export class AdminService {
   async updateUserSubscription(adminUserId: string, targetUserId: string, planType: SubscriptionType) {
     await this.validateAdminUser(adminUserId);
 
-    const subscription = await this.subscriptionsService.upgradePlan(targetUserId, planType, {
+    // For admin upgrades, directly update the subscription
+    const updatedSubscription = await this.subscriptionsService.adminUpgradeSubscription(targetUserId, planType, {
       adminUpgrade: true,
       adminUserId,
     });
 
-    await this.logAdminAction(adminUserId, 'UPDATE_SUBSCRIPTION', 'SUBSCRIPTION', subscription.id, {
+    await this.logAdminAction(adminUserId, 'UPDATE_SUBSCRIPTION', 'SUBSCRIPTION', updatedSubscription?.id || targetUserId, {
       planType,
       targetUserId,
     });
 
-    return subscription;
+    return updatedSubscription;
   }
 
   // Payment Management

@@ -240,6 +240,81 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  // Additional Redis methods needed by billing services
+  async setex(key: string, ttl: number, value: string): Promise<void> {
+    if (!this.client) return;
+    try {
+      await this.client.setex(key, ttl, value);
+    } catch (error) {
+      console.error('Redis setex error:', error.message);
+    }
+  }
+
+  async hgetall(key: string): Promise<Record<string, string>> {
+    if (!this.client) return {};
+    try {
+      return await this.client.hgetall(key);
+    } catch (error) {
+      console.error('Redis hgetall error:', error.message);
+      return {};
+    }
+  }
+
+  async keys(pattern: string): Promise<string[]> {
+    if (!this.client) return [];
+    try {
+      return await this.client.keys(pattern);
+    } catch (error) {
+      console.error('Redis keys error:', error.message);
+      return [];
+    }
+  }
+
+  pipeline() {
+    if (!this.client) return null;
+    return this.client.pipeline();
+  }
+
+  async zrangebyscore(key: string, min: string | number, max: string | number): Promise<string[]> {
+    if (!this.client) return [];
+    try {
+      return await this.client.zrangebyscore(key, min, max);
+    } catch (error) {
+      console.error('Redis zrangebyscore error:', error.message);
+      return [];
+    }
+  }
+
+  async lrange(key: string, start: number, stop: number): Promise<string[]> {
+    if (!this.client) return [];
+    try {
+      return await this.client.lrange(key, start, stop);
+    } catch (error) {
+      console.error('Redis lrange error:', error.message);
+      return [];
+    }
+  }
+
+  async lpush(key: string, ...values: string[]): Promise<number> {
+    if (!this.client) return 0;
+    try {
+      return await this.client.lpush(key, ...values);
+    } catch (error) {
+      console.error('Redis lpush error:', error.message);
+      return 0;
+    }
+  }
+
+  async hincrby(key: string, field: string, increment: number): Promise<number> {
+    if (!this.client) return 0;
+    try {
+      return await this.client.hincrby(key, field, increment);
+    } catch (error) {
+      console.error('Redis hincrby error:', error.message);
+      return 0;
+    }
+  }
+
   // Health check
   async isHealthy(): Promise<boolean> {
     if (!this.client) return false;

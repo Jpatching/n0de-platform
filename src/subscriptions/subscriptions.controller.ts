@@ -107,10 +107,19 @@ export class SubscriptionsController {
       throw new BadRequestException('Invalid plan type');
     }
 
+    // Convert planType string to SubscriptionType enum
+    const subscriptionType = Object.values(SubscriptionType).find(
+      type => type === body.planType
+    ) as SubscriptionType;
+    
+    if (!subscriptionType) {
+      throw new BadRequestException('Invalid plan type');
+    }
+
     // Create actual payment session with PaymentsService
     const payment = await this.paymentsService.createPayment(req.user.userId, {
-      provider: 'STRIPE',
-      planType: body.planType,
+      provider: 'STRIPE' as any,
+      planType: subscriptionType,
       amount: plan.price,
       currency: 'USD',
     });

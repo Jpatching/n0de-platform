@@ -24,6 +24,7 @@ import { HealthModule } from './health/health.module';
 import { ErrorsModule } from './errors/errors.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { UsersModule } from './users/users.module';
+import { BillingModule } from './billing/billing.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { UsersModule } from './users/users.module';
     ErrorsModule,
     NotificationsModule,
     UsersModule,
+    BillingModule,
   ],
   controllers: [],
   providers: [],

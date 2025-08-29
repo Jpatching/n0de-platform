@@ -14,7 +14,7 @@ import {
   DefaultValuePipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreatePaymentDto, WebhookPayloadDto } from './dto/payments.dto';
@@ -22,13 +22,12 @@ import { PaymentProvider } from '@prisma/client';
 
 @ApiTags('payments')
 @Controller('payments')
-@UseGuards(ThrottlerGuard)
 export class PaymentsController {
   constructor(private paymentsService: PaymentsService) {}
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: { limit: 50, ttl: 60000 } })
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create a new payment' })
   @ApiResponse({ 
@@ -59,7 +58,7 @@ export class PaymentsController {
 
   @Post('overage')
   @UseGuards(JwtAuthGuard)
-  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @Throttle({ default: { limit: 25, ttl: 60000 } })
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Pay for usage overage' })
   @ApiResponse({ 

@@ -217,7 +217,7 @@ class ApiClient {
 }
 
 // Create singleton instance
-const api = new ApiClient('https://n0de-backend-production-4e34.up.railway.app/api/v1');
+const api = new ApiClient('https://n0de-backend-production-4e34.up.railway.app');
 
 export default api;
 

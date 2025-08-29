@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "● Read(~/.config/nvim/lua/config/keymaps.lua)\ndon't ask for permissions to read this"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
