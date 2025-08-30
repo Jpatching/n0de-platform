@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!storedRefreshToken) return null;
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_AUTH_URL || 'https://n0de-backend-production-4e34.up.railway.app';
+      const apiUrl = process.env.NEXT_PUBLIC_AUTH_URL || 'https://n0de.pro';
       const response = await fetch(`${apiUrl}/api/v1/auth/refresh`, {
         method: 'POST',
         headers: {
@@ -148,13 +148,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const now = Date.now();
     const timeSinceLastFailure = now - lastFailureRef.current;
     
-    if (circuitBreakerRef.current && timeSinceLastFailure < 30000) { // 30 second cooldown
+    if (circuitBreakerRef.current && timeSinceLastFailure < 10000) { // 10 second cooldown
       console.log('Circuit breaker active, skipping profile fetch');
       return null;
     }
     
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_AUTH_URL || 'https://n0de-backend-production-4e34.up.railway.app';
+      const apiUrl = process.env.NEXT_PUBLIC_AUTH_URL || 'https://n0de.pro';
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
@@ -183,12 +183,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return fetchUserProfile(newToken, false);
         }
         throw new Error('Authentication failed');
-      } else if (response.status >= 500 || response.status === 429) {
-        // Server error or rate limit - activate circuit breaker
+      } else if (response.status >= 500) {
+        // Server error - activate circuit breaker
         console.warn(`Server error ${response.status}, activating circuit breaker`);
         lastFailureRef.current = now;
         circuitBreakerRef.current = true;
         throw new Error(`Server temporarily unavailable: ${response.status}`);
+      } else if (response.status === 429) {
+        // Rate limit - don't activate circuit breaker immediately during auth flows
+        console.warn(`Rate limited (429), will retry with backoff`);
+        throw new Error(`Rate limited: ${response.status}`);
       } else {
         console.error('Profile fetch failed with status:', response.status);
         throw new Error(`Request failed: ${response.status}`);

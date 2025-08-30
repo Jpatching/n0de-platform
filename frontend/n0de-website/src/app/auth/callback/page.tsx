@@ -10,19 +10,26 @@ function AuthCallbackContent() {
   const { login, user } = useAuth();
   const [error, setError] = useState('');
   const [isProcessing, setIsProcessing] = useState(true);
+  const [hasRedirected, setHasRedirected] = useState(false);
 
   useEffect(() => {
     const handleCallback = async () => {
-      // Check if user is already authenticated via context
-      if (user) {
-        console.log('User already authenticated via context, redirecting to dashboard');
-        router.push('/dashboard');
+      // Prevent multiple redirects
+      if (hasRedirected) {
         return;
       }
 
       const token = searchParams.get('token');
       const refreshToken = searchParams.get('refresh');
       const sessionId = searchParams.get('session');
+
+      // Check if user is already authenticated via context AND we have no new tokens
+      if (user && !token && !refreshToken) {
+        console.log('User already authenticated via context, redirecting to dashboard');
+        setHasRedirected(true);
+        router.push('/dashboard');
+        return;
+      }
       const userEncoded = searchParams.get('user');
       const error = searchParams.get('error');
 
@@ -49,6 +56,7 @@ function AuthCallbackContent() {
           await login(token, refreshToken, sessionId, userData);
           
           // Redirect to dashboard
+          setHasRedirected(true);
           router.push('/dashboard');
         } catch (err) {
           console.error('Failed to complete authentication:', err);
@@ -62,6 +70,7 @@ function AuthCallbackContent() {
         if (existingToken) {
           // User is already logged in, redirect to dashboard
           console.log('User already authenticated via localStorage, redirecting to dashboard');
+          setHasRedirected(true);
           router.push('/dashboard');
         } else {
           // Missing required tokens and not logged in
