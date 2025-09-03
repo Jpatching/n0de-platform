@@ -49,7 +49,7 @@
     "branch": "feature/infrastructure-optimization",
     "focus": [
       ".github/",
-      "railway.toml",
+      "backend.toml",
       "docker*",
       "monitoring/",
       "scripts/"

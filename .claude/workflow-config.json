@@ -64,7 +64,7 @@
       "description": "Performance monitoring and deployment automation",
       "focus": [
         ".github/",
-        "railway.toml",
+        "backend.toml",
         "docker*",
         "monitoring/",
         "scripts/"

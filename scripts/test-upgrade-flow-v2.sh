@@ -2,7 +2,7 @@
 
 # Test N0DE Platform Upgrade Flow - Corrected Version
 
-API_URL="https://n0de-backend-production-4e34.up.railway.app/api/v1"
+API_URL="https://api.n0de.pro/api/v1"
 FRONTEND_URL="https://www.n0de.pro"
 
 echo "Testing N0DE Platform Upgrade Flow (v2)"
@@ -11,7 +11,7 @@ echo ""
 
 # Test 1: Check backend health
 echo "1. Testing backend health..."
-curl -s "https://n0de-backend-production-4e34.up.railway.app/health" | jq '.'
+curl -s "https://api.n0de.pro/health" | jq '.'
 echo ""
 
 # Test 2: Check available plans via API

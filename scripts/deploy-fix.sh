@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Fix Railway deployment by pushing schema with optional fields
-echo "Fixing Railway deployment..."
+# Fix backend deployment by pushing schema with optional fields
+echo "Fixing backend deployment..."
 
-# Export Railway database URL
-export DATABASE_URL="postgresql://postgres:mMXWyeIXnJXKWsqWmgiHfReABwrgqVvN@postgres-8vk9.railway.internal:5432/railway"
+# Export backend database URL
+export DATABASE_URL="postgresql://postgres:mMXWyeIXnJXKWsqWmgiHfReABwrgqVvN@postgres-8vk9.backend.internal:5432/backend"
 
 # Generate Prisma client
 echo "Generating Prisma client..."

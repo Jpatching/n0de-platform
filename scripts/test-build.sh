@@ -5,7 +5,7 @@ echo "🔍 Testing N0DE Backend Build"
 echo "=============================="
 echo ""
 
-BACKEND="https://n0de-backend-production-4e34.up.railway.app"
+BACKEND="https://api.n0de.pro"
 
 # Test 1: Health Check
 echo "1️⃣ Testing Health Endpoint..."
@@ -47,5 +47,5 @@ echo ""
 if echo "$health" | jq -e '.status' >/dev/null 2>&1; then
   echo "✅ BUILD SUCCESSFUL - Platform is operational!"
 else
-  echo "❌ BUILD FAILED - Check Railway logs"
+  echo "❌ BUILD FAILED - Check backend logs"
 fi

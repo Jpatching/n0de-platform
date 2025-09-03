@@ -37,7 +37,7 @@ KEEP_SCRIPTS=(
     "env-manager.sh"
     "backup-system.sh"
     "restore-system.sh"
-    "import-railway-data-enhanced.sh"
+    "import-backend-data-enhanced.sh"
     "production-validator.sh"
     "ssl-setup.sh"
     "example-with-error-handling.sh"
@@ -55,7 +55,7 @@ ARCHIVE_SCRIPTS=(
     "final-test.sh"
     "fix-auth.sh"
     "fix-deployment.sh"
-    "railway-fix.sh"
+    "backend-fix.sh"
     "test-build.sh"
     "test-platform.sh"
     "test-upgrade-flow.sh"
@@ -64,7 +64,7 @@ ARCHIVE_SCRIPTS=(
     "watch-deployment.sh"
     "workflow-setup.sh"
     "complete-migration-basic.sh"
-    "import-railway-data-basic.sh"
+    "import-backend-data-basic.sh"
     "backend-setup.sh"
     "db-setup.sh"
     "redis-setup.sh"
@@ -117,9 +117,9 @@ if [ -f "scripts/enhanced-complete-migration.sh" ]; then
     echo "  ✓ Updated: complete-migration.sh → enhanced-complete-migration.sh"
 fi
 
-if [ -f "scripts/import-railway-data-enhanced.sh" ]; then
-    ln -sf import-railway-data-enhanced.sh scripts/import-railway-data.sh
-    echo "  ✓ Updated: import-railway-data.sh → import-railway-data-enhanced.sh"
+if [ -f "scripts/import-backend-data-enhanced.sh" ]; then
+    ln -sf import-backend-data-enhanced.sh scripts/import-backend-data.sh
+    echo "  ✓ Updated: import-backend-data.sh → import-backend-data-enhanced.sh"
 fi
 
 # Clean up node_modules if needed (keep it by default)
@@ -194,6 +194,6 @@ echo "   • monitoring/ - Health monitoring"
 echo "   • nginx/ - SSL-ready configurations"
 echo "   • archived-scripts/ - Backup of removed scripts"
 echo ""
-echo -e "${PURPLE}🎉 Project is now lean and Railway-independent!${NC}"
+echo -e "${PURPLE}🎉 Project is now lean and backend-independent!${NC}"
 
 log_success "N0DE project cleanup completed - $archived_count scripts archived"

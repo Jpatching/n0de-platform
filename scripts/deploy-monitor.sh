@@ -5,19 +5,19 @@ echo "🚀 Advanced Deployment Monitor"
 echo "=============================="
 echo ""
 
-BACKEND="https://n0de-backend-production-4e34.up.railway.app"
-BUILD_URL="https://railway.com/project/262d4f31-c5ec-4614-8db6-b62bdb18ee17"
+BACKEND="https://api.n0de.pro"
+BUILD_URL="https://backend.com/project/262d4f31-c5ec-4614-8db6-b62bdb18ee17"
 
 echo "Monitoring: $BACKEND"
 echo "Build Dashboard: $BUILD_URL"
 echo ""
 
-# Function to extract errors from Railway logs
+# Function to extract errors from backend logs
 analyze_errors() {
   echo "🔍 Analyzing deployment errors..."
   
   # Get recent logs and extract errors
-  errors=$(railway logs 2>&1 | grep -E "(ERROR|error|Error|failed|Failed)" | tail -10)
+  errors=$(backend logs 2>&1 | grep -E "(ERROR|error|Error|failed|Failed)" | tail -10)
   
   if [ ! -z "$errors" ]; then
     echo "❌ Errors detected:"

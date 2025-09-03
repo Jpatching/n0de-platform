@@ -5,7 +5,7 @@ echo "🚀 N0DE Platform Final Test"
 echo "==========================="
 echo ""
 
-BACKEND="https://n0de-backend-production-4e34.up.railway.app"
+BACKEND="https://api.n0de.pro"
 FRONTEND="https://www.n0de.pro"
 
 echo "📍 Platform URLs:"
@@ -82,7 +82,7 @@ fi
 echo ""
 echo "📊 FINAL SUMMARY"
 echo "================"
-echo "✅ Backend deployed on Railway"
+echo "✅ Backend deployed on backend"
 echo "✅ Frontend deployed on Vercel"  
 echo "✅ PostgreSQL database connected"
 echo "✅ API endpoints responding"

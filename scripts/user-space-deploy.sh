@@ -214,7 +214,7 @@ echo "   • Update Vercel: NEXT_PUBLIC_API_URL=http://localhost:$BACKEND_PORT"
 echo "   • For production: Configure reverse proxy to expose publicly"
 echo "   • Monitor logs: tail -f logs/backend.log"
 echo ""
-echo -e "${PURPLE}🎉 Railway-free deployment successful!${NC}"
+echo -e "${PURPLE}🎉 backend-free deployment successful!${NC}"
 
 # Optional: Test the deployment
 if [ "${1:-}" = "test" ]; then

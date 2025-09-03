@@ -18,11 +18,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       return;
     }
     
-    // Railway-optimized connection configuration
+    // backend-optimized connection configuration
     const connectionOptions = {
       maxRetriesPerRequest: 5,
       lazyConnect: true,
-      connectTimeout: 10000, // Increased for Railway networking
+      connectTimeout: 10000, // Increased for backend networking
       enableReadyCheck: true,
       keepAlive: 30000,
       retryDelayOnFailover: 100,
@@ -30,7 +30,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     };
     
     try {
-      console.log('🔌 Attempting Redis connection with Railway variable reference...');
+      console.log('🔌 Attempting Redis connection with backend variable reference...');
       this.client = new Redis(redisUrl, connectionOptions);
 
       this.client.on('connect', () => {
@@ -39,7 +39,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
       this.client.on('error', (error) => {
         console.log(`⚠️  Redis connection error: ${error.message}`);
-        console.log('🔄 Railway Redis networking issue - app will continue without cache');
+        console.log('🔄 backend Redis networking issue - app will continue without cache');
         // Don't crash the app, continue without Redis
         this.client = null;
       });
@@ -48,14 +48,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         console.log('📴 Redis connection closed');
       });
 
-      // Try to connect with increased timeout for Railway
+      // Try to connect with increased timeout for backend
       const connectPromise = this.client.connect();
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Railway Redis connection timeout (15s)')), 15000);
+        setTimeout(() => reject(new Error('backend Redis connection timeout (15s)')), 15000);
       });
       
       await Promise.race([connectPromise, timeoutPromise]);
-      console.log('✅ Redis initialization completed - Railway variable reference resolved');
+      console.log('✅ Redis initialization completed - backend variable reference resolved');
       
     } catch (error) {
       console.log(`⚠️  Failed to initialize Redis: ${error.message}`);

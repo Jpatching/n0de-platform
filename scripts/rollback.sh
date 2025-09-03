@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # N0DE Rollback Script
-# Safely rolls back to Railway if migration fails
+# Safely rolls back to backend if migration fails
 
 set -euo pipefail
 
@@ -18,7 +18,7 @@ echo -e "${RED}=========================${NC}"
 echo ""
 
 echo -e "${YELLOW}⚠️  This will rollback your migration and stop local services.${NC}"
-echo -e "${YELLOW}⚠️  Make sure Railway is still running before proceeding!${NC}"
+echo -e "${YELLOW}⚠️  Make sure backend is still running before proceeding!${NC}"
 echo ""
 echo "Are you sure you want to rollback? (y/N)"
 read -r confirm
@@ -63,31 +63,31 @@ else
     echo -e "${YELLOW}⚠️  No nginx backup found${NC}"
 fi
 
-# Keep database and Redis running (they don't interfere with Railway)
+# Keep database and Redis running (they don't interfere with backend)
 echo -e "${BLUE}📊 Local database and Redis will remain running${NC}"
 echo -e "${YELLOW}💡 You can clean them up later if desired${NC}"
 
-# Update Vercel to point back to Railway (if needed)
+# Update Vercel to point back to backend (if needed)
 echo -e "${BLUE}🔄 Vercel Environment Update${NC}"
 echo ""
 echo "Don't forget to:"
-echo "1. Update Vercel environment variables to point back to Railway"
-echo "2. Check that Railway services are still running"
+echo "1. Update Vercel environment variables to point back to backend"
+echo "2. Check that backend services are still running"
 echo "3. Test your frontend at https://n0de.pro"
 echo ""
 
-# Show Railway status
-if railway --version > /dev/null 2>&1; then
-    echo -e "${BLUE}📡 Checking Railway status...${NC}"
-    railway status || echo "Run 'railway status' to check your Railway deployment"
+# Show backend status
+if backend --version > /dev/null 2>&1; then
+    echo -e "${BLUE}📡 Checking backend status...${NC}"
+    backend status || echo "Run 'backend status' to check your backend deployment"
 else
-    echo -e "${YELLOW}💡 Install Railway CLI to check status: npm install -g @railway/cli${NC}"
+    echo -e "${YELLOW}💡 Install backend CLI to check status: npm install -g @backend/cli${NC}"
 fi
 
 echo ""
 echo -e "${GREEN}🔙 Rollback completed!${NC}"
 echo ""
-echo -e "${PURPLE}Railway should now be handling your traffic again.${NC}"
+echo -e "${PURPLE}backend should now be handling your traffic again.${NC}"
 echo ""
 echo "Cleanup commands (optional):"
 echo "  - Remove systemd service: sudo rm /etc/systemd/system/n0de-backend.service"

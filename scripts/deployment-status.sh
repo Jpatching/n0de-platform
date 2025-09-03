@@ -8,9 +8,9 @@ echo "=================================================="
 
 # Backend Health Check
 echo ""
-echo "🚂 RAILWAY BACKEND STATUS:"
+echo "🚂 backend BACKEND STATUS:"
 echo "------------------------"
-BACKEND_URL="https://n0de-backend-production-4e34.up.railway.app"
+BACKEND_URL="https://api.n0de.pro"
 
 if curl -s -f "$BACKEND_URL/health" >/dev/null; then
     HEALTH_DATA=$(curl -s "$BACKEND_URL/health" | jq -r '"\(.status) - Uptime: \(.uptime)s - Version: \(.version)"' 2>/dev/null || echo "healthy")
@@ -44,8 +44,8 @@ fi
 echo ""
 echo "🗄️  DATABASE STATUS:"
 echo "-------------------"
-if railway status >/dev/null 2>&1; then
-    echo "✅ Railway CLI: Connected"
+if backend status >/dev/null 2>&1; then
+    echo "✅ backend CLI: Connected"
     
     # Try to check database via backend
     if curl -s -f "$BACKEND_URL/api/v1/subscriptions/plans" | jq -e '.[] | select(.id == "FREE")' >/dev/null 2>&1; then
@@ -54,7 +54,7 @@ if railway status >/dev/null 2>&1; then
         echo "⚠️  PostgreSQL: Connection uncertain"
     fi
 else
-    echo "⚠️  Railway CLI: Not properly configured"
+    echo "⚠️  backend CLI: Not properly configured"
 fi
 
 # Stripe Integration
@@ -80,8 +80,8 @@ echo ""
 echo "🤖 CLAUDE ACCESS COMMANDS:"
 echo "==========================" 
 echo "Check logs: ./collect-logs.sh"
-echo "Railway status: railway status"
-echo "Railway logs: railway logs"
+echo "backend status: backend status"
+echo "backend logs: backend logs"
 echo "Test backend: curl $BACKEND_URL/health | jq"
 echo "Test frontend: curl -s $FRONTEND_URL | grep N0DE"
 
@@ -89,9 +89,9 @@ echo ""
 echo "💾 INFRASTRUCTURE MEMORY:"
 echo "========================"
 echo "✅ Vercel: Frontend deployment platform"
-echo "✅ Railway: Backend + database hosting"  
+echo "✅ backend: Backend + database hosting"  
 echo "✅ Prisma: Database ORM and migrations"
-echo "✅ Redis: Caching layer (Railway hosted)"
-echo "✅ PostgreSQL: Primary database (Railway hosted)"
+echo "✅ Redis: Caching layer (backend hosted)"
+echo "✅ PostgreSQL: Primary database (backend hosted)"
 echo "✅ Stripe: Payment processing (MCP integration)"
 echo "✅ GitHub: Source control + CI/CD triggers"

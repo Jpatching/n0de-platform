@@ -1,7 +1,7 @@
 #!/bin/bash
 # Real-time deployment and error monitoring
 
-export RAILWAY_TOKEN="112c11ee-16ab-42bc-a23f-c7c06f32fff0"
+export backend_TOKEN="112c11ee-16ab-42bc-a23f-c7c06f32fff0"
 
 echo "👀 Real-time N0DE Platform Monitor"
 echo "=================================="
@@ -12,7 +12,7 @@ while true; do
   echo "====================="
   
   # Backend health
-  health=$(curl -s https://n0de-backend-production-4e34.up.railway.app/health 2>/dev/null)
+  health=$(curl -s https://api.n0de.pro/health 2>/dev/null)
   if echo "$health" | jq -e '.status' >/dev/null 2>&1; then
     status=$(echo "$health" | jq -r '.status')
     uptime=$(echo "$health" | jq -r '.uptime')
@@ -22,7 +22,7 @@ while true; do
   fi
   
   # Database check
-  plans=$(curl -s https://n0de-backend-production-4e34.up.railway.app/api/v1/subscriptions/plans 2>/dev/null)
+  plans=$(curl -s https://api.n0de.pro/api/v1/subscriptions/plans 2>/dev/null)
   if echo "$plans" | jq -e '.[0]' >/dev/null 2>&1; then
     count=$(echo "$plans" | jq '. | length')
     echo "✅ Database: Connected ($count plans)"
@@ -37,7 +37,7 @@ while true; do
   # Recent errors
   echo ""
   echo "🔍 Recent Errors:"
-  RAILWAY_TOKEN=$RAILWAY_TOKEN railway logs 2>&1 | grep -E "(ERROR|error)" | tail -3 | sed 's/^/   /'
+  backend_TOKEN=$backend_TOKEN backend logs 2>&1 | grep -E "(ERROR|error)" | tail -3 | sed 's/^/   /'
   
   echo ""
   echo "Press Ctrl+C to stop monitoring..."

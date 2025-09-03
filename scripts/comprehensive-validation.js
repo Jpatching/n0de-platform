@@ -12,7 +12,7 @@ const fs = require('fs');
 
 class N0DEValidator {
   constructor() {
-    this.baseURL = 'https://n0de-backend-production-4e34.up.railway.app';
+    this.baseURL = 'https://api.n0de.pro';
     this.frontendURL = 'https://www.n0de.pro';
     this.testResults = {
       backend: {},

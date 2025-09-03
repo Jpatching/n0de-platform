@@ -1,5 +1,5 @@
 #!/bin/bash
-# Fix deployment - ensure Railway uses Railway DB and local doesn't interfere
+# Fix deployment - ensure backend uses backend DB and local doesn't interfere
 
 echo "🚀 Fixing N0DE Platform Deployment"
 echo "=================================="
@@ -7,24 +7,24 @@ echo ""
 
 cd /home/sol/n0de-deploy
 
-# Step 1: Remove local .env so it doesn't interfere with Railway
+# Step 1: Remove local .env so it doesn't interfere with backend
 echo "1️⃣ Backing up and removing local .env..."
 cp .env .env.local-backup 2>/dev/null
 rm -f .env
 
-# Step 2: Ensure Railway has correct environment variables
+# Step 2: Ensure backend has correct environment variables
 echo ""
-echo "2️⃣ Setting Railway environment variables..."
+echo "2️⃣ Setting backend environment variables..."
 
-# The DATABASE_URL in Railway should already be set correctly
+# The DATABASE_URL in backend should already be set correctly
 # Just ensure other critical variables are set
-railway variables --set "NODE_ENV=production" \
+backend variables --set "NODE_ENV=production" \
   --set "PORT=3000" \
   --set "JWT_SECRET=n0de_jwt_secret_2024_production" \
   --set "CORS_ORIGINS=https://n0de.pro,https://www.n0de.pro,https://n0de-website-*.vercel.app" \
   --set "FRONTEND_URL=https://www.n0de.pro" \
-  --set "BACKEND_URL=https://n0de-backend-production-4e34.up.railway.app" \
-  --set "API_BASE_URL=https://n0de-backend-production-4e34.up.railway.app/api/v1" \
+  --set "BACKEND_URL=https://api.n0de.pro" \
+  --set "API_BASE_URL=https://api.n0de.pro/api/v1" \
   --skip-deploys
 
 # Step 3: Ensure build script doesn't try to connect to DB
@@ -64,16 +64,16 @@ EOF
 tail -n +27 package.json >> package.json.tmp
 mv package.json.tmp package.json
 
-# Step 4: Deploy to Railway (Railway will use its own DATABASE_URL)
+# Step 4: Deploy to backend (backend will use its own DATABASE_URL)
 echo ""
-echo "4️⃣ Deploying to Railway..."
-railway up --detach
+echo "4️⃣ Deploying to backend..."
+backend up --detach
 
 echo ""
 echo "✅ Deployment triggered!"
 echo ""
-echo "Railway will use its internal DATABASE_URL automatically."
-echo "Check deployment at: https://railway.com/project/262d4f31-c5ec-4614-8db6-b62bdb18ee17"
+echo "backend will use its internal DATABASE_URL automatically."
+echo "Check deployment at: https://backend.com/project/262d4f31-c5ec-4614-8db6-b62bdb18ee17"
 echo ""
 echo "Once deployed, the backend will be available at:"
-echo "https://n0de-backend-production-4e34.up.railway.app"
+echo "https://api.n0de.pro"

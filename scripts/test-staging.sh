@@ -4,8 +4,8 @@
 echo "🧪 Testing Staging Environment"
 echo "=============================="
 
-STAGING_BACKEND="https://n0de-backend-production-4e34.up.railway.app"
-STAGING_FRONTEND="https://staging-n0de.vercel.app"
+STAGING_BACKEND="https://api.n0de.pro"
+STAGING_FRONTEND="https://www.n0de.pro"
 
 echo "Backend: $STAGING_BACKEND"
 echo "Frontend: $STAGING_FRONTEND"

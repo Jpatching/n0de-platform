@@ -130,8 +130,8 @@ EOF
 
 # Step 3: Update environment for no-billing mode
 echo ""
-echo "3️⃣ Updating Railway environment..."
-railway variables --set "NODE_ENV=production" \
+echo "3️⃣ Updating backend environment..."
+backend variables --set "NODE_ENV=production" \
   --set "BILLING_ENABLED=false" \
   --set "STRIPE_TEST_MODE=true" \
   --set "AUTH_BYPASS_EMAIL_VERIFICATION=true" \
@@ -143,7 +143,7 @@ railway variables --set "NODE_ENV=production" \
 # Step 4: Deploy backend
 echo ""
 echo "4️⃣ Deploying backend..."
-railway up --detach
+backend up --detach
 
 # Step 5: Update frontend for test mode
 echo ""
@@ -151,8 +151,8 @@ echo "5️⃣ Updating frontend configuration..."
 cd frontend/n0de-website
 
 cat > .env.production << 'EOF'
-NEXT_PUBLIC_API_URL=https://n0de-backend-production-4e34.up.railway.app/api/v1
-NEXT_PUBLIC_BACKEND_URL=https://n0de-backend-production-4e34.up.railway.app
+NEXT_PUBLIC_API_URL=https://api.n0de.pro/api/v1
+NEXT_PUBLIC_BACKEND_URL=https://api.n0de.pro
 NEXT_PUBLIC_TEST_MODE=true
 NEXT_PUBLIC_BILLING_ENABLED=false
 NEXT_PUBLIC_SHOW_TEST_LOGIN=true
@@ -170,13 +170,13 @@ echo ""
 echo "📋 Access Information:"
 echo "----------------------"
 echo "🌐 Frontend: https://www.n0de.pro"
-echo "🔧 Backend: https://n0de-backend-production-4e34.up.railway.app"
+echo "🔧 Backend: https://api.n0de.pro"
 echo "👤 Test User: admin@n0de.pro / Admin123!"
 echo ""
 echo "🧪 Test Endpoints:"
 echo "-----------------"
-echo "Health: https://n0de-backend-production-4e34.up.railway.app/health"
-echo "Plans: https://n0de-backend-production-4e34.up.railway.app/api/v1/subscriptions/plans"
+echo "Health: https://api.n0de.pro/health"
+echo "Plans: https://api.n0de.pro/api/v1/subscriptions/plans"
 echo ""
 echo "✅ Features Enabled:"
 echo "-------------------"
@@ -187,6 +187,6 @@ echo "• Test authentication enabled"
 echo ""
 echo "🎯 Quick Test:"
 echo "-------------"
-curl -s -X POST https://n0de-backend-production-4e34.up.railway.app/api/v1/test-auth/login \
+curl -s -X POST https://api.n0de.pro/api/v1/test-auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@n0de.pro","password":"Admin123!"}' | jq '.access_token' 2>/dev/null || echo "Test auth endpoint pending deployment..."

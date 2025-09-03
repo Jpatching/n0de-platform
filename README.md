@@ -75,8 +75,8 @@ npm run dev
 
 ### 🌐 Production Deployment
 ```bash
-# Backend (Railway)
-railway up
+# Backend (backend)
+pm2 start ecosystem.config.js
 
 # Frontend (Vercel)
 cd frontend/n0de-website
@@ -134,7 +134,7 @@ vercel --prod
 | **PostgreSQL + Prisma** | Database | ACID compliance, type-safe ORM, migrations |
 | **Redis** | Caching | Session management, rate limiting, real-time features |
 | **JWT** | Authentication | Stateless auth, secure token management |
-| **Railway** | Deployment | Auto-scaling, zero-downtime deployments |
+| **backend** | Deployment | Auto-scaling, zero-downtime deployments |
 
 ### 🎨 Frontend Stack
 | Technology | Purpose | Benefits |
@@ -195,12 +195,12 @@ FRONTEND_URL="https://www.n0de.pro"
 
 ### Backend Deployment (Self-hosted)
 1. **Install dependencies and build**
-2. **Configure environment variables**  
-3. **Set up PostgreSQL and Redis**
+2. **Configure environment variables in `.env`**  
+3. **Ensure PostgreSQL and Redis are running**
 4. **Deploy with PM2 process manager**
 
 ```bash
-# Build and start services
+# Build and start backend services
 npm run build
 pm2 start ecosystem.config.js
 pm2 save
@@ -310,7 +310,7 @@ The development environment includes:
 | **Connection Pooling** | Prisma | Optimal database resource usage |
 | **Response Compression** | gzip/brotli | 70% bandwidth reduction |
 | **Query Optimization** | Prisma + indexes | Sub-100ms response times |
-| **Horizontal Scaling** | Railway auto-scaling | Zero-downtime traffic handling |
+| **Horizontal Scaling** | backend auto-scaling | Zero-downtime traffic handling |
 
 ### 🎨 Frontend Performance
 | Optimization | Technology | Impact |
@@ -366,7 +366,7 @@ npm run test:visual    # Visual regression testing
 ### 📚 Documentation
 | Resource | URL | Description |
 |----------|-----|-------------|
-| **API Docs** | [/api/docs](https://n0de-backend-production-4e34.up.railway.app/api/docs) | Interactive Swagger UI |
+| **API Docs** | [/api/docs](https://api.n0de.pro/api/docs) | Interactive Swagger UI |
 | **Developer Portal** | [www.n0de.pro/docs](https://www.n0de.pro/docs) | Complete integration guides |
 | **API Playground** | [www.n0de.pro/playground](https://www.n0de.pro/playground) | Test RPC calls in browser |
 | **Postman Collection** | [Download](https://www.n0de.pro/postman) | Complete API testing suite |
@@ -439,9 +439,9 @@ git commit -m "feat: add new RPC endpoint"
 - [ ] Start frontend: `cd frontend/n0de-website && npm run dev`
 
 ### ☑️ Production Deployment  
-- [ ] Set up Railway project with PostgreSQL + Redis
-- [ ] Configure environment variables on Railway
-- [ ] Deploy backend: `railway up`
+- [ ] Set up backend project with PostgreSQL + Redis
+- [ ] Configure environment variables on backend
+- [ ] Deploy backend: `pm2 start ecosystem.config.js`
 - [ ] Set up Vercel project 
 - [ ] Deploy frontend: `vercel --prod`
 - [ ] Configure payment provider webhooks

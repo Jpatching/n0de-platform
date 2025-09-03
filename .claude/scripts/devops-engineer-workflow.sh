@@ -46,7 +46,7 @@ case "devops-engineer" in
   "devops-engineer")
     # Check deployment configurations
     echo "  Validating deployment configs..."
-    railway status || echo "Railway not configured"
+    backend status || echo "backend not configured"
     ;;
 esac
 
@@ -55,7 +55,7 @@ echo ""
 echo "📋 Next steps:"
 echo "  1. Make your changes in the appropriate files:"
 echo "     - .github/"
-echo "     - railway.toml"
+echo "     - backend.toml"
 echo "     - docker*"
 echo "     - monitoring/"
 echo "     - scripts/"

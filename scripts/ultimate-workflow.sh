@@ -4,9 +4,9 @@
 set -e
 
 # Verify required tokens are set in environment
-if [ -z "$RAILWAY_API_TOKEN" ] && [ -z "$RAILWAY_TOKEN" ]; then
-    echo "❌ Missing RAILWAY_API_TOKEN or RAILWAY_TOKEN environment variable"
-    echo "Run: export RAILWAY_API_TOKEN=your_token_here"
+if [ -z "$backend_API_TOKEN" ] && [ -z "$backend_TOKEN" ]; then
+    echo "❌ Missing backend_API_TOKEN or backend_TOKEN environment variable"
+    echo "Run: export backend_API_TOKEN=your_token_here"
     exit 1
 fi
 
@@ -40,17 +40,17 @@ npm install --silent 2>/dev/null || npm install
 npx prisma generate --no-hints
 npm run build
 
-# 2. Deploy Backend to Railway
+# 2. Deploy Backend to backend
 echo ""
-echo "2️⃣ Deploying Backend to Railway..."
-railway up --detach
+echo "2️⃣ Deploying Backend to backend..."
+backend up --detach
 echo "⏳ Waiting for deployment..."
 sleep 45
 
 # 3. Test Backend Health
 echo ""
 echo "3️⃣ Testing Backend Health..."
-BACKEND_URL="https://n0de-backend-production-4e34.up.railway.app"
+BACKEND_URL="https://api.n0de.pro"
 health=$(curl -s "$BACKEND_URL/health" 2>/dev/null)
 if echo "$health" | jq -e '.status' >/dev/null 2>&1; then
     echo "✅ Backend healthy"

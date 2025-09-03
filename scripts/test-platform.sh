@@ -4,7 +4,7 @@
 
 set -e
 
-BACKEND_URL="https://n0de-backend-production-4e34.up.railway.app"
+BACKEND_URL="https://api.n0de.pro"
 FRONTEND_URL="https://www.n0de.pro"
 API_BASE="$BACKEND_URL/api/v1"
 
@@ -152,7 +152,7 @@ echo "Frontend: $FRONTEND_URL"
 echo ""
 echo "✅ Infrastructure is running"
 echo "⚠️  OAuth needs configuration (check .env file)"
-echo "📝 Update OAuth credentials in Railway environment variables"
+echo "📝 Update OAuth credentials in backend environment variables"
 echo ""
 echo "Quick fixes needed:"
 echo "1. Set real Google OAuth credentials"

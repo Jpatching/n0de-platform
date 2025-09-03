@@ -44,7 +44,7 @@ const agentBranches = {
   'devops-engineer': {
     branch: 'feature/infrastructure-optimization',
     description: 'Performance monitoring and deployment automation',
-    focus: ['.github/', 'railway.toml', 'docker*', 'monitoring/', 'scripts/'],
+    focus: ['.github/', 'backend.toml', 'docker*', 'monitoring/', 'scripts/'],
     baseProtection: ['src/', 'frontend/'],
     mergeStrategy: 'squash'
   }
@@ -236,7 +236,7 @@ case "${agentName}" in
   "devops-engineer")
     # Check deployment configurations
     echo "  Validating deployment configs..."
-    railway status || echo "Railway not configured"
+    backend status || echo "backend not configured"
     ;;
 esac
 

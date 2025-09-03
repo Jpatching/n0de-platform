@@ -5,12 +5,12 @@ echo "🏗️ Setting Up Complete Staging Environment"
 echo "=========================================="
 echo ""
 
-# Step 1: Create staging service on Railway
-echo "1️⃣ Creating Railway staging service..."
+# Step 1: Create staging service on backend
+echo "1️⃣ Creating backend staging service..."
 cd /home/sol/n0de-deploy
 
 # Check if we can create a new service
-echo "Note: This requires Railway Pro plan for multiple services"
+echo "Note: This requires backend Pro plan for multiple services"
 echo "Alternative: Use environment-based staging on same service"
 echo ""
 
@@ -24,7 +24,7 @@ git checkout -b staging 2>/dev/null || git checkout staging
 # Set staging environment variables
 echo ""
 echo "2️⃣ Setting staging environment variables..."
-railway variables --set "STAGING_MODE=true" \
+backend variables --set "STAGING_MODE=true" \
   --set "FRONTEND_URL=https://staging-n0de.vercel.app" \
   --set "CORS_ORIGINS=https://staging-n0de.vercel.app,https://localhost:3000" \
   --set "LOG_LEVEL=debug" \
@@ -58,8 +58,8 @@ cd frontend/n0de-website
 
 # Create staging environment file
 cat > .env.staging << 'EOF'
-NEXT_PUBLIC_API_URL=https://n0de-backend-production-4e34.up.railway.app/api/v1
-NEXT_PUBLIC_BACKEND_URL=https://n0de-backend-production-4e34.up.railway.app
+NEXT_PUBLIC_API_URL=https://api.n0de.pro/api/v1
+NEXT_PUBLIC_BACKEND_URL=https://api.n0de.pro
 NEXT_PUBLIC_STAGING_MODE=true
 NEXT_PUBLIC_DEBUG_MODE=true
 NEXT_PUBLIC_BILLING_ENABLED=false
@@ -83,7 +83,7 @@ cat > test-staging.sh << 'EOF'
 echo "🧪 Testing Staging Environment"
 echo "=============================="
 
-STAGING_BACKEND="https://n0de-backend-production-4e34.up.railway.app"
+STAGING_BACKEND="https://api.n0de.pro"
 STAGING_FRONTEND="https://staging-n0de.vercel.app"
 
 echo "Backend: $STAGING_BACKEND"
@@ -153,8 +153,8 @@ git pull origin main
 git merge staging --no-edit
 
 # Deploy to production
-echo "Deploying to production Railway..."
-railway up --detach
+echo "Deploying to production backend..."
+backend up --detach
 
 # Deploy frontend to production
 echo "Deploying frontend to production Vercel..."
@@ -167,12 +167,12 @@ echo "3️⃣ Monitoring production deployment..."
 sleep 30
 
 # Verify production health
-prod_health=$(curl -s https://n0de-backend-production-4e34.up.railway.app/health 2>/dev/null)
+prod_health=$(curl -s https://api.n0de.pro/health 2>/dev/null)
 if echo "$prod_health" | jq -e '.status' >/dev/null 2>&1; then
   echo "✅ PRODUCTION DEPLOYMENT SUCCESSFUL!"
   echo ""
   echo "Live URLs:"
-  echo "• Backend: https://n0de-backend-production-4e34.up.railway.app"
+  echo "• Backend: https://api.n0de.pro"
   echo "• Frontend: https://www.n0de.pro"
 else
   echo "❌ Production deployment failed - consider rollback"
@@ -195,4 +195,4 @@ echo "5. Run: ./promote-to-production.sh"
 echo ""
 echo "🎯 Result: Safe, tested deployments every time!"
 echo ""
-echo "Next: Get Railway and Vercel tokens for full automation!"
+echo "Next: Get backend and Vercel tokens for full automation!"

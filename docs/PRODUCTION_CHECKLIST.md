@@ -1,6 +1,6 @@
 # N0DE Production Deployment Checklist
 
-This comprehensive checklist ensures a successful migration from Railway to bare metal with zero downtime for your Solana RPC service.
+This comprehensive checklist ensures a successful migration from backend to bare metal with zero downtime for your Solana RPC service.
 
 ## 📋 Pre-Migration Checklist
 
@@ -16,10 +16,10 @@ This comprehensive checklist ensures a successful migration from Railway to bare
   - [ ] Validator process stable: `ps aux | grep agave-validator`
   - [ ] No recent crashes in logs
 
-- [ ] **Backup current Railway data**
-  - [ ] Test Railway CLI access: `railway login`
-  - [ ] Export environment variables: `railway variables`
-  - [ ] Verify database connectivity on Railway
+- [ ] **Backup current backend data**
+  - [ ] Test backend CLI access: `backend login`
+  - [ ] Export environment variables: `backend variables`
+  - [ ] Verify database connectivity on backend
   - [ ] Note current frontend URL and verify it's working
 
 ### Dependencies Installation
@@ -31,7 +31,7 @@ This comprehensive checklist ensures a successful migration from Railway to bare
   - [ ] PM2 or systemd available
   
 - [ ] **Required CLI tools**
-  - [ ] Railway CLI: `railway --version`  
+  - [ ] backend CLI: `backend --version`  
   - [ ] Vercel CLI (optional): `vercel --version`
   - [ ] certbot: `certbot --version`
   - [ ] PostgreSQL client: `psql --version`
@@ -66,9 +66,9 @@ This comprehensive checklist ensures a successful migration from Railway to bare
   - [ ] Connection URL generated
 
 ### Phase 3: Data Migration
-- [ ] **Export Railway data**
+- [ ] **Export backend data**
   ```bash
-  ./scripts/railway-export.sh
+  ./scripts/backend-export.sh
   ```
   - [ ] Environment variables exported
   - [ ] Database dump created (check file size >1KB)
@@ -76,7 +76,7 @@ This comprehensive checklist ensures a successful migration from Railway to bare
   
 - [ ] **Import to local database**
   ```bash
-  ./scripts/import-railway-data.sh
+  ./scripts/import-backend-data.sh
   ```
   - [ ] Pre-import backup created
   - [ ] Database import successful
@@ -225,7 +225,7 @@ This comprehensive checklist ensures a successful migration from Railway to bare
   - [ ] Test critical user flows
 
 - [ ] **Performance validation**
-  - [ ] Compare response times to Railway baseline
+  - [ ] Compare response times to backend baseline
   - [ ] Check memory usage trends
   - [ ] Verify database performance
   - [ ] Monitor Solana RPC stability
@@ -234,7 +234,7 @@ This comprehensive checklist ensures a successful migration from Railway to bare
 - [ ] **Cleanup old infrastructure** 
   - [ ] Archive redundant files: `./scripts/cleanup-redundant.sh`
   - [ ] Document any custom configurations
-  - [ ] Plan Railway cleanup (keep running as backup initially)
+  - [ ] Plan backend cleanup (keep running as backup initially)
 
 - [ ] **Documentation updates**
   - [ ] Update internal documentation with new URLs
@@ -242,10 +242,10 @@ This comprehensive checklist ensures a successful migration from Railway to bare
   - [ ] Document any custom configurations
 
 ### Within 1 Month
-- [ ] **Remove Railway dependency**
+- [ ] **Remove backend dependency**
   - [ ] Verify everything working smoothly
-  - [ ] Export final backup from Railway
-  - [ ] Cancel Railway subscription
+  - [ ] Export final backup from backend
+  - [ ] Cancel backend subscription
   - [ ] Update documentation
 
 ## 🔙 Rollback Checklist
@@ -258,15 +258,15 @@ If issues occur, follow rollback procedure:
   ```
   - [ ] Stop local services
   - [ ] Restore nginx configuration
-  - [ ] Verify Railway still accessible
+  - [ ] Verify backend still accessible
 
 - [ ] **Frontend rollback**
   - [ ] Revert Vercel environment variables
-  - [ ] Redeploy frontend to Railway endpoints
+  - [ ] Redeploy frontend to backend endpoints
   - [ ] Test critical functionality
 
 - [ ] **Data recovery**
-  - [ ] Railway database still accessible
+  - [ ] backend database still accessible
   - [ ] No data loss from export/import process
   - [ ] Critical user data intact
 
@@ -286,7 +286,7 @@ Migration is considered successful when:
 - [ ] ✅ **Backend API**: All endpoints responding correctly  
 - [ ] ✅ **Frontend**: Fully functional with new backend
 - [ ] ✅ **Database**: All data migrated and accessible
-- [ ] ✅ **Performance**: Response times equal or better than Railway
+- [ ] ✅ **Performance**: Response times equal or better than backend
 - [ ] ✅ **Monitoring**: Full system monitoring active
 - [ ] ✅ **Backups**: Automated backups running
 - [ ] ✅ **SSL**: HTTPS working correctly (production)

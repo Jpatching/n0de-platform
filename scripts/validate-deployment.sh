@@ -5,7 +5,7 @@ echo "🔍 N0DE Platform Deployment Validation"
 echo "======================================="
 echo ""
 
-BACKEND="https://n0de-backend-production-4e34.up.railway.app"
+BACKEND="https://api.n0de.pro"
 FRONTEND="https://www.n0de.pro"
 
 # Function to check endpoint
@@ -68,5 +68,5 @@ if check_endpoint "$BACKEND/health" "" > /dev/null 2>&1; then
     echo "4. Test RPC endpoints"
 else
     echo "⚠️  Platform deployment in progress..."
-    echo "Check Railway logs for details"
+    echo "Check backend logs for details"
 fi

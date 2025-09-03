@@ -8,7 +8,7 @@ echo "============================"
 echo ""
 
 # Backend URL
-BACKEND="https://n0de-backend-production-4e34.up.railway.app"
+BACKEND="https://api.n0de.pro"
 FRONTEND="https://www.n0de.pro"
 
 # Step 1: Disable billing and fix auth
@@ -19,12 +19,12 @@ cd /home/sol/n0de-deploy
 cat > .env.production << 'EOF'
 NODE_ENV=production
 PORT=3000
-DATABASE_URL=postgresql://postgres:mMXWyeIXnJXKWsqWmgiHfReABwrgqVvN@postgres-8vk9.railway.internal:5432/railway
-REDIS_URL=redis://default:stSdHSGnoeHVkNMErsoDkQWvhYUUtEfB@redis-rubf.railway.internal:6379
+DATABASE_URL=postgresql://postgres:mMXWyeIXnJXKWsqWmgiHfReABwrgqVvN@postgres-8vk9.backend.internal:5432/backend
+REDIS_URL=redis://default:stSdHSGnoeHVkNMErsoDkQWvhYUUtEfB@redis-rubf.backend.internal:6379
 
 # URLs
-API_BASE_URL=https://n0de-backend-production-4e34.up.railway.app/api/v1
-BACKEND_URL=https://n0de-backend-production-4e34.up.railway.app
+API_BASE_URL=https://api.n0de.pro/api/v1
+BACKEND_URL=https://api.n0de.pro
 FRONTEND_URL=https://www.n0de.pro
 
 # Disable billing
@@ -111,8 +111,8 @@ EOF
 
 # Step 4: Deploy
 echo ""
-echo "4️⃣ Deploying to Railway..."
-railway up --detach
+echo "4️⃣ Deploying to backend..."
+backend up --detach
 
 # Step 5: Test
 echo ""

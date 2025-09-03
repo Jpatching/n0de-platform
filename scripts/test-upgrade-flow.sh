@@ -2,7 +2,7 @@
 
 # Test N0DE Platform Upgrade Flow
 
-API_URL="https://n0de-backend-production-4e34.up.railway.app"
+API_URL="https://api.n0de.pro"
 FRONTEND_URL="https://www.n0de.pro"
 
 echo "Testing N0DE Platform Upgrade Flow"

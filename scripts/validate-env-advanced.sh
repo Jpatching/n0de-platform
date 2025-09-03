@@ -25,22 +25,22 @@ PLACEHOLDER_VARS=0
 MISSING_VARS=0
 
 echo ""
-echo "📋 Getting current Railway environment variables..."
+echo "📋 Getting current backend environment variables..."
 
-# Get Railway variables using MCP
-RAILWAY_VARS_JSON=$(railway variables --json 2>/dev/null || echo "{}")
+# Get backend variables using MCP
+backend_VARS_JSON=$(backend variables --json 2>/dev/null || echo "{}")
 
-echo "✅ Railway variables retrieved"
+echo "✅ backend variables retrieved"
 echo ""
 
-# Function to check Railway variable
-check_railway_var() {
+# Function to check backend variable
+check_backend_var() {
     local var_name=$1
     local expected_pattern=$2
     local var_value
     
     # Extract variable value from JSON
-    var_value=$(echo "$RAILWAY_VARS_JSON" | grep "\"$var_name\":" | cut -d':' -f2- | sed 's/[",]//g' | xargs 2>/dev/null || echo "")
+    var_value=$(echo "$backend_VARS_JSON" | grep "\"$var_name\":" | cut -d':' -f2- | sed 's/[",]//g' | xargs 2>/dev/null || echo "")
     
     ((TOTAL_VARS++))
     
@@ -63,11 +63,11 @@ check_railway_var() {
     fi
 }
 
-# Test Railway service health
+# Test backend service health
 test_service_health() {
     echo "🏥 Testing service health and connectivity..."
     
-    local backend_url="https://n0de-backend-production-4e34.up.railway.app"
+    local backend_url="https://api.n0de.pro"
     
     # Test health endpoint
     if curl -s "$backend_url/health" > /dev/null 2>&1; then
@@ -103,43 +103,43 @@ test_service_health() {
 
 # Core validation
 echo "🔧 Core Application Variables:"
-check_railway_var "NODE_ENV" "^production$"
-check_railway_var "PORT" "^[0-9]+$"
-check_railway_var "DATABASE_URL" "^postgresql://.*"
-check_railway_var "REDIS_URL" "^redis://.*"
+check_backend_var "NODE_ENV" "^production$"
+check_backend_var "PORT" "^[0-9]+$"
+check_backend_var "DATABASE_URL" "^postgresql://.*"
+check_backend_var "REDIS_URL" "^redis://.*"
 
 echo ""
 echo "🌐 URL Configuration:"
-check_railway_var "FRONTEND_URL" "^https://.*n0de\.pro$"
-check_railway_var "BASE_URL" "^https://.*railway\.app$"
-check_railway_var "SERVER_URL" "^https://.*railway\.app$"
+check_backend_var "FRONTEND_URL" "^https://.*n0de\.pro$"
+check_backend_var "BASE_URL" "^https://.*backend\.app$"
+check_backend_var "SERVER_URL" "^https://.*backend\.app$"
 
 echo ""
 echo "🔐 Authentication & Security:"
-check_railway_var "JWT_SECRET" "^.{20,}$"
-check_railway_var "JWT_EXPIRES_IN" "^[0-9]+[hmd]$"
-check_railway_var "JWT_REFRESH_SECRET" "^.{20,}$"
-check_railway_var "SESSION_SECRET" "^.{20,}$"
+check_backend_var "JWT_SECRET" "^.{20,}$"
+check_backend_var "JWT_EXPIRES_IN" "^[0-9]+[hmd]$"
+check_backend_var "JWT_REFRESH_SECRET" "^.{20,}$"
+check_backend_var "SESSION_SECRET" "^.{20,}$"
 
 echo ""
 echo "🔑 OAuth Configuration:"
-check_railway_var "GOOGLE_CLIENT_ID" "^[0-9]+-.*\.apps\.googleusercontent\.com$"
-check_railway_var "GOOGLE_CLIENT_SECRET" "^GOCSPX-.*"
-check_railway_var "GITHUB_CLIENT_ID" "^Ov[0-9A-Za-z]+$"
-check_railway_var "GITHUB_CLIENT_SECRET" "^[0-9a-f]+$"
+check_backend_var "GOOGLE_CLIENT_ID" "^[0-9]+-.*\.apps\.googleusercontent\.com$"
+check_backend_var "GOOGLE_CLIENT_SECRET" "^GOCSPX-.*"
+check_backend_var "GITHUB_CLIENT_ID" "^Ov[0-9A-Za-z]+$"
+check_backend_var "GITHUB_CLIENT_SECRET" "^[0-9a-f]+$"
 
 echo ""
 echo "💳 Payment Providers:"
-check_railway_var "STRIPE_SECRET_KEY" "^sk_(live|test)_[0-9A-Za-z]+$"
-check_railway_var "STRIPE_WEBHOOK_SECRET" "^whsec_.*"
-check_railway_var "COINBASE_COMMERCE_API_KEY" "^[0-9a-f-]+$"
-check_railway_var "NOWPAYMENTS_API_KEY" "^[A-Z0-9-]+$"
+check_backend_var "STRIPE_SECRET_KEY" "^sk_(live|test)_[0-9A-Za-z]+$"
+check_backend_var "STRIPE_WEBHOOK_SECRET" "^whsec_.*"
+check_backend_var "COINBASE_COMMERCE_API_KEY" "^[0-9a-f-]+$"
+check_backend_var "NOWPAYMENTS_API_KEY" "^[A-Z0-9-]+$"
 
 echo ""
 echo "🛡️ Security & Rate Limiting:"
-check_railway_var "RATE_LIMIT_MAX" "^[0-9]+$"
-check_railway_var "RATE_LIMIT_TTL" "^[0-9]+$"
-check_railway_var "CORS_ORIGINS" ".*n0de\.pro.*"
+check_backend_var "RATE_LIMIT_MAX" "^[0-9]+$"
+check_backend_var "RATE_LIMIT_TTL" "^[0-9]+$"
+check_backend_var "CORS_ORIGINS" ".*n0de\.pro.*"
 
 echo ""
 test_service_health
@@ -159,7 +159,7 @@ echo "=========================="
 
 if [[ $MISSING_VARS -gt 0 ]]; then
     echo -e "${RED}HIGH PRIORITY: Fix missing variables${NC}"
-    echo "   • Run: railway variables --set \"VARIABLE_NAME=value\""
+    echo "   • Run: backend variables --set \"VARIABLE_NAME=value\""
 fi
 
 if [[ $PLACEHOLDER_VARS -gt 0 ]]; then

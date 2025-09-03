@@ -19,7 +19,7 @@ export class HealthService {
       uptime: process.uptime(),
       version: process.env.npm_package_version || '1.0.0',
       environment: process.env.NODE_ENV || 'development',
-      region: process.env.RAILWAY_REGION || 'local',
+      region: process.env.backend_REGION || 'local',
       responseTime: `${responseTime}ms`,
       services: {
         database: {

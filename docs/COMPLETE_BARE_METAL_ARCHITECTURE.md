@@ -189,7 +189,7 @@ proxy_cache_valid 404 1m;
 
 ### **Immediate Savings (Monthly)**
 - **Vercel Pro**: $20/month → $0
-- **Railway Backend**: $25/month → $0  
+- **backend Backend**: $25/month → $0  
 - **Total Savings**: $45/month = $540/year
 
 ### **Security Improvements**
@@ -255,7 +255,7 @@ proxy_cache_valid 404 1m;
 ## 🎉 **Final Result: Complete Independence**
 
 **Zero Dependencies:**
-- ✅ No Railway
+- ✅ No backend
 - ✅ No Vercel  
 - ✅ No AWS/GCP/Azure
 - ✅ Only DNS (can be any provider)

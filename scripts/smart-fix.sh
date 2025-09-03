@@ -178,7 +178,7 @@ EOF
 # Step 6: Deploy minimal version
 echo ""
 echo "6️⃣ Deploying minimal backend..."
-railway up --detach
+backend up --detach
 
 echo ""
 echo "✅ SMART FIX DEPLOYED!"

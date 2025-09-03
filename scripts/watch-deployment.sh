@@ -1,11 +1,11 @@
 #!/bin/bash
 # Real-time deployment monitoring with auto-fix
 
-echo "👀 Railway Deployment Monitor"
+echo "👀 backend Deployment Monitor"
 echo "============================="
 echo ""
 
-BACKEND_URL="https://n0de-backend-production-4e34.up.railway.app"
+BACKEND_URL="https://api.n0de.pro"
 MAX_WAIT=300  # 5 minutes max wait time
 CHECK_INTERVAL=10
 
@@ -61,9 +61,9 @@ while [ $elapsed -lt $MAX_WAIT ]; do
   else
     echo "❌ Deployment issue (HTTP $response)"
     
-    # Try to get Railway logs for debugging
-    echo "Checking Railway logs..."
-    railway logs 2>&1 | tail -10
+    # Try to get backend logs for debugging
+    echo "Checking backend logs..."
+    backend logs 2>&1 | tail -10
   fi
   
   sleep $CHECK_INTERVAL
@@ -72,5 +72,5 @@ done
 
 echo ""
 echo "⏰ TIMEOUT: Deployment took longer than $MAX_WAIT seconds"
-echo "Check Railway logs manually: railway logs"
-echo "Check build logs at: https://railway.com/project/262d4f31-c5ec-4614-8db6-b62bdb18ee17"
+echo "Check backend logs manually: backend logs"
+echo "Check build logs at: https://backend.com/project/262d4f31-c5ec-4614-8db6-b62bdb18ee17"

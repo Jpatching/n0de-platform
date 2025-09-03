@@ -7,7 +7,7 @@ echo ""
 
 # Set tokens permanently
 echo "1️⃣ Setting up environment tokens..."
-echo 'export RAILWAY_TOKEN="112c11ee-16ab-42bc-a23f-c7c06f32fff0"' >> ~/.bashrc
+echo 'export backend_TOKEN="112c11ee-16ab-42bc-a23f-c7c06f32fff0"' >> ~/.bashrc
 echo 'export VERCEL_TOKEN="your-vercel-token-here"' >> ~/.bashrc
 source ~/.bashrc
 
@@ -62,7 +62,7 @@ cat > package.json.new << 'EOF'
     
     "monitor": "scripts/monitor-deployments.sh",
     "context": "scripts/get-full-context.sh",
-    "logs": "RAILWAY_TOKEN=$RAILWAY_TOKEN railway logs",
+    "logs": "backend_TOKEN=$backend_TOKEN backend logs",
     
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push"
@@ -135,7 +135,7 @@ cat > .env.development << 'EOF'
 # Development Environment
 NODE_ENV=development
 PORT=3001
-DATABASE_URL=postgresql://postgres:mMXWyeIXnJXKWsqWmgiHfReABwrgqVvN@postgres-8vk9.railway.internal:5432/railway
+DATABASE_URL=postgresql://postgres:mMXWyeIXnJXKWsqWmgiHfReABwrgqVvN@postgres-8vk9.backend.internal:5432/backend
 JWT_SECRET=dev_jwt_secret_2024
 FRONTEND_URL=http://localhost:3000
 BACKEND_URL=http://localhost:3001
@@ -145,14 +145,14 @@ EOF
 
 # Create production environment template
 cat > .env.production.template << 'EOF'
-# Production Environment (Railway will override with real values)
+# Production Environment (backend will override with real values)
 NODE_ENV=production
 PORT=3000
-# DATABASE_URL - Set by Railway automatically
-# REDIS_URL - Set by Railway automatically
+# DATABASE_URL - Set by backend automatically
+# REDIS_URL - Set by backend automatically
 JWT_SECRET=n0de_production_jwt_secret_2024
 FRONTEND_URL=https://www.n0de.pro
-BACKEND_URL=https://n0de-backend-production-4e34.up.railway.app
+BACKEND_URL=https://api.n0de.pro
 BILLING_ENABLED=true
 DEBUG_MODE=false
 EOF
@@ -170,29 +170,29 @@ cat > scripts/deploy.sh << 'EOF'
 TARGET=${1:-staging}
 echo "🚀 Deploying to $TARGET..."
 
-export RAILWAY_TOKEN="112c11ee-16ab-42bc-a23f-c7c06f32fff0"
+export backend_TOKEN="112c11ee-16ab-42bc-a23f-c7c06f32fff0"
 
 if [ "$TARGET" = "staging" ]; then
   echo "Deploying to staging environment..."
   # Set staging vars and deploy
-  RAILWAY_TOKEN=$RAILWAY_TOKEN railway variables --set "STAGING_MODE=true"
-  RAILWAY_TOKEN=$RAILWAY_TOKEN railway up --detach
+  backend_TOKEN=$backend_TOKEN backend variables --set "STAGING_MODE=true"
+  backend_TOKEN=$backend_TOKEN backend up --detach
 elif [ "$TARGET" = "production" ]; then
   echo "Deploying to production..."
   # Ensure production vars
-  RAILWAY_TOKEN=$RAILWAY_TOKEN railway variables --set "NODE_ENV=production"
-  RAILWAY_TOKEN=$RAILWAY_TOKEN railway up --detach
+  backend_TOKEN=$backend_TOKEN backend variables --set "NODE_ENV=production"
+  backend_TOKEN=$backend_TOKEN backend up --detach
 fi
 
 # Monitor deployment
 echo "Monitoring deployment..."
 sleep 30
-health=$(curl -s https://n0de-backend-production-4e34.up.railway.app/health 2>/dev/null)
+health=$(curl -s https://api.n0de.pro/health 2>/dev/null)
 if echo "$health" | jq -e '.status' >/dev/null 2>&1; then
   echo "✅ Deployment successful!"
 else
   echo "❌ Deployment failed"
-  RAILWAY_TOKEN=$RAILWAY_TOKEN railway logs | tail -20
+  backend_TOKEN=$backend_TOKEN backend logs | tail -20
 fi
 EOF
 
@@ -201,7 +201,7 @@ cat > scripts/monitor.sh << 'EOF'
 #!/bin/bash
 # Real-time deployment and error monitoring
 
-export RAILWAY_TOKEN="112c11ee-16ab-42bc-a23f-c7c06f32fff0"
+export backend_TOKEN="112c11ee-16ab-42bc-a23f-c7c06f32fff0"
 
 echo "👀 Real-time N0DE Platform Monitor"
 echo "=================================="
@@ -212,7 +212,7 @@ while true; do
   echo "====================="
   
   # Backend health
-  health=$(curl -s https://n0de-backend-production-4e34.up.railway.app/health 2>/dev/null)
+  health=$(curl -s https://api.n0de.pro/health 2>/dev/null)
   if echo "$health" | jq -e '.status' >/dev/null 2>&1; then
     status=$(echo "$health" | jq -r '.status')
     uptime=$(echo "$health" | jq -r '.uptime')
@@ -222,7 +222,7 @@ while true; do
   fi
   
   # Database check
-  plans=$(curl -s https://n0de-backend-production-4e34.up.railway.app/api/v1/subscriptions/plans 2>/dev/null)
+  plans=$(curl -s https://api.n0de.pro/api/v1/subscriptions/plans 2>/dev/null)
   if echo "$plans" | jq -e '.[0]' >/dev/null 2>&1; then
     count=$(echo "$plans" | jq '. | length')
     echo "✅ Database: Connected ($count plans)"
@@ -237,7 +237,7 @@ while true; do
   # Recent errors
   echo ""
   echo "🔍 Recent Errors:"
-  RAILWAY_TOKEN=$RAILWAY_TOKEN railway logs 2>&1 | grep -E "(ERROR|error)" | tail -3 | sed 's/^/   /'
+  backend_TOKEN=$backend_TOKEN backend logs 2>&1 | grep -E "(ERROR|error)" | tail -3 | sed 's/^/   /'
   
   echo ""
   echo "Press Ctrl+C to stop monitoring..."
@@ -270,7 +270,7 @@ echo ""
 echo "📊 **MONITORING**:"
 echo "   npm run monitor           # Real-time platform monitoring"
 echo "   npm run context           # Get full debugging context"
-echo "   npm run logs              # View Railway logs"
+echo "   npm run logs              # View backend logs"
 echo ""
 echo "🎯 **YOUR WORKFLOW NOW:**"
 echo "========================"

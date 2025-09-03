@@ -123,7 +123,7 @@ async function testN0deUpgradeWithAuth() {
     const wrongResponse = await page.evaluate(async () => {
       try {
         const token = localStorage.getItem('n0de_token');
-        const response = await fetch('https://n0de-backend-production-4e34.up.railway.app/api/v1/subscriptions/upgrade', {
+        const response = await fetch('https://api.n0de.pro/api/v1/subscriptions/upgrade', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -150,7 +150,7 @@ async function testN0deUpgradeWithAuth() {
     const correctResponse = await page.evaluate(async () => {
       try {
         const token = localStorage.getItem('n0de_token');
-        const response = await fetch('https://n0de-backend-production-4e34.up.railway.app/api/v1/payments/subscription/upgrade/checkout', {
+        const response = await fetch('https://api.n0de.pro/api/v1/payments/subscription/upgrade/checkout', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

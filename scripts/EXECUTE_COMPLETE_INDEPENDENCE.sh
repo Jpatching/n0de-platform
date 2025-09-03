@@ -23,7 +23,7 @@ cd /home/sol/n0de-deploy
 
 # Pre-flight checks
 echo -e "${YELLOW}🔍 Pre-flight Security Checks...${NC}"
-echo -e "${BLUE}   • Railway status: $(curl -s --connect-timeout 3 https://n0de-backend-production-4e34.up.railway.app/health 2>&1 | grep -q "error\|404" && echo "OFFLINE ✅" || echo "STILL ACTIVE ⚠️")${NC}"
+echo -e "${BLUE}   • backend status: $(curl -s --connect-timeout 3 https://api.n0de.pro/health 2>&1 | grep -q "error\|404" && echo "OFFLINE ✅" || echo "STILL ACTIVE ⚠️")${NC}"
 echo -e "${BLUE}   • Server resources: 768GB RAM, 32 cores ✅${NC}"
 echo -e "${BLUE}   • Domain: n0de.pro ready ✅${NC}"
 echo ""
@@ -135,7 +135,7 @@ echo -e "${YELLOW}   2. SSL: Run 'sudo certbot --nginx -d n0de.pro -d www.n0de.p
 echo -e "${YELLOW}   3. nginx: Copy configurations and restart${NC}"
 echo -e "${YELLOW}   4. Test: Access https://n0de.pro${NC}"
 echo ""
-echo -e "${GREEN}💰 Monthly Savings: $45 (Railway + Vercel)${NC}"
+echo -e "${GREEN}💰 Monthly Savings: $45 (backend + Vercel)${NC}"
 echo -e "${GREEN}🔒 Security Level: Military-Grade${NC}"
 echo -e "${GREEN}⚡ Performance: 500% potential improvement${NC}"
 echo -e "${GREEN}🎯 Dependencies: ZERO cloud providers${NC}"
@@ -149,7 +149,7 @@ cat > DEPLOYMENT_SUMMARY.md << 'EOF'
 ## Status: COMPLETE ✅
 
 ### Cloud Dependencies Eliminated:
-- ❌ Railway Backend: OFFLINE  
+- ❌ backend Backend: OFFLINE  
 - ❌ Vercel Frontend: MIGRATED to bare metal
 - ✅ Complete independence achieved
 

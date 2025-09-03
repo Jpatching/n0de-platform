@@ -22,9 +22,9 @@ cd /tmp/n0de-frontend/n0de-website
 echo "📋 Setting Vercel environment variables..."
 
 # Backend API Configuration
-vercel env add NEXT_PUBLIC_API_BASE_URL production <<< "https://n0de-backend-production-4e34.up.railway.app/api/v1"
-vercel env add NEXT_PUBLIC_WS_URL production <<< "wss://n0de-backend-production-4e34.up.railway.app"
-vercel env add NEXT_PUBLIC_AUTH_URL production <<< "https://n0de-backend-production-4e34.up.railway.app"
+vercel env add NEXT_PUBLIC_API_BASE_URL production <<< "https://api.n0de.pro/api/v1"
+vercel env add NEXT_PUBLIC_WS_URL production <<< "wss://api.n0de.pro"
+vercel env add NEXT_PUBLIC_AUTH_URL production <<< "https://api.n0de.pro"
 
 # App Configuration
 vercel env add NEXT_PUBLIC_APP_URL production <<< "https://www.n0de.pro"

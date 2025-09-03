@@ -46,7 +46,7 @@ case "payments-specialist" in
   "devops-engineer")
     # Check deployment configurations
     echo "  Validating deployment configs..."
-    railway status || echo "Railway not configured"
+    backend status || echo "backend not configured"
     ;;
 esac
 

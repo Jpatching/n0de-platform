@@ -2,11 +2,11 @@
 
 # N0DE Environment Variables Validation Script
 # This script validates that all required environment variables are set
-# Usage: ./scripts/validate-env.sh [railway|vercel|local]
+# Usage: ./scripts/validate-env.sh [backend|vercel|local]
 
 set -e
 
-ENVIRONMENT=${1:-"railway"}
+ENVIRONMENT=${1:-"backend"}
 
 echo "🔍 N0DE Environment Validation"
 echo "=============================="
@@ -28,9 +28,9 @@ validate_variable() {
     local var_value
     
     case $ENVIRONMENT in
-        "railway")
-            # Use Railway MCP to get variables in JSON format and parse
-            var_value=$(railway variables --json 2>/dev/null | grep "\"$var_name\":" | cut -d':' -f2- | tr -d '",' | xargs 2>/dev/null || echo "")
+        "backend")
+            # Use backend MCP to get variables in JSON format and parse
+            var_value=$(backend variables --json 2>/dev/null | grep "\"$var_name\":" | cut -d':' -f2- | tr -d '",' | xargs 2>/dev/null || echo "")
             ;;
         "local")
             var_value=$(grep "^$var_name=" .env 2>/dev/null | cut -d'=' -f2- || echo "")
@@ -106,11 +106,11 @@ if [ $MISSING_COUNT -eq 0 ]; then
     echo ""
     echo -e "🎉 ${GREEN}All environment variables are properly configured!${NC}"
     
-    # Test backend health if it's Railway validation
-    if [ "$ENVIRONMENT" = "railway" ]; then
+    # Test backend health if it's backend validation
+    if [ "$ENVIRONMENT" = "backend" ]; then
         echo ""
         echo "🏥 Testing backend health..."
-        if curl -s https://n0de-backend-production-4e34.up.railway.app/health > /dev/null; then
+        if curl -s https://api.n0de.pro/health > /dev/null; then
             echo -e "✅ ${GREEN}Backend health check passed${NC}"
         else
             echo -e "⚠️ ${YELLOW}Backend health check failed - service may be starting${NC}"

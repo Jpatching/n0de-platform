@@ -11,7 +11,7 @@ const path = require('path');
 
 class ProductionMonitor {
   constructor() {
-    this.baseURL = 'https://n0de-backend-production-4e34.up.railway.app';
+    this.baseURL = 'https://api.n0de.pro';
     this.frontendURL = 'https://www.n0de.pro';
     this.logFile = '/home/sol/n0de-deploy/logs/production-metrics.log';
     this.metricsHistory = [];

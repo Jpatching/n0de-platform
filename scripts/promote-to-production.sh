@@ -23,8 +23,8 @@ git pull origin main
 git merge staging --no-edit
 
 # Deploy to production
-echo "Deploying to production Railway..."
-railway up --detach
+echo "Deploying to production backend..."
+backend up --detach
 
 # Deploy frontend to production
 echo "Deploying frontend to production Vercel..."
@@ -37,12 +37,12 @@ echo "3️⃣ Monitoring production deployment..."
 sleep 30
 
 # Verify production health
-prod_health=$(curl -s https://n0de-backend-production-4e34.up.railway.app/health 2>/dev/null)
+prod_health=$(curl -s https://api.n0de.pro/health 2>/dev/null)
 if echo "$prod_health" | jq -e '.status' >/dev/null 2>&1; then
   echo "✅ PRODUCTION DEPLOYMENT SUCCESSFUL!"
   echo ""
   echo "Live URLs:"
-  echo "• Backend: https://n0de-backend-production-4e34.up.railway.app"
+  echo "• Backend: https://api.n0de.pro"
   echo "• Frontend: https://www.n0de.pro"
 else
   echo "❌ Production deployment failed - consider rollback"
