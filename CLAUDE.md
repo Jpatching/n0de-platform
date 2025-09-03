@@ -1,58 +1,42 @@
-# N0DE Platform - Claude Code Instructions
+# N0DE Platform - Project Configuration
 
-## Project Overview
-- Website: https://www.n0de.pro
-- Backend API: https://n0de-backend-production.up.railway.app
-- Frontend: Next.js application in `/frontend/n0de-website/`
-- Backend: NestJS application in `/src/`
+## Deployment Architecture
+- **Frontend**: Self-hosted Next.js on port 3000 (NOT Vercel)
+- **Backend**: Self-hosted NestJS API 
+- **Database**: PostgreSQL + Redis on this server
+- **Web Server**: Nginx reverse proxy
+- **Domain**: www.n0de.pro
 
-## Development Guidelines
+## Key Project Details
+- **Repository**: https://github.com/Jpatching/n0de-platform
+- **Working Directory**: /home/sol/n0de-deploy/
+- **Frontend Package Name**: "n0de-website" (not "frontend")
+- **Backend Package Name**: "n0de-backend"
 
-### Code Style
-- Use TypeScript for all new code
-- Follow existing patterns in the codebase
-- Use async/await instead of promises
-- Implement proper error handling
-- Add TypeScript types for all functions
+## ChatGPT Background Integration ✅
+- **Images**: `ChatGPT Image Aug 7, 2025, 12_12_38 AM.png` (main)
+- **Component**: InteractiveBackground.tsx with motion animations
+- **Status**: Fully integrated and working
 
-### File Organization
-- Frontend code goes in `/frontend/n0de-website/`
-- Backend code goes in `/src/`
-- Database schemas in `/prisma/`
-- Configuration files in project root
+## Current Status ✅
+- **Styling**: Complete restoration successful
+- **Build**: Clean (36 static pages)
+- **Authentication**: Working (GitHub/Google OAuth)
+- **Database**: Connected and functional
+- **SSL**: Configured and working
 
-### Testing
-- Write tests for new features
-- Run tests before committing
-- Ensure all tests pass
-
-### Deployment
-- Frontend: Deploy to Vercel using `vercel --prod`
-- Backend: Deploy to Railway using `railway up`
-- Always test locally before deploying
-
-### Security
-- Never commit secrets or API keys
-- Use environment variables for sensitive data
-- Validate all user inputs
-- Implement proper authentication checks
-
-### Important Commands
+## Development Commands
 ```bash
-# Backend
-npm run start:dev       # Start development server
-npm run build          # Build for production
-npx prisma db push     # Update database schema
+# Frontend (Next.js)
+cd /home/sol/n0de-deploy/frontend
+npm start                 # Port 3000
 
-# Frontend (from n0de-website directory)
-npm run dev            # Start development server
-npm run build          # Build for production
-vercel --prod          # Deploy to production
+# Backend (NestJS)
+cd /home/sol/n0de-deploy
+npm run start:prod       # API server
 ```
 
-## Current Architecture
-- Authentication: JWT with Google/GitHub OAuth
-- Database: PostgreSQL (production) / SQLite (development)
-- Payments: Stripe integration
-- Hosting: Vercel (frontend) + Railway (backend)
-- don't use get-logs for railway mcp it doesn't work
+## Server Credentials
+- **Password**: Aguero07! (for sudo operations)
+- **Architecture**: Bare metal Linux server
+- **No Railway dependency**: Fully independent deployment

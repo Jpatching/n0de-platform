@@ -17,6 +17,7 @@ model User {
   passwordHash      String?
   firstName         String?
   lastName          String?
+  name              String?   // Full name field for display
   avatar            String?
   emailVerified     Boolean   @default(false)
   emailVerifiedAt   DateTime?
@@ -29,6 +30,8 @@ model User {
   githubId          String?   @unique
   googleId          String?   @unique
   role              UserRole  @default(USER)
+  status            String?   @default("active") // active, suspended, inactive
+  organizationId    String?   // Reference to organization
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -46,6 +49,12 @@ model User {
   billingUsage      BillingUsage[]
   realTimeUsage     RealTimeUsage?
   billingAnalytics  BillingAnalytics[]
+  
+  // Team Management Relations
+  organization      Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  organizationRole  OrganizationRole?
+  sentInvitations   TeamInvitation[] @relation("InvitedBy")
+  teamAuditLogs     TeamAuditLog[]
   
   @@map("users")
 }
@@ -440,6 +449,21 @@ enum UserRole {
   SUPER_ADMIN
 }
 
+enum TeamRole {
+  OWNER
+  ADMIN  
+  DEVELOPER
+  VIEWER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  CANCELED
+}
+
 model Notification {
   id          String   @id @default(cuid())
   userId      String
@@ -521,4 +545,90 @@ model BillingAnalytics {
 
   @@unique([userId, date, endpoint, network])
   @@map("billing_analytics")
+}
+
+// Team Management Models
+model Organization {
+  id              String               @id @default(cuid())
+  name            String
+  description     String?
+  avatar          String?
+  settings        Json?                // Organization preferences, branding, etc.
+  planType        SubscriptionType     @default(FREE)
+  isActive        Boolean              @default(true)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  // Relations
+  users           User[]
+  organizationRoles OrganizationRole[]
+  teamInvitations TeamInvitation[]
+  teamAuditLogs   TeamAuditLog[]
+
+  @@map("organizations")
+}
+
+model OrganizationRole {
+  id              String       @id @default(cuid())
+  userId          String       @unique
+  organizationId  String
+  role            TeamRole     @default(DEVELOPER)
+  permissions     String[]     // Specific permissions array
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relations
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@map("organization_roles")
+}
+
+model TeamInvitation {
+  id              String             @id @default(cuid())
+  email           String
+  role            TeamRole           @default(DEVELOPER)
+  organizationId  String
+  invitedById     String
+  token           String             @unique @default(cuid())
+  status          InvitationStatus   @default(PENDING)
+  message         String?            // Optional invitation message
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  declinedAt      DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  // Relations
+  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy       User               @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([email, organizationId])
+  @@index([token])
+  @@index([status, expiresAt])
+  @@map("team_invitations")
+}
+
+model TeamAuditLog {
+  id              String       @id @default(cuid())
+  organizationId  String
+  userId          String?      // Who performed the action
+  action          String       // INVITE_USER, REMOVE_USER, UPDATE_ROLE, etc.
+  targetUserId    String?      // User being acted upon
+  targetEmail     String?      // Email being acted upon (for invitations)
+  details         Json?        // Additional action details
+  ipAddress       String?
+  userAgent       String?
+  metadata        Json?
+  createdAt       DateTime     @default(now())
+
+  // Relations
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([userId, action])
+  @@map("team_audit_logs")
 }

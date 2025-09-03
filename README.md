@@ -3,18 +3,18 @@
 **Professional-grade Solana RPC endpoints with enterprise subscription management, real-time analytics, and comprehensive payment processing.**
 
 [![Live Website](https://img.shields.io/badge/Live-www.n0de.pro-blue?style=for-the-badge)](https://www.n0de.pro)
-[![API Status](https://img.shields.io/badge/API-Online-green?style=for-the-badge)](https://n0de-backend-production-4e34.up.railway.app/health)
+[![API Status](https://img.shields.io/badge/API-Online-green?style=for-the-badge)](https://n0de.pro/health)
 [![Built with](https://img.shields.io/badge/Built_with-NestJS_+_Next.js-red?style=for-the-badge)](https://github.com/Jpatching/n0de-platform)
 
 ## 🏗️ Architecture Overview
 
 ### 🔧 Backend API (NestJS)
-- **🌐 Production URL**: [n0de-backend-production-4e34.up.railway.app](https://n0de-backend-production-4e34.up.railway.app)
-- **☁️ Platform**: Railway (Auto-scaling)
+- **🌐 Production URL**: [n0de.pro](https://n0de.pro)
+- **☁️ Platform**: Self-hosted bare metal server
 - **⚡ Features**: High-performance RPC proxy, subscription management, multi-provider payments, JWT auth, real-time WebSockets
 
 ### 🎨 Frontend Application (Next.js)
-- **🌐 Production URL**: [www.n0de.pro](https://www.n0de.pro)
+- **🌐 Production URL**: [www.n0de.pro](https://www.n0de.pro)  
 - **☁️ Platform**: Vercel (Edge Network)
 - **📊 Features**: Developer portal, API playground, billing dashboard, real-time analytics
 
@@ -193,33 +193,69 @@ FRONTEND_URL="https://www.n0de.pro"
 
 ## 🚀 Deployment
 
-### Railway Backend Deployment
-1. **Connect repository to Railway**
-2. **Add PostgreSQL and Redis services**
-3. **Configure environment variables**
-4. **Deploy with automatic CI/CD**
+### Backend Deployment (Self-hosted)
+1. **Install dependencies and build**
+2. **Configure environment variables**  
+3. **Set up PostgreSQL and Redis**
+4. **Deploy with PM2 process manager**
 
 ```bash
-railway login
-railway init
-railway up
+# Build and start services
+npm run build
+pm2 start ecosystem.config.js
+pm2 save
 ```
 
-### Vercel Frontend Deployment
+### Frontend Deployment (Vercel)
 ```bash
-# Main website
-cd frontend/n0de-website
+# Deploy frontend to Vercel
+cd frontend
 vercel --prod
+```
 
+### Quick Development Setup
+```bash
+# Use the N0DE CLI for easy management
+./scripts/n0de dev     # Start development environment
+./scripts/n0de start   # Start production services
+./scripts/n0de status  # Check service status
 ```
 
 ### GitHub Actions CI/CD
 Automated workflows handle:
-- ✅ Comprehensive testing (unit, integration, E2E)
-- ✅ Payment system validation
-- ✅ Synchronized multi-service deployment
-- ✅ Health monitoring and alerts
+- ✅ Frontend deployment to Vercel on commits
+- ✅ OAuth endpoint validation
+- ✅ Build verification and health checks
 - ✅ Environment configuration validation
+
+## 🛠️ Development Experience
+
+### Quick Start Development
+```bash
+# Start complete development environment
+./scripts/n0de dev
+
+# Individual services
+./scripts/n0de start backend
+./scripts/n0de logs frontend
+./scripts/n0de deploy
+```
+
+### SSH Clipboard Integration
+```bash
+# Copy text to your local clipboard via SSH
+echo "API endpoint: https://n0de.pro/api/v1" | ./scripts/clipboard
+./scripts/clipboard "copied text"
+```
+
+### Tmux Development Dashboard
+The development environment includes:
+- **Editor Window**: Neovim with project files
+- **Backend Window**: Live logs and development server
+- **Frontend Window**: Next.js dev server and logs  
+- **Services Window**: Database monitoring, PM2 status, system resources
+- **Git Window**: Version control and deployment monitoring
+- **Logs Window**: Application, nginx, and system logs
 
 ## 📊 Enterprise Monitoring & Analytics
 

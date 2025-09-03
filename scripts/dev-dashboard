@@ -1,0 +1,77 @@
+#!/bin/bash
+# N0DE Development Dashboard - Tmux Session Manager
+
+SESSION_NAME="n0de-dev"
+WORK_DIR="/home/sol/n0de-deploy"
+
+# Check if session exists
+if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+    echo "🚀 Attaching to existing N0DE development session..."
+    tmux attach-session -t "$SESSION_NAME"
+    exit 0
+fi
+
+echo "🔧 Creating N0DE development dashboard..."
+
+# Create new session
+tmux new-session -d -s "$SESSION_NAME" -c "$WORK_DIR"
+
+# Window 1: Main Editor (Neovim)
+tmux rename-window -t "$SESSION_NAME:1" "editor"
+tmux send-keys -t "$SESSION_NAME:1" "cd $WORK_DIR && nvim ." Enter
+
+# Window 2: Backend Development
+tmux new-window -t "$SESSION_NAME" -n "backend" -c "$WORK_DIR"
+tmux split-window -h -t "$SESSION_NAME:backend"
+tmux send-keys -t "$SESSION_NAME:backend.0" "# Backend logs and development" Enter
+tmux send-keys -t "$SESSION_NAME:backend.0" "pm2 logs n0de-backend --lines 20" Enter
+tmux send-keys -t "$SESSION_NAME:backend.1" "# Backend shell" Enter
+tmux send-keys -t "$SESSION_NAME:backend.1" "npm run start:dev" Enter
+
+# Window 3: Frontend Development  
+tmux new-window -t "$SESSION_NAME" -n "frontend" -c "$WORK_DIR/frontend"
+tmux split-window -h -t "$SESSION_NAME:frontend"
+tmux send-keys -t "$SESSION_NAME:frontend.0" "# Frontend logs" Enter
+tmux send-keys -t "$SESSION_NAME:frontend.0" "pm2 logs n0de-frontend --lines 20" Enter
+tmux send-keys -t "$SESSION_NAME:frontend.1" "# Frontend development" Enter
+tmux send-keys -t "$SESSION_NAME:frontend.1" "npm run dev" Enter
+
+# Window 4: Database & Services
+tmux new-window -t "$SESSION_NAME" -n "services" -c "$WORK_DIR"
+tmux split-window -h -t "$SESSION_NAME:services"
+tmux split-window -v -t "$SESSION_NAME:services.0"
+tmux send-keys -t "$SESSION_NAME:services.0" "# Database monitoring" Enter
+tmux send-keys -t "$SESSION_NAME:services.0" "watch -n 5 'psql \$DATABASE_URL -c \"SELECT COUNT(*) as users FROM users;\"'" Enter
+tmux send-keys -t "$SESSION_NAME:services.1" "# PM2 Status" Enter
+tmux send-keys -t "$SESSION_NAME:services.1" "pm2 monit" Enter
+tmux send-keys -t "$SESSION_NAME:services.2" "# System resources" Enter
+tmux send-keys -t "$SESSION_NAME:services.2" "htop" Enter
+
+# Window 5: Git & Deployment
+tmux new-window -t "$SESSION_NAME" -n "git" -c "$WORK_DIR"
+tmux split-window -h -t "$SESSION_NAME:git"
+tmux send-keys -t "$SESSION_NAME:git.0" "# Git status and commits" Enter
+tmux send-keys -t "$SESSION_NAME:git.0" "git status" Enter
+tmux send-keys -t "$SESSION_NAME:git.1" "# Deployment monitoring" Enter
+tmux send-keys -t "$SESSION_NAME:git.1" "watch -n 10 'curl -s https://www.n0de.pro | grep -o \"N0DE\" || echo \"Frontend down\"'" Enter
+
+# Window 6: Logs & Monitoring
+tmux new-window -t "$SESSION_NAME" -n "logs" -c "$WORK_DIR"
+tmux split-window -h -t "$SESSION_NAME:logs"
+tmux split-window -v -t "$SESSION_NAME:logs.1"
+tmux send-keys -t "$SESSION_NAME:logs.0" "# Application logs" Enter
+tmux send-keys -t "$SESSION_NAME:logs.0" "tail -f logs/*.log" Enter
+tmux send-keys -t "$SESSION_NAME:logs.1" "# Nginx access logs" Enter  
+tmux send-keys -t "$SESSION_NAME:logs.1" "sudo tail -f /var/log/nginx/access.log" Enter
+tmux send-keys -t "$SESSION_NAME:logs.2" "# System logs" Enter
+tmux send-keys -t "$SESSION_NAME:logs.2" "journalctl -f" Enter
+
+# Select the first window
+tmux select-window -t "$SESSION_NAME:1"
+
+# Attach to the session
+echo "✅ N0DE development dashboard created!"
+echo "📋 Use 'clipboard' command to copy text to your local clipboard"
+echo "🔧 PM2 ecosystem configured for process management"
+echo ""
+tmux attach-session -t "$SESSION_NAME"

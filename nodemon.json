@@ -1,0 +1,44 @@
+{
+  "watch": [
+    "backend/**/*.ts",
+    "prisma/schema.prisma",
+    ".env",
+    ".env.local",
+    ".env.development",
+    "config/**/*.js"
+  ],
+  "ext": "ts,js,json,prisma,env",
+  "ignore": [
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "node_modules",
+    "dist",
+    "logs",
+    "coverage",
+    ".git",
+    "frontend/**/*"
+  ],
+  "exec": "npm run dev:backend",
+  "env": {
+    "NODE_ENV": "development",
+    "PORT": "4000",
+    "FORCE_COLOR": "1"
+  },
+  "events": {
+    "restart": "echo '🔄 Backend restarting due to changes...'",
+    "start": "echo '🚀 Backend starting in development mode...'",
+    "crash": "echo '💥 Backend crashed! Waiting for file changes before restarting...'",
+    "exit": "echo '👋 Backend process exited'"
+  },
+  "delay": "1000",
+  "verbose": false,
+  "colours": true,
+  "signal": "SIGTERM",
+  "restartable": "rs",
+  "killSignal": "SIGTERM",
+  "stdin": true,
+  "stdout": true,
+  "prismaTriggers": {
+    "onSchemaChange": "npx prisma generate && npx prisma db push"
+  }
+}

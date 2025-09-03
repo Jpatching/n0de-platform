@@ -1,0 +1,78 @@
+{
+  "version": "1.0.0",
+  "playwright_mcp": {
+    "browser": "chromium",
+    "headless": true,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "timeout": 30000,
+    "retries": 2,
+    "baseURL": "https://n0de.pro",
+    "testSuites": [
+      {
+        "name": "authentication",
+        "description": "User authentication and registration flows",
+        "tests": [
+          "user-registration.spec.js",
+          "user-login.spec.js",
+          "password-reset.spec.js",
+          "oauth-flows.spec.js"
+        ]
+      },
+      {
+        "name": "dashboard",
+        "description": "Dashboard navigation and functionality",
+        "tests": [
+          "dashboard-overview.spec.js",
+          "billing-dashboard.spec.js",
+          "analytics-dashboard.spec.js",
+          "api-keys-management.spec.js"
+        ]
+      },
+      {
+        "name": "payments",
+        "description": "All three payment method testing",
+        "tests": [
+          "stripe-payment-flow.spec.js",
+          "coinbase-payment-flow.spec.js",
+          "nowpayments-flow.spec.js",
+          "subscription-management.spec.js"
+        ]
+      },
+      {
+        "name": "api",
+        "description": "API functionality and playground",
+        "tests": [
+          "api-playground.spec.js",
+          "rpc-endpoints.spec.js",
+          "rate-limiting.spec.js"
+        ]
+      },
+      {
+        "name": "mobile",
+        "description": "Mobile-responsive testing",
+        "tests": [
+          "mobile-navigation.spec.js",
+          "mobile-payments.spec.js",
+          "mobile-dashboard.spec.js"
+        ]
+      }
+    ],
+    "environments": {
+      "production": {
+        "baseURL": "https://www.n0de.pro",
+        "headless": true
+      },
+      "staging": {
+        "baseURL": "https://staging.n0de.pro",
+        "headless": false
+      },
+      "local": {
+        "baseURL": "http://localhost:3000",
+        "headless": false
+      }
+    }
+  }
+}

@@ -1,0 +1,204 @@
+// Additional models to add to your existing schema.prisma for bulletproof abuse prevention
+
+// Rate limiting tracking per API key
+model RateLimitLog {
+  id              String    @id @default(cuid())
+  userId          String
+  apiKeyId        String?
+  ipAddress       String
+  endpoint        String
+  requestCount    Int       @default(1)
+  windowStart     DateTime
+  windowEnd       DateTime
+  blocked         Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+
+  // Relations
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apiKey          ApiKey?   @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, apiKeyId, ipAddress, endpoint, windowStart])
+  @@map("rate_limit_logs")
+}
+
+// Abuse detection and pattern recognition
+model AbuseDetection {
+  id                String           @id @default(cuid())
+  userId            String
+  apiKeyId          String?
+  abuseType         AbuseType
+  severity          AbuseSeverity    @default(LOW)
+  status            AbuseStatus      @default(DETECTED)
+  pattern           String           // Description of detected pattern
+  confidence        Float            // 0-1 confidence score
+  evidence          Json             // Detailed evidence data
+  ipAddress         String?
+  userAgent         String?
+  actionTaken       String?          // AUTO_THROTTLE, SUSPENDED, etc.
+  reviewedBy        String?          // Admin user ID
+  reviewedAt        DateTime?
+  resolvedAt        DateTime?
+  falsePositive     Boolean          @default(false)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  // Relations
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apiKey            ApiKey?          @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+
+  @@map("abuse_detection")
+}
+
+// IP-based tracking and blocking
+model IpBlacklist {
+  id              String           @id @default(cuid())
+  ipAddress       String           @unique
+  reason          String
+  severity        AbuseSeverity    @default(MEDIUM)
+  autoBlocked     Boolean          @default(false)
+  blockedBy       String?          // Admin user ID
+  expiresAt       DateTime?
+  requestCount    Int              @default(0)
+  lastActivity    DateTime         @default(now())
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@map("ip_blacklist")
+}
+
+// Subscription plan definitions with limits
+model SubscriptionPlan {
+  id                    String    @id @default(cuid())
+  name                  String    @unique
+  type                  SubscriptionType
+  displayName           String
+  description           String?
+  price                 Float
+  currency              String    @default("USD")
+  
+  // API Limits
+  requestsPerMinute     Int
+  requestsPerHour       Int       
+  requestsPerDay        Int
+  requestsPerMonth      Int
+  
+  // Feature Limits
+  maxApiKeys            Int       @default(5)
+  maxConcurrentRequests Int       @default(10)
+  
+  // Rate Limiting
+  burstLimit            Int       // Max burst requests
+  burstWindow           Int       // Burst window in seconds
+  
+  // Advanced Features
+  priority              Int       @default(0) // Higher = better performance
+  customLimits          Boolean   @default(false)
+  analyticsRetention    Int       @default(30) // Days
+  supportLevel          String    @default("BASIC")
+  
+  isActive              Boolean   @default(true)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("subscription_plans")
+}
+
+// Usage quotas and overages
+model UsageQuota {
+  id                String    @id @default(cuid())
+  userId            String
+  planType          SubscriptionType
+  periodStart       DateTime
+  periodEnd         DateTime
+  
+  // Current Usage
+  requestsUsed      Int       @default(0)
+  requestsLimit     Int
+  requestsRemaining Int       @default(0)
+  
+  // Overage tracking
+  overageRequests   Int       @default(0)
+  overageRate       Float     @default(0.01) // Per request overage cost
+  overageCost       Float     @default(0)
+  
+  // Rate limiting
+  rateLimitHits     Int       @default(0)
+  throttledRequests Int       @default(0)
+  
+  // Warnings sent
+  warningsSent      Int       @default(0)
+  lastWarningAt     DateTime?
+  
+  resetAt           DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, periodStart, periodEnd])
+  @@map("usage_quotas")
+}
+
+// Request fingerprinting for advanced abuse detection
+model RequestFingerprint {
+  id              String    @id @default(cuid())
+  userId          String?
+  apiKeyId        String?
+  ipAddress       String
+  userAgent       String?
+  fingerprintHash String    @unique // Hash of request patterns
+  requestPattern  Json      // Detailed request pattern
+  frequency       Int       @default(1)
+  suspicious      Boolean   @default(false)
+  firstSeen       DateTime  @default(now())
+  lastSeen        DateTime  @default(now())
+  
+  // Relations
+  user            User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  apiKey          ApiKey?   @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+
+  @@map("request_fingerprints")
+}
+
+// Enums for abuse detection
+enum AbuseType {
+  RATE_LIMIT_EXCEEDED
+  SUSPICIOUS_PATTERN
+  UNAUTHORIZED_ACCESS
+  API_KEY_SHARING
+  SCRIPT_KIDDIE
+  DDOS_ATTEMPT
+  DATA_SCRAPING
+  UNUSUAL_GEOGRAPHY
+  TIME_PATTERN_ANOMALY
+  CONCURRENT_LIMIT_EXCEEDED
+}
+
+enum AbuseSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AbuseStatus {
+  DETECTED
+  INVESTIGATING
+  CONFIRMED
+  FALSE_POSITIVE
+  RESOLVED
+  IGNORED
+}
+
+// Update existing models to add relations
+// Add to User model:
+// rateLimitLogs      RateLimitLog[]
+// abuseDetections    AbuseDetection[]
+// usageQuotas        UsageQuota[]
+// requestFingerprints RequestFingerprint[]
+
+// Add to ApiKey model:
+// rateLimitLogs      RateLimitLog[]
+// abuseDetections    AbuseDetection[]
+// requestFingerprints RequestFingerprint[]

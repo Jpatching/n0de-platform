@@ -1,18 +1,23 @@
-name: 🚀 Deploy N0DE Platform
+name: 🚀 Deploy N0DE Frontend to Vercel
 
 on:
   push:
     branches: [main]
+    paths: ['frontend/**']
   pull_request:
     branches: [main]
+    paths: ['frontend/**']
 
 env:
   NODE_VERSION: '18'
 
 jobs:
-  deploy-backend:
-    name: 🚂 Deploy Backend to Railway
+  deploy-frontend:
+    name: 🌐 Deploy Frontend to Vercel
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
@@ -22,98 +27,17 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
 
       - name: 🔧 Install dependencies
         run: npm ci
 
-      - name: 🗄️  Generate Prisma client
-        run: npx prisma generate
-
       - name: 🏗️  Build application
         run: npm run build
-
-      - name: 🚂 Deploy to Railway
-        uses: railway/actions@v1
-        with:
-          railway-token: ${{ secrets.RAILWAY_TOKEN }}
-          service: n0de-backend
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-      - name: 📊 Collect Railway deployment logs
-        if: always()
-        run: |
-          # Install Railway CLI if not available
-          npm install -g @railway/cli || curl -fsSL https://railway.app/install.sh | sh
-          
-          # Collect logs with timestamp
-          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-          mkdir -p deployment-logs
-          
-          # Get deployment status and logs
-          railway status --json > deployment-logs/railway-status-${TIMESTAMP}.json || echo "{\"error\": \"Could not get status\"}" > deployment-logs/railway-status-${TIMESTAMP}.json
-          railway logs --limit 100 > deployment-logs/railway-logs-${TIMESTAMP}.txt || echo "Could not get logs" > deployment-logs/railway-logs-${TIMESTAMP}.txt
-          
-          # Also save deployment info
-          echo "{\"deployment_id\": \"${{ github.run_id }}\", \"commit\": \"${{ github.sha }}\", \"timestamp\": \"${TIMESTAMP}\"}" > deployment-logs/deployment-info-${TIMESTAMP}.json
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-      - name: 🔍 Upload Railway logs as artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: railway-deployment-logs-${{ github.run_id }}
-          path: deployment-logs/
-          retention-days: 30
-
-      - name: 🏥 Health check
-        if: success()
-        run: |
-          # Wait for deployment to be ready
-          sleep 30
-          
-          # Check health endpoint
-          HEALTH_URL="https://n0de-backend-production-4e34.up.railway.app/health"
-          
-          for i in {1..10}; do
-            if curl -f "$HEALTH_URL"; then
-              echo "✅ Health check passed!"
-              break
-            else
-              echo "⏳ Health check attempt $i failed, retrying..."
-              sleep 10
-            fi
-            
-            if [ $i -eq 10 ]; then
-              echo "❌ Health check failed after 10 attempts"
-              exit 1
-            fi
-          done
-
-  deploy-frontend:
-    name: 🌐 Deploy Frontend to Vercel
-    runs-on: ubuntu-latest
-    steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
-
-      - name: 📦 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: 'frontend/n0de-website/package-lock.json'
-
-      - name: 🔧 Install frontend dependencies
-        run: |
-          cd frontend/n0de-website
-          npm ci
-
-      - name: 🏗️  Build frontend
-        run: |
-          cd frontend/n0de-website
-          npm run build
+          NEXT_PUBLIC_API_URL: https://n0de.pro/api/v1
+          NEXT_PUBLIC_WS_URL: wss://n0de.pro
+          NEXT_PUBLIC_SERVER_URL: https://n0de.pro
 
       - name: 🌐 Deploy to Vercel
         uses: amondnet/vercel-action@v25
@@ -121,94 +45,49 @@ jobs:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: frontend/n0de-website
+          working-directory: ./frontend
           vercel-args: '--prod'
 
-      - name: 📊 Collect Vercel deployment logs
+      - name: 🏥 Health check
+        if: success()
+        run: |
+          echo "⏳ Waiting for deployment to be ready..."
+          sleep 30
+          
+          # Check frontend is loading
+          if curl -f https://www.n0de.pro | grep -q "N0DE"; then
+            echo "✅ Frontend health check passed!"
+          else
+            echo "❌ Frontend health check failed"
+            exit 1
+          fi
+
+      - name: 🧪 Test OAuth endpoints
+        if: success()
+        run: |
+          echo "🔐 Testing OAuth configuration..."
+          
+          # Test Google OAuth route returns proper redirect
+          if curl -sI https://www.n0de.pro/api/auth/google | grep -q "30[27]"; then
+            echo "✅ Google OAuth endpoint working"
+          else
+            echo "❌ Google OAuth endpoint failed"
+            exit 1
+          fi
+          
+          # Test GitHub OAuth route returns proper redirect  
+          if curl -sI https://www.n0de.pro/api/auth/github | grep -q "30[27]"; then
+            echo "✅ GitHub OAuth endpoint working"
+          else
+            echo "❌ GitHub OAuth endpoint failed"
+            exit 1
+          fi
+
+      - name: 📊 Deployment summary
         if: always()
         run: |
-          # Install Vercel CLI if not available
-          npm install -g vercel
-          
-          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-          mkdir -p vercel-logs
-          
-          cd frontend/n0de-website
-          
-          # Get deployment info
-          vercel ls --scope=${{ secrets.VERCEL_ORG_ID }} > ../vercel-logs/vercel-deployments-${TIMESTAMP}.txt || echo "Could not get deployments" > ../vercel-logs/vercel-deployments-${TIMESTAMP}.txt
-          
-          # Get project info
-          echo "{\"deployment_id\": \"${{ github.run_id }}\", \"commit\": \"${{ github.sha }}\", \"timestamp\": \"${TIMESTAMP}\"}" > ../vercel-logs/vercel-info-${TIMESTAMP}.json
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-      - name: 🔍 Upload Vercel logs as artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: vercel-deployment-logs-${{ github.run_id }}
-          path: vercel-logs/
-          retention-days: 30
-
-  integration-test:
-    name: 🧪 Integration Tests
-    needs: [deploy-backend, deploy-frontend]
-    runs-on: ubuntu-latest
-    if: success()
-    steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
-
-      - name: 🧪 Test backend endpoints
-        run: |
-          # Test health endpoint
-          curl -f https://n0de-backend-production-4e34.up.railway.app/health
-          
-          # Test subscription plans
-          curl -f https://n0de-backend-production-4e34.up.railway.app/api/v1/subscriptions/plans
-          
-          echo "✅ Backend integration tests passed!"
-
-      - name: 🌐 Test frontend
-        run: |
-          # Test frontend is loading
-          curl -f https://www.n0de.pro | grep "N0DE"
-          
-          echo "✅ Frontend integration tests passed!"
-
-      - name: 📊 Create deployment summary
-        run: |
-          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-          mkdir -p deployment-summary
-          
-          cat << EOF > deployment-summary/summary-${TIMESTAMP}.json
-          {
-            "deployment_id": "${{ github.run_id }}",
-            "commit": "${{ github.sha }}",
-            "timestamp": "${TIMESTAMP}",
-            "backend_url": "https://n0de-backend-production-4e34.up.railway.app",
-            "frontend_url": "https://www.n0de.pro",
-            "status": "success",
-            "components": {
-              "railway": "deployed",
-              "vercel": "deployed", 
-              "postgres": "connected",
-              "redis": "connected",
-              "prisma": "generated",
-              "stripe": "configured"
-            }
-          }
-          EOF
-          
-          echo "🎉 Deployment completed successfully!"
-          cat deployment-summary/summary-${TIMESTAMP}.json
-
-      - name: 🔍 Upload deployment summary
-        uses: actions/upload-artifact@v4
-        with:
-          name: deployment-summary-${{ github.run_id }}
-          path: deployment-summary/
-          retention-days: 30
+          echo "🎉 Deployment Summary:"
+          echo "Frontend URL: https://www.n0de.pro"
+          echo "Backend URL: https://n0de.pro"
+          echo "Commit: ${{ github.sha }}"
+          echo "Workflow: ${{ github.run_id }}"

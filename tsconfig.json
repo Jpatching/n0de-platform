@@ -18,11 +18,11 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["backend/*"]
     }
   },
   "include": [
-    "src/**/*",
+    "backend/**/*",
     "prisma/**/*"
   ],
   "exclude": [

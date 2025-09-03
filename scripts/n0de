@@ -1,0 +1,118 @@
+#!/bin/bash
+# N0DE Platform Management CLI
+# Usage: n0de <command> [options]
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+show_help() {
+    cat << EOF
+🚀 N0DE Platform Management CLI
+
+Usage: n0de <command> [options]
+
+Commands:
+  dev       Start development environment with tmux dashboard
+  start     Start production services with PM2
+  stop      Stop all PM2 services
+  restart   Restart all services
+  logs      Show live logs
+  status    Show service status
+  deploy    Deploy frontend to Vercel
+  build     Build both frontend and backend
+  test      Run test suite
+  clipboard Copy text to SSH clipboard
+  clean     Clean up project files
+  backup    Backup database and logs
+
+Examples:
+  n0de dev              # Start development dashboard
+  n0de start            # Start production services
+  n0de logs backend     # Show backend logs
+  n0de deploy           # Deploy to Vercel
+  n0de clipboard "text" # Copy to clipboard
+
+EOF
+}
+
+case "$1" in
+    dev)
+        echo "🚀 Starting N0DE development environment..."
+        "$SCRIPT_DIR/dev-dashboard"
+        ;;
+    start)
+        echo "🔧 Starting N0DE production services..."
+        cd "$PROJECT_DIR"
+        pm2 start ecosystem.config.js
+        pm2 save
+        ;;
+    stop)
+        echo "⏹️  Stopping N0DE services..."
+        pm2 stop all
+        ;;
+    restart)
+        echo "🔄 Restarting N0DE services..."
+        pm2 restart all
+        ;;
+    logs)
+        if [ -n "$2" ]; then
+            pm2 logs "n0de-$2" --lines 50
+        else
+            pm2 logs --lines 20
+        fi
+        ;;
+    status)
+        echo "📊 N0DE Platform Status:"
+        pm2 status
+        echo ""
+        echo "🌐 Frontend: https://www.n0de.pro"
+        echo "🔧 Backend: https://n0de.pro"
+        ;;
+    deploy)
+        echo "🚀 Deploying to Vercel..."
+        cd "$PROJECT_DIR/frontend"
+        vercel --prod
+        ;;
+    build)
+        echo "🏗️  Building N0DE platform..."
+        cd "$PROJECT_DIR"
+        echo "Building backend..."
+        npm run build
+        echo "Building frontend..."
+        cd frontend
+        npm run build
+        ;;
+    test)
+        echo "🧪 Running N0DE test suite..."
+        cd "$PROJECT_DIR"
+        npm test
+        cd frontend
+        npm test
+        ;;
+    clipboard)
+        shift
+        "$SCRIPT_DIR/clipboard" "$@"
+        ;;
+    clean)
+        echo "🧹 Cleaning N0DE project..."
+        cd "$PROJECT_DIR"
+        rm -rf node_modules/
+        rm -rf frontend/node_modules/
+        rm -rf dist/
+        rm -rf frontend/.next/
+        npm install
+        cd frontend && npm install
+        ;;
+    backup)
+        echo "💾 Creating N0DE backup..."
+        timestamp=$(date +%Y%m%d_%H%M%S)
+        mkdir -p "$PROJECT_DIR/backups/$timestamp"
+        pg_dump "$DATABASE_URL" > "$PROJECT_DIR/backups/$timestamp/database.sql"
+        cp -r "$PROJECT_DIR/logs" "$PROJECT_DIR/backups/$timestamp/"
+        echo "✅ Backup created: backups/$timestamp"
+        ;;
+    *)
+        show_help
+        exit 1
+        ;;
+esac

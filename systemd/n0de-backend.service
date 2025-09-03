@@ -1,0 +1,40 @@
+[Unit]
+Description=N0DE Backend API Service
+Documentation=https://github.com/n0de-team/n0de-backend
+After=network.target postgresql.service redis-server.service
+Wants=postgresql.service redis-server.service
+Requires=network.target
+
+[Service]
+Type=simple
+User=sol
+Group=sol
+WorkingDirectory=/home/sol/n0de-deploy
+Environment=NODE_ENV=production
+Environment=PORT=3001
+EnvironmentFile=/home/sol/n0de-deploy/.env
+ExecStart=/usr/bin/node dist/backend/main.js
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Restart policy
+Restart=always
+RestartSec=10
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+MemoryMax=2G
+CPUQuota=200%
+
+# Security
+NoNewPrivileges=yes
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=n0de-backend
+
+[Install]
+WantedBy=multi-user.target
