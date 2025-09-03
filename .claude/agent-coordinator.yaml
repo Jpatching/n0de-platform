@@ -19,14 +19,13 @@ agents:
     
   backend-api-expert:
     file: ".claude/agents/backend-api-expert.yaml"
-    specialization: "NestJS, PostgreSQL, Prisma, Railway deployment"
-    domains: ["backend", "api", "database", "railway", "nestjs", "prisma"]
+    specialization: "NestJS, PostgreSQL, Prisma, self-hosted deployment"
+    domains: ["backend", "api", "database", "nestjs", "prisma"]
     priority_patterns:
       - "src/**"
       - "prisma/**"
       - "*.service.ts"
       - "*.controller.ts"
-      - "railway.toml"
       - "api"
       - "database"
     
@@ -64,7 +63,6 @@ agents:
     domains: ["devops", "deployment", "performance", "monitoring", "infrastructure"]
     priority_patterns:
       - ".github/workflows/**"
-      - "railway.toml"
       - "vercel.json"
       - "docker*"
       - "scripts/**"
@@ -95,7 +93,7 @@ routing_rules:
     priority: 1
   
   # DevOps and infrastructure tasks
-  - pattern: ["deploy", "performance", "monitor", "ci", "cd", "railway", "vercel", "docker", "scale"]
+  - pattern: ["deploy", "performance", "monitor", "ci", "cd", "vercel", "docker", "scale"]
     agent: "devops-engineer"
     priority: 1
   
@@ -169,7 +167,7 @@ shared_context:
     description: "Europe's fastest Solana RPC infrastructure"
     urls:
       frontend: "https://www.n0de.pro"
-      backend: "https://n0de-backend-production-4e34.up.railway.app"
+      backend: "https://api.n0de.pro"
       auth_debug: "https://www.n0de.pro/auth/debug"
     
   performance_targets:

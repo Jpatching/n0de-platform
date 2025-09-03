@@ -1,6 +1,6 @@
 # N0DE Backend API Expert Agent
 name: backend-api-expert
-description: "NestJS, PostgreSQL, Prisma, and Railway deployment expert for N0DE platform"
+description: "NestJS, PostgreSQL, Prisma, and self-hosted deployment expert for N0DE platform"
 
 # Specialized expertise
 expertise:
@@ -11,7 +11,7 @@ expertise:
   - Microservices architecture patterns
   - Database migrations and seed data
   - API performance optimization
-  - Railway deployment and environment management
+  - Self-hosted deployment and environment management
   - Redis caching strategies
   - Background job processing
 
@@ -23,7 +23,7 @@ primary_responsibilities:
   - API documentation with Swagger/OpenAPI
   - Performance monitoring and optimization
   - Data validation and serialization
-  - Railway deployment coordination
+  - Self-hosted deployment coordination
   - Microservices communication
   - Database query optimization
   - API versioning and backward compatibility
@@ -42,7 +42,6 @@ file_patterns:
   - "nest-cli.json"
   - "tsconfig.json"
   - "package.json"
-  - "railway.toml"
 
 # Tools this agent has access to
 tools:
@@ -67,10 +66,6 @@ allowed_commands:
   - "npx prisma migrate dev"
   - "npx prisma migrate deploy"
   - "npx prisma studio"
-  - "railway up"
-  - "railway logs"
-  - "railway status"
-  - "railway variables"
 
 # Key metrics this agent should monitor
 success_metrics:
@@ -92,14 +87,14 @@ context: |
   - Direct Jito bundle integration for MEV protection
   
   Current architecture:
-  - NestJS backend deployed on Railway
+  - NestJS backend deployed on self-hosted infrastructure
   - PostgreSQL database with Prisma ORM
   - JWT authentication with Google/GitHub OAuth
   - Redis for caching and session management
   - Stripe integration for payments
   - WebSocket support for real-time data
   
-  Backend URL: https://n0de-backend-production-4e34.up.railway.app
+  Backend URL: https://api.n0de.pro
   
   Key endpoints:
   - /api/v1/auth/* (authentication)

@@ -51,7 +51,7 @@ const determineDeploymentScope = (changedFiles) => {
     }
     
     // Monitoring/DevOps changes
-    if (file.includes('.github/workflows/') || file.includes('railway.toml')) {
+    if (file.includes('.github/workflows/')) {
       deploymentScope.monitoring = true;
     }
     
@@ -64,20 +64,20 @@ const determineDeploymentScope = (changedFiles) => {
   return deploymentScope;
 };
 
-// Deploy backend to Railway
+// Deploy backend to self-hosted server
 const deployBackend = async () => {
-  console.log('🔧 Backend Agent: Deploying to Railway...');
+  console.log('🔧 Backend Agent: Deploying to self-hosted server...');
   
   try {
-    // Check Railway status first
-    console.log('  Checking Railway service status...');
-    const status = execSync('railway status', { encoding: 'utf8' });
-    console.log('  Railway status:', status.trim());
+    // Check pm2 status first
+    console.log('  Checking pm2 service status...');
+    const status = execSync('pm2 list', { encoding: 'utf8' });
+    console.log('  pm2 status:', status.trim());
     
-    // Deploy to staging first for critical changes
-    console.log('  Deploying backend...');
-    const deployResult = execSync('railway up', { encoding: 'utf8' });
-    console.log('  ✅ Backend deployment successful');
+    // Restart backend service
+    console.log('  Restarting backend service...');
+    const deployResult = execSync('pm2 restart n0de-backend', { encoding: 'utf8' });
+    console.log('  ✅ Backend restart successful');
     
     // Wait for deployment to be ready
     console.log('  Waiting for service to be ready...');
@@ -145,8 +145,8 @@ const runHealthChecks = async () => {
   console.log('🏥 DevOps Agent: Running post-deployment health checks...');
   
   const endpoints = [
-    'https://n0de-backend-production-4e34.up.railway.app/api/v1/health',
-    'https://n0de-backend-production-4e34.up.railway.app/api/v1/billing/health',
+    'https://api.n0de.pro/api/v1/health',
+    'https://api.n0de.pro/api/v1/billing/health',
     'https://www.n0de.pro',
   ];
   
@@ -181,7 +181,7 @@ const sendDeploymentNotification = (success, scope, changedFiles) => {
   console.log(`  Status: ${success ? '✅ SUCCESS' : '❌ FAILED'}`);
   console.log(`  Priority: ${scope.priority.toUpperCase()}`);
   console.log(`  Components deployed:`);
-  if (scope.backend) console.log('    - Backend (Railway)');
+  if (scope.backend) console.log('    - Backend (Self-hosted)');
   if (scope.frontend) console.log('    - Frontend (Vercel)');
   if (scope.database) console.log('    - Database (Prisma)');
   if (scope.monitoring) console.log('    - Monitoring/DevOps');
@@ -203,8 +203,8 @@ const rollbackDeployment = async (scope) => {
   
   if (scope.backend) {
     console.log('  Rolling back backend deployment...');
-    // In a real scenario, this would revert to the previous Railway deployment
-    console.log('  ⚠️  Manual rollback may be required for Railway deployment');
+    // In a real scenario, this would revert to the previous pm2 deployment
+    console.log('  ⚠️  Manual rollback may be required for self-hosted deployment');
   }
   
   if (scope.database) {

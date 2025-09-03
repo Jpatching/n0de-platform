@@ -49,7 +49,6 @@ const routeFilesToAgents = (files) => {
     // Backend API Expert - NestJS services, controllers
     if (file.match(/src.*\.(service|controller|module)\.ts$/) ||
         file.includes('prisma/') ||
-        file.includes('railway.toml') ||
         file.match(/nest-cli\.json|tsconfig\.json/)) {
       agentAssignments['backend-api-expert'].push(file);
     }

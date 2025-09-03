@@ -14,21 +14,21 @@ from typing import Dict, List, Tuple, Any
 
 class N0DEEnvironmentAnalyzer:
     def __init__(self):
-        self.railway_vars = {}
+        self.backend_vars = {}
         self.issues = []
         self.recommendations = []
         self.critical_issues = []
         
-    def get_railway_variables(self) -> Dict[str, str]:
-        """Fetch Railway environment variables via MCP"""
+    def get_backend_variables(self) -> Dict[str, str]:
+        """Fetch Backend environment variables via MCP"""
         try:
             result = subprocess.run(
-                ['railway', 'variables', '--json'],
+                ['backend', 'variables', '--json'],
                 capture_output=True, text=True, check=True
             )
             return json.loads(result.stdout)
         except Exception as e:
-            print(f"❌ Failed to fetch Railway variables: {e}")
+            print(f"❌ Failed to fetch Backend variables: {e}")
             return {}
     
     def validate_variable_patterns(self) -> None:
@@ -43,8 +43,8 @@ class N0DEEnvironmentAnalyzer:
             
             # URLs
             'FRONTEND_URL': r'^https://.*\.n0de\.pro$',
-            'BASE_URL': r'^https://.*\.railway\.app$',
-            'SERVER_URL': r'^https://.*\.railway\.app$',
+            'BASE_URL': r'^https://.*\.backend\.app$',
+            'SERVER_URL': r'^https://.*\.backend\.app$',
             
             # JWT & Auth
             'JWT_SECRET': r'^.{20,}$',
@@ -70,7 +70,7 @@ class N0DEEnvironmentAnalyzer:
         }
         
         for var_name, pattern in patterns.items():
-            value = self.railway_vars.get(var_name, '')
+            value = self.backend_vars.get(var_name, '')
             
             if not value:
                 self.critical_issues.append(f"Missing critical variable: {var_name}")
@@ -81,9 +81,9 @@ class N0DEEnvironmentAnalyzer:
         """Validate OAuth configuration consistency"""
         
         # Check redirect URI consistency
-        google_redirect = self.railway_vars.get('GOOGLE_OAUTH_REDIRECT_URI', '')
-        github_redirect = self.railway_vars.get('GITHUB_OAUTH_REDIRECT_URI', '')
-        base_url = self.railway_vars.get('BASE_URL', '')
+        google_redirect = self.backend_vars.get('GOOGLE_OAUTH_REDIRECT_URI', '')
+        github_redirect = self.backend_vars.get('GITHUB_OAUTH_REDIRECT_URI', '')
+        base_url = self.backend_vars.get('BASE_URL', '')
         
         expected_google = f"{base_url}/api/v1/auth/google/callback"
         expected_github = f"{base_url}/api/v1/auth/github/callback"
@@ -97,8 +97,8 @@ class N0DEEnvironmentAnalyzer:
     def check_cors_configuration(self) -> None:
         """Validate CORS configuration"""
         
-        cors_origins = self.railway_vars.get('CORS_ORIGINS', '')
-        frontend_url = self.railway_vars.get('FRONTEND_URL', '')
+        cors_origins = self.backend_vars.get('CORS_ORIGINS', '')
+        frontend_url = self.backend_vars.get('FRONTEND_URL', '')
         
         if frontend_url not in cors_origins:
             self.critical_issues.append(f"Frontend URL not in CORS origins: {frontend_url}")
@@ -110,7 +110,7 @@ class N0DEEnvironmentAnalyzer:
     def test_service_connectivity(self) -> None:
         """Test actual service endpoints"""
         
-        base_url = self.railway_vars.get('BASE_URL', '')
+        base_url = self.backend_vars.get('BASE_URL', '')
         if not base_url:
             return
             
@@ -143,8 +143,8 @@ class N0DEEnvironmentAnalyzer:
     def check_stripe_configuration(self) -> None:
         """Validate Stripe configuration"""
         
-        stripe_key = self.railway_vars.get('STRIPE_SECRET_KEY', '')
-        stripe_webhook = self.railway_vars.get('STRIPE_WEBHOOK_SECRET', '')
+        stripe_key = self.backend_vars.get('STRIPE_SECRET_KEY', '')
+        stripe_webhook = self.backend_vars.get('STRIPE_WEBHOOK_SECRET', '')
         
         # Check if using test vs live keys
         if stripe_key.startswith('sk_test_'):
@@ -170,7 +170,7 @@ class N0DEEnvironmentAnalyzer:
         ]
         
         for var_name, description in security_checks:
-            value = self.railway_vars.get(var_name, '')
+            value = self.backend_vars.get(var_name, '')
             
             if len(value) < 32:
                 self.issues.append(f"{description} may be too short (security risk)")
@@ -188,7 +188,7 @@ class N0DEEnvironmentAnalyzer:
         }
         
         for provider, required_vars in providers.items():
-            missing_vars = [var for var in required_vars if not self.railway_vars.get(var)]
+            missing_vars = [var for var in required_vars if not self.backend_vars.get(var)]
             
             if missing_vars:
                 self.issues.append(f"{provider} incomplete: missing {', '.join(missing_vars)}")
@@ -225,14 +225,14 @@ class N0DEEnvironmentAnalyzer:
         print()
         
         # Fetch variables
-        print("📋 Fetching Railway environment variables...")
-        self.railway_vars = self.get_railway_variables()
+        print("📋 Fetching Backend environment variables...")
+        self.backend_vars = self.get_backend_variables()
         
-        if not self.railway_vars:
-            print("❌ Could not fetch Railway variables. Analysis aborted.")
+        if not self.backend_vars:
+            print("❌ Could not fetch Backend variables. Analysis aborted.")
             return
             
-        print(f"✅ Retrieved {len(self.railway_vars)} variables")
+        print(f"✅ Retrieved {len(self.backend_vars)} variables")
         print()
         
         # Run all checks

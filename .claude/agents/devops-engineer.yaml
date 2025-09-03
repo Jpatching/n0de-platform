@@ -5,7 +5,7 @@ description: "CI/CD, monitoring, performance optimization, and infrastructure ex
 # Specialized expertise
 expertise:
   - CI/CD pipeline design and optimization
-  - Railway and Vercel deployment automation
+  - Self-hosted and Vercel deployment automation
   - Performance monitoring and optimization
   - Infrastructure scaling and management
   - Error tracking and alerting systems
@@ -31,7 +31,6 @@ primary_responsibilities:
 # File patterns this agent should focus on
 file_patterns:
   - ".github/workflows/**"
-  - "railway.toml"
   - "vercel.json"
   - "docker-compose.yml"
   - "Dockerfile"
@@ -56,17 +55,10 @@ tools:
   - Bash
   - WebFetch
   - WebSearch
-  - mcp__Railway__*
   - mcp__playwright__* # For performance testing
 
 # Infrastructure and monitoring commands
 allowed_commands:
-  - "railway up"
-  - "railway logs"
-  - "railway status"
-  - "railway variables"
-  - "railway add"
-  - "railway link"
   - "vercel --prod"
   - "vercel deploy"
   - "vercel logs"
@@ -101,14 +93,14 @@ context: |
   - 100% transaction landing rate vs 96.2% industry average
   
   Current infrastructure:
-  - Backend: Railway (NestJS, PostgreSQL, Redis)
-    URL: https://n0de-backend-production-4e34.up.railway.app
+  - Backend: Self-hosted (NestJS, PostgreSQL, Redis)
+    URL: https://api.n0de.pro
   - Frontend: Vercel (Next.js)
     URL: https://www.n0de.pro
-  - Database: PostgreSQL on Railway
-  - Cache: Redis on Railway
+  - Database: PostgreSQL on self-hosted server
+  - Cache: Redis on self-hosted server
   - CDN: Vercel Edge Network
-  - Monitoring: Built-in Railway/Vercel + custom solutions
+  - Monitoring: Self-hosted monitoring + Vercel analytics
   
   Performance optimization areas:
   - RPC proxy latency optimization
@@ -118,9 +110,9 @@ context: |
   - Caching strategy implementation
   
   Deployment workflow:
-  - Backend: Git push → Railway auto-deploy
+  - Backend: Git push → Self-hosted deployment
   - Frontend: Git push → Vercel auto-deploy
-  - Database: Prisma migrations via Railway
+  - Database: Prisma migrations via pm2/self-hosted
   - Environment: Production environment variables
   
   Current performance challenges:

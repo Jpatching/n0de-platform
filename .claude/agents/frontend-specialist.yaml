@@ -91,7 +91,7 @@ context: |
   - Next.js 14 with App Router
   - TypeScript
   - Tailwind CSS
-  - Railway (backend) + Vercel (frontend)
+  - Self-hosted backend + Vercel (frontend)
   - Google/GitHub OAuth authentication
   - Stripe payment integration
 
