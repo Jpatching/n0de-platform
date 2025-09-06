@@ -81,7 +81,7 @@ const BillingPage = () => {
         // Get API base URL for production/development
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
         const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "";
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("n0de_token");
 
         if (!token) {
           throw new Error("Authentication token not found");
@@ -185,7 +185,7 @@ const BillingPage = () => {
             process.env.NODE_ENV === "development"
               ? "/api/billing/subscription"
               : `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/billing/subscription`,
-          hasToken: !!localStorage.getItem("token"),
+          hasToken: !!localStorage.getItem("n0de_token"),
           backendUrl: process.env.NEXT_PUBLIC_BACKEND_URL,
         });
 

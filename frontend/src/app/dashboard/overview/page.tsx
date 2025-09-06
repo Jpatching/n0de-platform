@@ -59,7 +59,7 @@ const AppOverview = () => {
             : `${backendUrl}/api/v1/billing/usage`;
         const response = await fetch(endpoint, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${localStorage.getItem("n0de_token")}`,
             "Content-Type": "application/json",
           },
         });
