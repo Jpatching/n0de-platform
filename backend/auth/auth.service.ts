@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { PrismaService } from '../common/prisma.service';
 import { LoggerService } from '../common/logger.service';
 import { RedisService } from '../common/redis.service';
+import { EmailService } from '../email/email.service';
 import { RegisterDto, LoginDto } from './dto/auth.dto';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class AuthService {
     private configService: ConfigService,
     private logger: LoggerService,
     private redis: RedisService,
+    private emailService: EmailService,
   ) {
     this.bcryptRounds = parseInt(this.configService.get('BCRYPT_ROUNDS')) || 12;
   }
@@ -55,7 +57,7 @@ export class AuthService {
         firstName,
         lastName,
         username,
-        emailVerified: false, // In production, implement email verification
+        emailVerified: false,
       },
       select: {
         id: true,
@@ -68,6 +70,16 @@ export class AuthService {
         createdAt: true,
       },
     });
+
+    // Create email verification token
+    const verificationToken = await this.createEmailVerificationToken(user.id, email);
+    
+    // Send verification email
+    await this.emailService.sendEmailVerification(
+      email, 
+      verificationToken.token, 
+      user.firstName || user.username
+    );
 
     // Create session with refresh token
     const sessionId = uuidv4();
@@ -814,5 +826,171 @@ export class AuthService {
     } catch (error) {
       this.logger.error('Failed to create audit log:', error, 'AUTH');
     }
+  }
+
+  async createEmailVerificationToken(userId: string, email: string) {
+    // Clean up any existing verification tokens for this user
+    await this.prisma.verificationToken.deleteMany({
+      where: {
+        userId,
+        type: 'EMAIL_VERIFICATION',
+      },
+    });
+
+    // Create new verification token
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    const verificationToken = await this.prisma.verificationToken.create({
+      data: {
+        userId,
+        email,
+        type: 'EMAIL_VERIFICATION',
+        expiresAt,
+      },
+    });
+
+    return verificationToken;
+  }
+
+  async verifyEmail(token: string) {
+    const verificationToken = await this.prisma.verificationToken.findUnique({
+      where: { token },
+      include: { user: true },
+    });
+
+    if (!verificationToken) {
+      throw new BadRequestException('Invalid verification token');
+    }
+
+    if (verificationToken.usedAt) {
+      throw new BadRequestException('Verification token has already been used');
+    }
+
+    if (verificationToken.expiresAt < new Date()) {
+      throw new BadRequestException('Verification token has expired');
+    }
+
+    // Update user as verified and mark token as used
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: verificationToken.userId },
+        data: {
+          emailVerified: true,
+          emailVerifiedAt: new Date(),
+        },
+      }),
+      this.prisma.verificationToken.update({
+        where: { id: verificationToken.id },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+
+    // Log email verification
+    this.logger.log({
+      type: 'email_verified',
+      userId: verificationToken.userId,
+      email: verificationToken.email,
+    }, 'AUTH');
+
+    // Create audit log
+    await this.createAuditLog(
+      verificationToken.userId,
+      'UPDATE',
+      'USER',
+      verificationToken.userId,
+      { emailVerified: false },
+      { emailVerified: true },
+      null,
+    );
+
+    return {
+      success: true,
+      message: 'Email verified successfully',
+      user: {
+        id: verificationToken.user.id,
+        email: verificationToken.user.email,
+        emailVerified: true,
+      },
+    };
+  }
+
+  async resendEmailVerification(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        username: true,
+        emailVerified: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.emailVerified) {
+      throw new BadRequestException('Email is already verified');
+    }
+
+    // Create new verification token
+    const verificationToken = await this.createEmailVerificationToken(user.id, email);
+
+    // Send verification email
+    await this.emailService.sendEmailVerification(
+      email,
+      verificationToken.token,
+      user.firstName || user.username
+    );
+
+    return {
+      success: true,
+      message: 'Verification email sent successfully',
+    };
+  }
+
+  async createPasswordResetToken(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true, firstName: true, username: true },
+    });
+
+    if (!user) {
+      // Don't reveal if user exists or not for security
+      return { success: true, message: 'If the email exists, a reset link has been sent' };
+    }
+
+    // Clean up any existing password reset tokens
+    await this.prisma.verificationToken.deleteMany({
+      where: {
+        userId: user.id,
+        type: 'PASSWORD_RESET',
+      },
+    });
+
+    // Create new password reset token (expires in 1 hour)
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+    const resetToken = await this.prisma.verificationToken.create({
+      data: {
+        userId: user.id,
+        email,
+        type: 'PASSWORD_RESET',
+        expiresAt,
+      },
+    });
+
+    // Send password reset email
+    await this.emailService.sendPasswordResetEmail(
+      email,
+      resetToken.token,
+      user.firstName || user.username
+    );
+
+    return {
+      success: true,
+      message: 'If the email exists, a reset link has been sent',
+    };
   }
 }

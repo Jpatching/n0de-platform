@@ -644,9 +644,17 @@ export default function Dashboard() {
 
         // Fetch usage statistics
         try {
-          const usageResponse = await api.get<any>('/usage');
-          if (usageResponse?.usageData) {
-            setUsageData(usageResponse.usageData);
+          const usageStatsResponse = await api.get<any>('/usage');
+          if (usageStatsResponse) {
+            // Transform usage stats into chart data format
+            const chartData = [{
+              time: '00:00',
+              requests: usageStatsResponse.requestsToday || 0,
+              latency: usageStatsResponse.avgLatency || 0,
+              errorRate: usageStatsResponse.errorRate || 0,
+              throughput: usageStatsResponse.requestsToday ? usageStatsResponse.requestsToday / 24 : 0,
+            }];
+            setUsageData(chartData);
           }
         } catch (error) {
           console.error('Failed to fetch usage data:', error);

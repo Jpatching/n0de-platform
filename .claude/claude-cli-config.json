@@ -1,0 +1,54 @@
+{
+  "tools": [
+    {
+      "name": "n0de-deploy",
+      "description": "Quick deploy N0DE frontend to Vercel",
+      "command": "cd /home/sol/n0de-deploy && node .claude/agents/smart-deployment-orchestrator.js quick",
+      "working_directory": "/home/sol/n0de-deploy"
+    },
+    {
+      "name": "n0de-deploy-full", 
+      "description": "Full deployment with health checks",
+      "command": "cd /home/sol/n0de-deploy && node .claude/agents/smart-deployment-orchestrator.js deploy",
+      "working_directory": "/home/sol/n0de-deploy"
+    },
+    {
+      "name": "n0de-rollback",
+      "description": "Rollback to previous deployment", 
+      "command": "cd /home/sol/n0de-deploy && node .claude/agents/smart-deployment-orchestrator.js rollback",
+      "working_directory": "/home/sol/n0de-deploy"
+    },
+    {
+      "name": "n0de-sync-types",
+      "description": "Sync types between backend DTOs and frontend",
+      "command": "cd /home/sol/n0de-deploy && node .claude/agents/fullstack-sync-agent.js",
+      "working_directory": "/home/sol/n0de-deploy" 
+    },
+    {
+      "name": "n0de-performance-audit",
+      "description": "Run comprehensive performance audit",
+      "command": "cd /home/sol/n0de-deploy && node .claude/agents/performance-guardian.js audit",
+      "working_directory": "/home/sol/n0de-deploy"
+    },
+    {
+      "name": "n0de-error-analysis", 
+      "description": "Analyze recent errors and correlations",
+      "command": "cd /home/sol/n0de-deploy && node .claude/agents/error-correlation-agent.js report",
+      "working_directory": "/home/sol/n0de-deploy"
+    },
+    {
+      "name": "n0de-health-check",
+      "description": "Check overall system health",
+      "command": "cd /home/sol/n0de-deploy && curl -s https://api.n0de.pro/health && curl -s -o /dev/null -w 'Frontend: %{http_code}\\n' https://www.n0de.pro",
+      "working_directory": "/home/sol/n0de-deploy"
+    }
+  ],
+  "aliases": {
+    "deploy": "n0de-deploy",
+    "rollback": "n0de-rollback", 
+    "types": "n0de-sync-types",
+    "perf": "n0de-performance-audit",
+    "errors": "n0de-error-analysis",
+    "health": "n0de-health-check"
+  }
+}

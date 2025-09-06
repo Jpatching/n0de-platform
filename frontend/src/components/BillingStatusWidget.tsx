@@ -1,10 +1,17 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { io, Socket } from 'socket.io-client';
-import { CheckCircle, AlertCircle, Clock, CreditCard, Zap, TrendingUp } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { io, Socket } from "socket.io-client";
+import {
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  CreditCard,
+  Zap,
+  TrendingUp,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface SubscriptionData {
   subscription: {
@@ -51,8 +58,11 @@ interface PaymentStatus {
 
 export default function BillingStatusWidget() {
   const { user, token } = useAuth();
-  const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null);
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | null>(null);
+  const [subscriptionData, setSubscriptionData] =
+    useState<SubscriptionData | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | null>(
+    null,
+  );
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -63,51 +73,55 @@ export default function BillingStatusWidget() {
   useEffect(() => {
     if (!user || !token) return;
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'https://n0de.pro';
+    const apiUrl =
+      process.env.NEXT_PUBLIC_API_URL?.replace("/api/v1", "") ||
+      "https://api.n0de.pro";
     const socketInstance = io(`${apiUrl}/billing-sync`, {
-      transports: ['websocket', 'polling'],
+      transports: ["websocket", "polling"],
       upgrade: true,
-      rememberUpgrade: true
+      rememberUpgrade: true,
     });
 
-    socketInstance.on('connect', () => {
-      console.log('Connected to billing sync service');
+    socketInstance.on("connect", () => {
+      console.log("Connected to billing sync service");
       // Request initial sync
-      socketInstance.emit('request-sync', { 
-        userId: user.id, 
-        apiKey: token 
+      socketInstance.emit("request-sync", {
+        userId: user.id,
+        apiKey: token,
       });
     });
 
-    socketInstance.on('subscription-synced', (data: SubscriptionData) => {
+    socketInstance.on("subscription-synced", (data: SubscriptionData) => {
       setSubscriptionData(data);
       setLastUpdate(new Date());
       setIsLoading(false);
       setError(null);
     });
 
-    socketInstance.on('subscription-updated', (data: SubscriptionData) => {
+    socketInstance.on("subscription-updated", (data: SubscriptionData) => {
       setSubscriptionData(data);
       setLastUpdate(new Date());
-      showSuccessNotification('Subscription updated!');
+      showSuccessNotification("Subscription updated!");
     });
 
-    socketInstance.on('payment-confirmed', (data: any) => {
-      showSuccessNotification(`Payment confirmed! ${data.planType} plan is now active.`);
+    socketInstance.on("payment-confirmed", (data: any) => {
+      showSuccessNotification(
+        `Payment confirmed! ${data.planType} plan is now active.`,
+      );
       // Request fresh sync after payment
-      socketInstance.emit('request-sync', { 
-        userId: user.id, 
-        apiKey: token 
+      socketInstance.emit("request-sync", {
+        userId: user.id,
+        apiKey: token,
       });
     });
 
-    socketInstance.on('sync-error', (error: any) => {
+    socketInstance.on("sync-error", (error: any) => {
       setError(error.error);
       setIsLoading(false);
     });
 
-    socketInstance.on('disconnect', () => {
-      console.log('Disconnected from billing sync service');
+    socketInstance.on("disconnect", () => {
+      console.log("Disconnected from billing sync service");
     });
 
     setSocket(socketInstance);
@@ -126,9 +140,14 @@ export default function BillingStatusWidget() {
 
   const checkPaymentStatus = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://n0de.pro/api/v1';
-      const response = await fetch(`${apiUrl}/billing/payment-status/${user?.id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const backendUrl =
+        process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.n0de.pro";
+      const endpoint =
+        process.env.NODE_ENV === "development"
+          ? `/api/billing/payment-status/${user?.id}`
+          : `${backendUrl}/api/v1/billing/payment-status/${user?.id}`;
+      const response = await fetch(endpoint, {
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.ok) {
@@ -140,18 +159,23 @@ export default function BillingStatusWidget() {
         }
       }
     } catch (error) {
-      console.error('Error checking payment status:', error);
+      console.error("Error checking payment status:", error);
     }
   };
 
   const startPolling = (interval: number) => {
     setIsPolling(true);
-    
+
     const pollTimer = setInterval(async () => {
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://n0de.pro/api/v1';
-        const response = await fetch(`${apiUrl}/billing/subscription/${user?.id}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+        const backendUrl =
+          process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.n0de.pro";
+        const endpoint =
+          process.env.NODE_ENV === "development"
+            ? `/api/billing/subscription/${user?.id}`
+            : `${backendUrl}/api/v1/billing/subscription/${user?.id}`;
+        const response = await fetch(endpoint, {
+          headers: { Authorization: `Bearer ${token}` },
         });
 
         if (response.ok) {
@@ -160,14 +184,17 @@ export default function BillingStatusWidget() {
           setLastUpdate(new Date());
 
           // Stop polling if subscription is active
-          if (data.subscription.status === 'ACTIVE' && paymentStatus?.hasPending) {
+          if (
+            data.subscription.status === "ACTIVE" &&
+            paymentStatus?.hasPending
+          ) {
             clearInterval(pollTimer);
             setIsPolling(false);
-            showSuccessNotification('Subscription activated!');
+            showSuccessNotification("Subscription activated!");
           }
         }
       } catch (error) {
-        console.error('Polling error:', error);
+        console.error("Polling error:", error);
       }
     }, interval);
 
@@ -180,7 +207,7 @@ export default function BillingStatusWidget() {
 
   const showSuccessNotification = (message: string) => {
     // You can integrate with your notification system here
-    console.log('Success:', message);
+    console.log("Success:", message);
   };
 
   const formatUsagePercentage = useCallback((used: number, limit: number) => {
@@ -190,20 +217,29 @@ export default function BillingStatusWidget() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'ACTIVE': return 'text-green-400';
-      case 'TRIALING': return 'text-blue-400';
-      case 'PAST_DUE': return 'text-yellow-400';
-      case 'CANCELED': return 'text-red-400';
-      default: return 'text-gray-400';
+      case "ACTIVE":
+        return "text-green-400";
+      case "TRIALING":
+        return "text-blue-400";
+      case "PAST_DUE":
+        return "text-yellow-400";
+      case "CANCELED":
+        return "text-red-400";
+      default:
+        return "text-gray-400";
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'ACTIVE': return <CheckCircle className="w-4 h-4" />;
-      case 'TRIALING': return <Clock className="w-4 h-4" />;
-      case 'PAST_DUE': return <AlertCircle className="w-4 h-4" />;
-      default: return <AlertCircle className="w-4 h-4" />;
+      case "ACTIVE":
+        return <CheckCircle className="w-4 h-4" />;
+      case "TRIALING":
+        return <Clock className="w-4 h-4" />;
+      case "PAST_DUE":
+        return <AlertCircle className="w-4 h-4" />;
+      default:
+        return <AlertCircle className="w-4 h-4" />;
     }
   };
 
@@ -234,7 +270,7 @@ export default function BillingStatusWidget() {
 
   const usagePercentage = formatUsagePercentage(
     subscriptionData.usage.requestsUsed,
-    subscriptionData.usage.requestsLimit
+    subscriptionData.usage.requestsLimit,
   );
 
   return (
@@ -270,12 +306,17 @@ export default function BillingStatusWidget() {
             <div className="flex items-start space-x-3">
               <Clock className="w-5 h-5 text-yellow-400 mt-0.5" />
               <div>
-                <h3 className="text-yellow-400 font-medium">Payment Processing</h3>
-                <p className="text-gray-300 text-sm mt-1">{paymentStatus.message}</p>
+                <h3 className="text-yellow-400 font-medium">
+                  Payment Processing
+                </h3>
+                <p className="text-gray-300 text-sm mt-1">
+                  {paymentStatus.message}
+                </p>
                 <div className="mt-2 space-y-1">
-                  {paymentStatus.pendingPayments.map(payment => (
+                  {paymentStatus.pendingPayments.map((payment) => (
                     <div key={payment.id} className="text-xs text-gray-400">
-                      ${payment.amount} via {payment.provider} - {payment.status}
+                      ${payment.amount} via {payment.provider} -{" "}
+                      {payment.status}
                     </div>
                   ))}
                 </div>
@@ -290,15 +331,19 @@ export default function BillingStatusWidget() {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
-            <div className={`flex items-center space-x-2 ${getStatusColor(subscriptionData.subscription.status)}`}>
+            <div
+              className={`flex items-center space-x-2 ${getStatusColor(subscriptionData.subscription.status)}`}
+            >
               {getStatusIcon(subscriptionData.subscription.status)}
-              <span className="font-medium">{subscriptionData.subscription.planName}</span>
+              <span className="font-medium">
+                {subscriptionData.subscription.planName}
+              </span>
             </div>
             <span className="text-xs text-gray-400">
               ({subscriptionData.subscription.status})
             </span>
           </div>
-          
+
           {lastUpdate && (
             <span className="text-xs text-gray-500">
               Updated {lastUpdate.toLocaleTimeString()}
@@ -311,24 +356,34 @@ export default function BillingStatusWidget() {
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-gray-300">API Usage</span>
             <span className="text-sm text-gray-400">
-              {subscriptionData.usage.requestsUsed.toLocaleString()} / {subscriptionData.usage.requestsLimit.toLocaleString()}
+              {subscriptionData.usage.requestsUsed.toLocaleString()} /{" "}
+              {subscriptionData.usage.requestsLimit.toLocaleString()}
             </span>
           </div>
-          
+
           <div className="w-full bg-bg-main rounded-full h-2">
             <motion.div
               className={`h-2 rounded-full transition-all duration-500 ${
-                usagePercentage > 90 ? 'bg-red-400' :
-                usagePercentage > 75 ? 'bg-yellow-400' : 'bg-green-400'
+                usagePercentage > 90
+                  ? "bg-red-400"
+                  : usagePercentage > 75
+                    ? "bg-yellow-400"
+                    : "bg-green-400"
               }`}
               initial={{ width: 0 }}
               animate={{ width: `${usagePercentage}%` }}
             />
           </div>
-          
+
           <div className="flex items-center justify-between mt-1 text-xs text-gray-500">
-            <span>{subscriptionData.usage.requestsRemaining.toLocaleString()} remaining</span>
-            <span>Resets {new Date(subscriptionData.usage.resetDate).toLocaleDateString()}</span>
+            <span>
+              {subscriptionData.usage.requestsRemaining.toLocaleString()}{" "}
+              remaining
+            </span>
+            <span>
+              Resets{" "}
+              {new Date(subscriptionData.usage.resetDate).toLocaleDateString()}
+            </span>
           </div>
         </div>
 
@@ -340,7 +395,8 @@ export default function BillingStatusWidget() {
               <span className="text-sm font-medium">Overage Usage</span>
             </div>
             <p className="text-gray-300 text-sm mt-1">
-              {subscriptionData.usage.overageRequests.toLocaleString()} extra requests
+              {subscriptionData.usage.overageRequests.toLocaleString()} extra
+              requests
               {subscriptionData.usage.overageCost > 0 && (
                 <span className="text-orange-400 ml-1">
                   (${subscriptionData.usage.overageCost.toFixed(2)})
@@ -358,14 +414,15 @@ export default function BillingStatusWidget() {
               {subscriptionData.limits.requestsPerMinute}/min
             </div>
           </div>
-          
+
           <div className="text-center">
             <div className="text-xs text-gray-500">API Keys</div>
             <div className="text-sm font-medium text-gray-300">
-              {subscriptionData.apiKeys.length}/{subscriptionData.limits.maxApiKeys}
+              {subscriptionData.apiKeys.length}/
+              {subscriptionData.limits.maxApiKeys}
             </div>
           </div>
-          
+
           <div className="text-center">
             <div className="text-xs text-gray-500">Burst Limit</div>
             <div className="text-sm font-medium text-gray-300">

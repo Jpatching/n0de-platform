@@ -18,6 +18,9 @@ import { ErrorsModule } from './errors/errors.module';
 import { HealthModule } from './health/health.module';
 import { EmailModule } from './email/email.module';
 import { WebsocketModule } from './websocket/websocket.module';
+// import { AnalyticsModule } from './analytics/analytics.module';
+// import { CollaborationModule } from './collaboration/collaboration.module';
+// import { ActivityModule } from './activity/activity.module';
 
 @Module({
   imports: [
@@ -43,6 +46,9 @@ import { WebsocketModule } from './websocket/websocket.module';
     HealthModule,
     EmailModule,
     WebsocketModule,
+    // AnalyticsModule,        // Disabled - causing build errors
+    // CollaborationModule,    // Disabled - causing build errors  
+    // ActivityModule,         // Disabled - causing build errors
   ],
 })
 export class AppModule {}

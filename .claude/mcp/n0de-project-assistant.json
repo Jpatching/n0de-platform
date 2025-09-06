@@ -1,0 +1,145 @@
+{
+  "name": "n0de-project-assistant",
+  "description": "Context-aware assistant for N0DE Platform development",
+  "version": "1.0.0",
+  "capabilities": [
+    "project-structure-awareness",
+    "api-endpoint-knowledge", 
+    "database-schema-understanding",
+    "deployment-automation",
+    "error-correlation",
+    "performance-optimization"
+  ],
+  "knowledge_base": {
+    "project_structure": {
+      "frontend": {
+        "path": "/home/sol/n0de-deploy/frontend",
+        "framework": "Next.js 15.5.2",
+        "key_components": [
+          "AuthContext.tsx",
+          "InteractiveBackground.tsx", 
+          "Dashboard components",
+          "Payment processors"
+        ],
+        "styling": "Tailwind + CSS custom properties",
+        "deployment": "Vercel"
+      },
+      "backend": {
+        "path": "/home/sol/n0de-deploy/backend",
+        "framework": "NestJS",
+        "database": "PostgreSQL + Prisma + Redis",
+        "key_modules": [
+          "auth",
+          "api-keys", 
+          "billing",
+          "payments",
+          "subscriptions",
+          "metrics"
+        ],
+        "deployment": "PM2 + self-hosted"
+      }
+    },
+    "api_endpoints": {
+      "auth": {
+        "google": "/api/v1/auth/google",
+        "github": "/api/v1/auth/github",
+        "callback": "/api/v1/auth/{provider}/callback"
+      },
+      "core": {
+        "health": "/health",
+        "api_keys": "/api/v1/api-keys",
+        "usage": "/api/v1/usage",
+        "metrics": "/api/v1/metrics/performance"
+      },
+      "billing": {
+        "subscriptions": "/api/v1/subscriptions",
+        "usage": "/api/v1/subscriptions/usage",
+        "payments": "/api/v1/payments"
+      },
+      "webhooks": {
+        "coinbase": "/api/v1/webhooks/coinbase",
+        "stripe": "/api/v1/webhooks/stripe"
+      }
+    },
+    "database_models": [
+      "User",
+      "ApiKey", 
+      "Subscription",
+      "Payment",
+      "PaymentHistory",
+      "UsageStats",
+      "PerformanceMetrics",
+      "SupportTicket",
+      "AuditLog"
+    ],
+    "common_issues": {
+      "auth_infinite_loop": "Check AuthContext.tsx:378 for circular dependency",
+      "payment_webhook_fail": "Verify Coinbase/Stripe webhook signatures",
+      "cors_errors": "Update nginx CORS configuration",
+      "type_mismatches": "Run fullstack-sync-agent to regenerate types"
+    },
+    "deployment_commands": {
+      "quick_frontend": "node .claude/agents/smart-deployment-orchestrator.js quick",
+      "full_deployment": "node .claude/agents/smart-deployment-orchestrator.js deploy",
+      "rollback": "node .claude/agents/smart-deployment-orchestrator.js rollback"
+    }
+  },
+  "custom_commands": {
+    "/deploy": {
+      "description": "Deploy latest changes to production",
+      "handler": "smart-deployment-orchestrator.js deploy"
+    },
+    "/quick-deploy": {
+      "description": "Quick frontend-only deployment", 
+      "handler": "smart-deployment-orchestrator.js quick"
+    },
+    "/rollback": {
+      "description": "Rollback to previous deployment",
+      "handler": "smart-deployment-orchestrator.js rollback"
+    },
+    "/debug": {
+      "description": "Debug specific error with correlation analysis",
+      "handler": "error-correlation-agent.js investigate"
+    },
+    "/optimize": {
+      "description": "Run performance optimization for component",
+      "handler": "performance-guardian.js audit"
+    },
+    "/sync-types": {
+      "description": "Synchronize types between backend and frontend",
+      "handler": "fullstack-sync-agent.js"
+    },
+    "/health": {
+      "description": "Check overall system health",
+      "handler": "scripts/health-check.sh"
+    }
+  },
+  "auto_suggestions": {
+    "on_error": [
+      "Check error correlation agent for related issues",
+      "Review recent deployments for potential causes",
+      "Run health check to verify system status"
+    ],
+    "on_type_error": [
+      "Run /sync-types to regenerate type definitions",
+      "Check if backend DTO was modified recently"
+    ],
+    "on_build_failure": [
+      "Check for dependency conflicts",
+      "Verify environment variables are set",
+      "Run performance audit to check bundle size"
+    ],
+    "on_deployment": [
+      "Monitor error correlation agent for new issues",
+      "Check performance metrics after deployment",
+      "Verify all critical user flows are working"
+    ]
+  },
+  "intelligent_routing": {
+    "frontend_issues": "frontend-specialist-workflow.sh",
+    "backend_issues": "backend-api-expert-workflow.sh", 
+    "payment_issues": "payments-specialist-workflow.sh",
+    "security_issues": "security-guardian-workflow.sh",
+    "deployment_issues": "devops-engineer-workflow.sh"
+  }
+}

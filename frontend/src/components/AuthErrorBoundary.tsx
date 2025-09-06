@@ -73,7 +73,7 @@ export class AuthErrorBoundary extends Component<Props, State> {
   logErrorToService(error: Error, errorInfo: ErrorInfo) {
     // Log error to backend service
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://n0de.pro/api/v1';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.n0de.pro/api/v1';
       
       // Format error data to match backend DTO expectations
       const errorData = {

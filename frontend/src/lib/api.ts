@@ -217,7 +217,7 @@ class ApiClient {
 }
 
 // Create singleton instance
-const api = new ApiClient('https://n0de.pro/api/v1');
+const api = new ApiClient(process.env.NEXT_PUBLIC_API_URL || 'https://api.n0de.pro/api/v1');
 
 export default api;
 

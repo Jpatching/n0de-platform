@@ -12,11 +12,13 @@ import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { CommonModule } from '../common/common.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
     ConfigModule,
     CommonModule,
+    EmailModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     ThrottlerModule.forRoot([{
       ttl: 60000,

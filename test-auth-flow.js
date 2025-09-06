@@ -12,8 +12,8 @@
 const https = require('https');
 const fs = require('fs');
 
-const BASE_URL = 'https://n0de.pro/api/v1';
-const FRONTEND_URL = 'https://n0de.pro';
+const BASE_URL = 'https://api.n0de.pro/api/v1';
+const FRONTEND_URL = 'https://www.n0de.pro';
 
 console.log('🧪 N0DE Authentication Flow Test\n');
 

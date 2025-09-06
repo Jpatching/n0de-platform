@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import * as sgMail from '@sendgrid/mail';
 
 export interface EmailOptions {
   to: string | string[];
@@ -32,28 +33,48 @@ export interface TeamInvitationData {
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
+  private readonly isProduction: boolean;
+  private readonly sendGridEnabled: boolean;
 
   constructor() {
-    // TODO: Initialize email provider (SendGrid, AWS SES, etc.)
-    // For now, we'll log emails instead of sending them
-    this.logger.log('EmailService initialized - currently in development mode');
+    this.isProduction = process.env.NODE_ENV === 'production';
+    this.sendGridEnabled = !!process.env.SENDGRID_API_KEY;
+    
+    if (this.sendGridEnabled) {
+      sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+      this.logger.log('EmailService initialized with SendGrid');
+    } else {
+      this.logger.log('EmailService initialized in development mode - emails will be logged');
+    }
   }
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
     try {
-      // Development mode: log email instead of sending
-      this.logger.log('📧 Email would be sent:', {
-        to: options.to,
-        subject: options.subject,
-        template: options.template,
-        hasHtml: !!options.html,
-        hasText: !!options.text,
-      });
+      if (this.sendGridEnabled) {
+        // Production: Send email via SendGrid
+        const msg = {
+          to: options.to,
+          from: {
+            email: process.env.SENDGRID_FROM_EMAIL || 'noreply@n0de.pro',
+            name: 'N0DE Platform'
+          },
+          subject: options.subject,
+          text: options.text,
+          html: options.html,
+        };
 
-      // In production, replace this with actual email provider logic:
-      // - SendGrid: await this.sendgrid.send(options)
-      // - AWS SES: await this.ses.sendEmail(options)
-      // - Nodemailer: await this.transporter.sendMail(options)
+        await sgMail.send(msg);
+        this.logger.log(`📧 Email sent successfully to ${options.to}`);
+      } else {
+        // Development mode: log email instead of sending
+        this.logger.log('📧 Email would be sent:', {
+          to: options.to,
+          subject: options.subject,
+          template: options.template,
+          hasHtml: !!options.html,
+          hasText: !!options.text,
+        });
+      }
 
       return true;
     } catch (error) {
@@ -137,6 +158,34 @@ export class EmailService {
       html,
       template: 'team_invitation',
       context: data,
+    });
+  }
+
+  async sendEmailVerification(userEmail: string, verificationToken: string, userName?: string): Promise<boolean> {
+    const subject = 'Please verify your N0DE Platform account';
+    const verificationUrl = `${process.env.FRONTEND_URL || 'https://www.n0de.pro'}/auth/verify?token=${verificationToken}`;
+    const html = this.generateEmailVerificationHtml(userName, verificationUrl);
+    
+    return this.sendEmail({
+      to: userEmail,
+      subject,
+      html,
+      template: 'email_verification',
+      context: { userName, userEmail, verificationUrl },
+    });
+  }
+
+  async sendPasswordResetEmail(userEmail: string, resetToken: string, userName?: string): Promise<boolean> {
+    const subject = 'Reset your N0DE Platform password';
+    const resetUrl = `${process.env.FRONTEND_URL || 'https://www.n0de.pro'}/auth/reset-password?token=${resetToken}`;
+    const html = this.generatePasswordResetHtml(userName, resetUrl);
+    
+    return this.sendEmail({
+      to: userEmail,
+      subject,
+      html,
+      template: 'password_reset',
+      context: { userName, userEmail, resetUrl },
     });
   }
 
@@ -412,6 +461,107 @@ export class EmailService {
                   ${data.inviteUrl}
                 </a>
               </p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  }
+
+  private generateEmailVerificationHtml(userName?: string, verificationUrl?: string): string {
+    return `
+      <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="color: #4f46e5;">N0DE Platform</h1>
+            </div>
+            
+            <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #bae6fd;">
+              <h2 style="color: #0284c7; margin-top: 0;">Verify Your Email Address 📧</h2>
+              <p>Hi ${userName || 'there'},</p>
+              <p>Thank you for signing up for N0DE Platform! Please verify your email address to activate your account and start using our services.</p>
+            </div>
+            
+            <div style="background: white; border: 1px solid #e5e7eb; padding: 20px; border-radius: 8px;">
+              <h3>Why verify your email?</h3>
+              <ul>
+                <li>Secure your account and prevent unauthorized access</li>
+                <li>Receive important notifications about your API usage</li>
+                <li>Get updates about new features and platform improvements</li>
+                <li>Enable password recovery if needed</li>
+              </ul>
+              
+              <p><strong>Important:</strong> This verification link expires in 24 hours for security reasons.</p>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${verificationUrl}" style="background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);">
+                Verify Email Address
+              </a>
+            </div>
+            
+            <div style="background: #fef3c7; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+              <p style="margin: 0;"><strong>Can't click the button?</strong></p>
+              <p style="margin: 10px 0 0 0; word-break: break-all; font-size: 14px;">
+                Copy and paste this link in your browser: <br>
+                <a href="${verificationUrl}" style="color: #0284c7;">${verificationUrl}</a>
+              </p>
+            </div>
+            
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 14px; color: #6b7280; text-align: center;">
+              <p>If you didn't create a N0DE Platform account, please ignore this email.</p>
+              <p>For security reasons, this verification link will expire in 24 hours.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  }
+
+  private generatePasswordResetHtml(userName?: string, resetUrl?: string): string {
+    return `
+      <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="color: #4f46e5;">N0DE Platform</h1>
+            </div>
+            
+            <div style="background: #fef2f2; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #fecaca;">
+              <h2 style="color: #dc2626; margin-top: 0;">Password Reset Request 🔒</h2>
+              <p>Hi ${userName || 'there'},</p>
+              <p>We received a request to reset your N0DE Platform account password. If you made this request, click the button below to reset your password.</p>
+            </div>
+            
+            <div style="background: white; border: 1px solid #e5e7eb; padding: 20px; border-radius: 8px;">
+              <h3>Security Information</h3>
+              <ul>
+                <li>This password reset link expires in 1 hour for security</li>
+                <li>You can only use this link once</li>
+                <li>If you didn't request this reset, you can safely ignore this email</li>
+                <li>Your current password remains unchanged until you create a new one</li>
+              </ul>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${resetUrl}" style="background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);">
+                Reset Password
+              </a>
+            </div>
+            
+            <div style="background: #fef3c7; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+              <p style="margin: 0;"><strong>Can't click the button?</strong></p>
+              <p style="margin: 10px 0 0 0; word-break: break-all; font-size: 14px;">
+                Copy and paste this link in your browser: <br>
+                <a href="${resetUrl}" style="color: #dc2626;">${resetUrl}</a>
+              </p>
+            </div>
+            
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 14px; color: #6b7280; text-align: center;">
+              <p><strong>Didn't request a password reset?</strong></p>
+              <p>If you didn't request this password reset, someone may be trying to access your account. Please contact our support team if you're concerned.</p>
+              <p>This reset link expires in 1 hour and can only be used once.</p>
             </div>
           </div>
         </body>

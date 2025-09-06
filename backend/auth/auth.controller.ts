@@ -279,7 +279,7 @@ export class AuthController {
     const authResult = await this.authService.handleOAuthCallback(req.user, ipAddress, userAgent);
     
     // Redirect to frontend with tokens AND user data
-    const frontendUrl = process.env.FRONTEND_URL || 'https://n0de.pro';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://www.n0de.pro';
     const userDataEncoded = encodeURIComponent(JSON.stringify({
       id: authResult.user.id,
       email: authResult.user.email,
@@ -317,7 +317,7 @@ export class AuthController {
     const authResult = await this.authService.handleOAuthCallback(req.user, ipAddress, userAgent);
     
     // Redirect to frontend with tokens AND user data
-    const frontendUrl = process.env.FRONTEND_URL || 'https://n0de.pro';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://www.n0de.pro';
     const userDataEncoded = encodeURIComponent(JSON.stringify({
       id: authResult.user.id,
       email: authResult.user.email,
@@ -330,5 +330,34 @@ export class AuthController {
     const redirectUrl = `${frontendUrl}/auth/callback?token=${authResult.accessToken}&refresh=${authResult.refreshToken}&session=${authResult.sessionId}&user=${userDataEncoded}`;
     
     res.redirect(redirectUrl);
+  }
+
+  @Post('verify-email')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify email address with token' })
+  @ApiResponse({ status: 200, description: 'Email verified successfully' })
+  @ApiResponse({ status: 400, description: 'Invalid or expired token' })
+  async verifyEmail(@Body('token') token: string) {
+    return this.authService.verifyEmail(token);
+  }
+
+  @Post('resend-verification')
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Resend email verification' })
+  @ApiResponse({ status: 200, description: 'Verification email sent' })
+  @ApiResponse({ status: 400, description: 'Email already verified or user not found' })
+  async resendEmailVerification(@Body('email') email: string) {
+    return this.authService.resendEmailVerification(email);
+  }
+
+  @Post('forgot-password')
+  @Throttle({ default: { limit: 3, ttl: 300000 } }) // 3 requests per 5 minutes
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request password reset' })
+  @ApiResponse({ status: 200, description: 'Reset email sent if user exists' })
+  async forgotPassword(@Body('email') email: string) {
+    return this.authService.createPasswordResetToken(email);
   }
 }

@@ -55,6 +55,15 @@ model User {
   organizationRole  OrganizationRole?
   sentInvitations   TeamInvitation[] @relation("InvitedBy")
   teamAuditLogs     TeamAuditLog[]
+  verificationTokens VerificationToken[]
+  
+  // Collaboration Relations
+  createdSessions   CollaborativeSession[] @relation("SessionCreator")
+  ownedResources    SharedResource[]       @relation("ResourceOwner")
+  ownedWorkspaces   Workspace[]           @relation("WorkspaceOwner")
+  workspaceAccess   WorkspaceAccess[]     @relation("WorkspaceUser")
+  grantedAccess     WorkspaceAccess[]     @relation("WorkspaceGranter")
+  teamMemberships   TeamMember[]          @relation("UserTeams")
   
   @@map("users")
 }
@@ -418,6 +427,12 @@ enum SubscriptionType {
   ENTERPRISE
 }
 
+enum TokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+  MAGIC_LINK
+}
+
 enum SubscriptionStatus {
   ACTIVE
   CANCELED
@@ -451,7 +466,8 @@ enum UserRole {
 
 enum TeamRole {
   OWNER
-  ADMIN  
+  ADMIN
+  MEMBER  
   DEVELOPER
   VIEWER
 }
@@ -564,6 +580,8 @@ model Organization {
   organizationRoles OrganizationRole[]
   teamInvitations TeamInvitation[]
   teamAuditLogs   TeamAuditLog[]
+  workspaces      Workspace[]
+  teamMembers     TeamMember[]      @relation("TeamMembers")
 
   @@map("organizations")
 }
@@ -631,4 +649,216 @@ model TeamAuditLog {
   @@index([organizationId, createdAt])
   @@index([userId, action])
   @@map("team_audit_logs")
+}
+
+model VerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique @default(cuid())
+  type      TokenType @default(EMAIL_VERIFICATION)
+  email     String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId, type])
+  @@index([expiresAt])
+  @@map("verification_tokens")
+}
+
+// Collaboration System Models
+model CollaborativeSession {
+  id              String    @id @default(cuid())
+  name            String
+  description     String?
+  createdById     String
+  participants    String[]  // Array of user IDs
+  isActive        Boolean   @default(true)
+  maxParticipants Int       @default(10)
+  sessionCode     String    @unique @default(cuid())
+  expiresAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  createdBy       User      @relation("SessionCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  activities      SessionActivity[]
+  messages        CollaborationMessage[]
+  codeEdits       CodeEdit[]
+
+  @@index([sessionCode])
+  @@index([isActive, expiresAt])
+  @@map("collaborative_sessions")
+}
+
+model SessionActivity {
+  id              String              @id @default(cuid())
+  sessionId       String
+  userId          String
+  activityType    String              // JOIN, LEAVE, CODE_EDIT, MESSAGE, etc.
+  metadata        Json?
+  createdAt       DateTime            @default(now())
+
+  // Relations
+  session         CollaborativeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("session_activity")
+}
+
+model CollaborationMessage {
+  id              String              @id @default(cuid())
+  sessionId       String
+  userId          String
+  content         String
+  messageType     String              @default("text") // text, system, code, file
+  metadata        Json?
+  createdAt       DateTime            @default(now())
+
+  // Relations
+  session         CollaborativeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("collaboration_messages")
+}
+
+model CodeEdit {
+  id              String              @id @default(cuid())
+  sessionId       String
+  userId          String
+  fileName        String?
+  operation       String              // INSERT, DELETE, UPDATE
+  startLine       Int
+  endLine         Int
+  content         String?
+  metadata        Json?
+  createdAt       DateTime            @default(now())
+
+  // Relations
+  session         CollaborativeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("code_edits")
+}
+
+model SharedResource {
+  id              String    @id @default(cuid())
+  ownerId         String
+  resourceType    String    // API_KEY, WORKSPACE, USAGE_DATA
+  resourceId      String
+  shareId         String    @unique @default(cuid())
+  accessLevel     String    // READ, READ_WRITE, ADMIN
+  isActive        Boolean   @default(true)
+  expiresAt       DateTime?
+  allowedEmails   String[]  // Specific emails that can access
+  isPublic        Boolean   @default(false)
+  accessCount     Int       @default(0)
+  lastAccessedAt  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  owner           User      @relation("ResourceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  accessLogs      ResourceAccessLog[]
+
+  @@index([shareId])
+  @@index([resourceType, resourceId])
+  @@index([isActive, expiresAt])
+  @@map("shared_resources")
+}
+
+model ResourceAccessLog {
+  id              String          @id @default(cuid())
+  sharedResourceId String
+  accessorEmail   String?
+  accessorIp      String?
+  userAgent       String?
+  action          String          // VIEW, DOWNLOAD, COPY
+  metadata        Json?
+  createdAt       DateTime        @default(now())
+
+  // Relations
+  sharedResource  SharedResource  @relation(fields: [sharedResourceId], references: [id], onDelete: Cascade)
+
+  @@index([sharedResourceId, createdAt])
+  @@map("resource_access_logs")
+}
+
+model CollaborationActivity {
+  id              String    @id @default(cuid())
+  userId          String
+  activityType    String    // SHARE_RESOURCE, JOIN_SESSION, INVITE_USER
+  resourceType    String?
+  resourceId      String?
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([activityType, createdAt])
+  @@map("collaboration_activity")
+}
+
+// Workspace and Team Models
+model Workspace {
+  id              String            @id @default(cuid())
+  name            String
+  description     String?
+  ownerId         String
+  organizationId  String?
+  settings        Json?             // Workspace preferences
+  isShared        Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  owner           User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  organization    Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  access          WorkspaceAccess[]
+
+  @@index([ownerId])
+  @@index([organizationId])
+  @@map("workspaces")
+}
+
+model WorkspaceAccess {
+  id              String      @id @default(cuid())
+  workspaceId     String
+  userId          String
+  accessLevel     String      // READ, READ_WRITE, ADMIN
+  grantedById     String
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relations
+  workspace       Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user            User        @relation("WorkspaceUser", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy       User        @relation("WorkspaceGranter", fields: [grantedById], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId, isActive])
+  @@map("workspace_access")
+}
+
+model TeamMember {
+  id              String      @id @default(cuid())
+  organizationId  String
+  userId          String
+  role            TeamRole    @default(DEVELOPER)
+  permissions     String[]
+  isActive        Boolean     @default(true)
+  joinedAt        DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relations
+  organization    Organization @relation("TeamMembers", fields: [organizationId], references: [id], onDelete: Cascade)
+  user            User        @relation("UserTeams", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId, isActive])
+  @@map("team_members")
 }

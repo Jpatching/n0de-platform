@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import AppLayout from '@/components/layouts/AppLayout';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import { motion } from 'framer-motion';
-import { 
-  Activity, 
-  Key, 
-  TrendingUp, 
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import AppLayout from "@/components/layouts/AppLayout";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { motion } from "framer-motion";
+import {
+  Activity,
+  Key,
+  TrendingUp,
   Clock,
   Zap,
   Database,
@@ -19,14 +19,14 @@ import {
   BarChart3,
   Code,
   Users,
-  Server
-} from 'lucide-react';
+  Server,
+} from "lucide-react";
 
 interface Metric {
   label: string;
   value: string;
   change: string;
-  changeType: 'positive' | 'negative' | 'neutral';
+  changeType: "positive" | "negative" | "neutral";
   icon: any;
 }
 
@@ -35,7 +35,7 @@ interface Activity {
   title: string;
   description: string;
   timestamp: string;
-  type: 'success' | 'warning' | 'info';
+  type: "success" | "warning" | "info";
 }
 
 const AppOverview = () => {
@@ -51,69 +51,114 @@ const AppOverview = () => {
         setError(null);
 
         // Fetch real usage data from backend
-        const response = await fetch('/api/billing/usage', {
+        const backendUrl =
+          process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.n0de.pro";
+        const endpoint =
+          process.env.NODE_ENV === "development"
+            ? "/api/billing/usage"
+            : `${backendUrl}/api/v1/billing/usage`;
+        const response = await fetch(endpoint, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
           },
         });
 
         if (!response.ok) {
-          throw new Error('Failed to fetch metrics data');
+          throw new Error("Failed to fetch metrics data");
         }
 
         const data = await response.json();
-        
+
         // Format usage data
         const formatNumber = (num: number): string => {
-          if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-          if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+          if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
+          if (num >= 1000) return (num / 1000).toFixed(1) + "K";
           return num.toString();
         };
 
         const newMetrics: Metric[] = [
           {
-            label: 'API Requests',
+            label: "API Requests",
             value: formatNumber(data.usage?.requests_used || 0),
-            change: data.analytics?.requests_growth || '+12.3%',
-            changeType: (data.analytics?.requests_growth?.startsWith('+') || !data.analytics?.requests_growth) ? 'positive' : 'negative',
-            icon: Activity
+            change: data.analytics?.requests_growth || "+12.3%",
+            changeType:
+              data.analytics?.requests_growth?.startsWith("+") ||
+              !data.analytics?.requests_growth
+                ? "positive"
+                : "negative",
+            icon: Activity,
           },
           {
-            label: 'Response Time',
+            label: "Response Time",
             value: `${data.analytics?.avg_latency || 42}ms`,
-            change: data.analytics?.latency_change || '-8.2%',
-            changeType: (data.analytics?.latency_change?.startsWith('-') || !data.analytics?.latency_change) ? 'positive' : 'negative',
-            icon: Clock
+            change: data.analytics?.latency_change || "-8.2%",
+            changeType:
+              data.analytics?.latency_change?.startsWith("-") ||
+              !data.analytics?.latency_change
+                ? "positive"
+                : "negative",
+            icon: Clock,
           },
           {
-            label: 'Success Rate',
+            label: "Success Rate",
             value: `${(data.analytics?.success_rate || 99.97).toFixed(2)}%`,
-            change: data.analytics?.success_rate_change || '+0.02%',
-            changeType: (data.analytics?.success_rate_change?.startsWith('+') || !data.analytics?.success_rate_change) ? 'positive' : 'negative',
-            icon: CheckCircle
+            change: data.analytics?.success_rate_change || "+0.02%",
+            changeType:
+              data.analytics?.success_rate_change?.startsWith("+") ||
+              !data.analytics?.success_rate_change
+                ? "positive"
+                : "negative",
+            icon: CheckCircle,
           },
           {
-            label: 'Active Keys',
+            label: "Active Keys",
             value: (data.analytics?.active_keys || 8).toString(),
-            change: data.analytics?.keys_change || '+2',
-            changeType: (data.analytics?.keys_change?.startsWith('+') || !data.analytics?.keys_change) ? 'positive' : 'negative',
-            icon: Key
-          }
+            change: data.analytics?.keys_change || "+2",
+            changeType:
+              data.analytics?.keys_change?.startsWith("+") ||
+              !data.analytics?.keys_change
+                ? "positive"
+                : "negative",
+            icon: Key,
+          },
         ];
 
         setMetrics(newMetrics);
-
       } catch (err) {
-        console.error('Error fetching overview metrics:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load metrics');
-        
+        console.error("Error fetching overview metrics:", err);
+        setError(err instanceof Error ? err.message : "Failed to load metrics");
+
         // Fallback to demo data
         setMetrics([
-          { label: 'API Requests', value: '2.4M', change: '+12.3%', changeType: 'positive', icon: Activity },
-          { label: 'Response Time', value: '42ms', change: '-8.2%', changeType: 'positive', icon: Clock },
-          { label: 'Success Rate', value: '99.97%', change: '+0.02%', changeType: 'positive', icon: CheckCircle },
-          { label: 'Active Keys', value: '8', change: '+2', changeType: 'positive', icon: Key }
+          {
+            label: "API Requests",
+            value: "2.4M",
+            change: "+12.3%",
+            changeType: "positive",
+            icon: Activity,
+          },
+          {
+            label: "Response Time",
+            value: "42ms",
+            change: "-8.2%",
+            changeType: "positive",
+            icon: Clock,
+          },
+          {
+            label: "Success Rate",
+            value: "99.97%",
+            change: "+0.02%",
+            changeType: "positive",
+            icon: CheckCircle,
+          },
+          {
+            label: "Active Keys",
+            value: "8",
+            change: "+2",
+            changeType: "positive",
+            icon: Key,
+          },
         ]);
       } finally {
         setLoading(false);
@@ -125,40 +170,40 @@ const AppOverview = () => {
 
   const [recentActivity] = useState<Activity[]>([
     {
-      id: '1',
-      title: 'API Key Created',
+      id: "1",
+      title: "API Key Created",
       description: 'New production API key "mobile-app-v2" was created',
-      timestamp: '2 minutes ago',
-      type: 'success'
+      timestamp: "2 minutes ago",
+      type: "success",
     },
     {
-      id: '2',
-      title: 'Rate Limit Alert',
+      id: "2",
+      title: "Rate Limit Alert",
       description: 'API key "legacy-system" approaching rate limit (85% used)',
-      timestamp: '12 minutes ago',
-      type: 'warning'
+      timestamp: "12 minutes ago",
+      type: "warning",
     },
     {
-      id: '3',
-      title: 'Database Query Optimized',
-      description: 'Slow query detected and automatically optimized',
-      timestamp: '1 hour ago',
-      type: 'info'
+      id: "3",
+      title: "Database Query Optimized",
+      description: "Slow query detected and automatically optimized",
+      timestamp: "1 hour ago",
+      type: "info",
     },
     {
-      id: '4',
-      title: 'New Team Member',
-      description: 'john@company.com was added to your team',
-      timestamp: '2 hours ago',
-      type: 'success'
-    }
+      id: "4",
+      title: "New Team Member",
+      description: "john@company.com was added to your team",
+      timestamp: "2 hours ago",
+      type: "success",
+    },
   ]);
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'success':
+      case "success":
         return <CheckCircle className="h-4 w-4 text-green-400" />;
-      case 'warning':
+      case "warning":
         return <AlertCircle className="h-4 w-4 text-yellow-400" />;
       default:
         return <Activity className="h-4 w-4 text-blue-400" />;
@@ -193,7 +238,8 @@ const AppOverview = () => {
             >
               <div>
                 <h1 className="text-2xl font-bold text-white mb-2">
-                  Welcome back, {user?.firstName || user?.username || 'Developer'}
+                  Welcome back,{" "}
+                  {user?.firstName || user?.username || "Developer"}
                 </h1>
                 <p className="text-zinc-400">
                   Here's what's happening with your API today.
@@ -224,18 +270,22 @@ const AppOverview = () => {
                     <div className="p-2 bg-cyan-500/10 rounded-lg">
                       <Icon className="h-5 w-5 text-cyan-400" />
                     </div>
-                    <span className={`text-sm font-medium ${
-                      metric.changeType === 'positive' 
-                        ? 'text-green-400' 
-                        : metric.changeType === 'negative' 
-                          ? 'text-red-400' 
-                          : 'text-zinc-400'
-                    }`}>
+                    <span
+                      className={`text-sm font-medium ${
+                        metric.changeType === "positive"
+                          ? "text-green-400"
+                          : metric.changeType === "negative"
+                            ? "text-red-400"
+                            : "text-zinc-400"
+                      }`}
+                    >
                       {metric.change}
                     </span>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-white mb-1">{metric.value}</p>
+                    <p className="text-2xl font-bold text-white mb-1">
+                      {metric.value}
+                    </p>
                     <p className="text-sm text-zinc-400">{metric.label}</p>
                   </div>
                 </motion.div>
@@ -262,13 +312,17 @@ const AppOverview = () => {
                   </select>
                 </div>
               </div>
-              
+
               {/* Placeholder for chart */}
               <div className="h-64 bg-zinc-900/50 rounded-lg flex items-center justify-center border-2 border-dashed border-zinc-700">
                 <div className="text-center">
                   <BarChart3 className="h-12 w-12 text-zinc-600 mx-auto mb-3" />
-                  <p className="text-zinc-400">Usage chart will be displayed here</p>
-                  <p className="text-zinc-500 text-sm">Connect your analytics to see real-time data</p>
+                  <p className="text-zinc-400">
+                    Usage chart will be displayed here
+                  </p>
+                  <p className="text-zinc-500 text-sm">
+                    Connect your analytics to see real-time data
+                  </p>
                 </div>
               </div>
             </motion.div>
@@ -281,12 +335,14 @@ const AppOverview = () => {
               className="bg-zinc-950/50 border border-zinc-800 rounded-lg p-6"
             >
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-white">Recent Activity</h3>
+                <h3 className="text-lg font-semibold text-white">
+                  Recent Activity
+                </h3>
                 <button className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors">
                   View all
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 {recentActivity.map((activity, index) => (
                   <motion.div
@@ -298,9 +354,15 @@ const AppOverview = () => {
                   >
                     {getActivityIcon(activity.type)}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white">{activity.title}</p>
-                      <p className="text-xs text-zinc-400 mt-1">{activity.description}</p>
-                      <p className="text-xs text-zinc-500 mt-1">{activity.timestamp}</p>
+                      <p className="text-sm font-medium text-white">
+                        {activity.title}
+                      </p>
+                      <p className="text-xs text-zinc-400 mt-1">
+                        {activity.description}
+                      </p>
+                      <p className="text-xs text-zinc-500 mt-1">
+                        {activity.timestamp}
+                      </p>
                     </div>
                   </motion.div>
                 ))}
@@ -321,8 +383,12 @@ const AppOverview = () => {
                   <Key className="h-5 w-5 text-cyan-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-white">Create API Key</p>
-                  <p className="text-xs text-zinc-400">Generate new credentials</p>
+                  <p className="text-sm font-medium text-white">
+                    Create API Key
+                  </p>
+                  <p className="text-xs text-zinc-400">
+                    Generate new credentials
+                  </p>
                 </div>
                 <ArrowUpRight className="h-4 w-4 text-zinc-400 group-hover:text-cyan-400 transition-colors ml-auto" />
               </div>
@@ -334,7 +400,9 @@ const AppOverview = () => {
                   <Code className="h-5 w-5 text-cyan-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-white">API Playground</p>
+                  <p className="text-sm font-medium text-white">
+                    API Playground
+                  </p>
                   <p className="text-xs text-zinc-400">Test endpoints</p>
                 </div>
                 <ArrowUpRight className="h-4 w-4 text-zinc-400 group-hover:text-cyan-400 transition-colors ml-auto" />
@@ -347,7 +415,9 @@ const AppOverview = () => {
                   <Database className="h-5 w-5 text-cyan-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-white">View Database</p>
+                  <p className="text-sm font-medium text-white">
+                    View Database
+                  </p>
                   <p className="text-xs text-zinc-400">Manage your data</p>
                 </div>
                 <ArrowUpRight className="h-4 w-4 text-zinc-400 group-hover:text-cyan-400 transition-colors ml-auto" />

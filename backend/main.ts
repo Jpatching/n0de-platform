@@ -15,12 +15,13 @@ async function bootstrap() {
   // CORS - Backend handles CORS, Nginx should not add duplicate headers
   app.enableCors({
     origin: [
-      'https://n0de.pro',
-      'https://www.n0de.pro', // Backwards compatibility
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://127.0.0.1:3000',
-      'http://127.0.0.1:3001'
+      'https://n0de.pro',        // Frontend (Vercel)
+      'https://www.n0de.pro',    // Frontend alias
+      'https://api.n0de.pro',    // API domain
+      'http://localhost:8899',   // Local Solana RPC
+      'http://127.0.0.1:8899',   // Local Solana RPC
+      'http://localhost:4000',   // Self-reference for internal calls
+      'http://127.0.0.1:4000'    // Self-reference for internal calls
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],

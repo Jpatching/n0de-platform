@@ -72,7 +72,7 @@ export default function AuthModal({ isOpen, onClose, mode, onModeChange }: AuthM
     }
     
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://n0de.pro/api/v1';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.n0de.pro/api/v1';
       const response = await fetch(`${apiUrl}/auth/${mode === 'signin' ? 'login' : 'register'}`, {
         method: 'POST',
         headers: {
@@ -116,7 +116,7 @@ export default function AuthModal({ isOpen, onClose, mode, onModeChange }: AuthM
   const handleSocialLogin = (provider: 'github' | 'google') => {
     // Don't set loading state - we're leaving the page
     // Redirect to backend OAuth endpoints (proper OAuth flow)
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://n0de.pro/api/v1';
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.n0de.pro/api/v1';
     
     console.log(`Redirecting to OAuth: ${backendUrl}/auth/${provider}`);
     
