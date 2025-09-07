@@ -1,10 +1,20 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsArray, IsNumber, IsOptional, IsBoolean, MinLength, MaxLength, Min, Max } from 'class-validator';
+import { ApiProperty } from "@nestjs/swagger";
+import {
+  IsString,
+  IsArray,
+  IsNumber,
+  IsOptional,
+  IsBoolean,
+  MinLength,
+  MaxLength,
+  Min,
+  Max,
+} from "class-validator";
 
 export class CreateApiKeyDto {
   @ApiProperty({
-    description: 'Name for the API key',
-    example: 'Production App',
+    description: "Name for the API key",
+    example: "Production App",
   })
   @IsString()
   @MinLength(1)
@@ -12,10 +22,10 @@ export class CreateApiKeyDto {
   name: string;
 
   @ApiProperty({
-    description: 'Permissions for the API key',
-    example: ['read', 'write'],
+    description: "Permissions for the API key",
+    example: ["read", "write"],
     required: false,
-    default: ['read'],
+    default: ["read"],
   })
   @IsOptional()
   @IsArray()
@@ -23,7 +33,7 @@ export class CreateApiKeyDto {
   permissions?: string[];
 
   @ApiProperty({
-    description: 'Rate limit (requests per minute)',
+    description: "Rate limit (requests per minute)",
     example: 1000,
     required: false,
     default: 1000,
@@ -37,8 +47,8 @@ export class CreateApiKeyDto {
 
 export class UpdateApiKeyDto {
   @ApiProperty({
-    description: 'Name for the API key',
-    example: 'Production App',
+    description: "Name for the API key",
+    example: "Production App",
     required: false,
   })
   @IsOptional()
@@ -48,8 +58,8 @@ export class UpdateApiKeyDto {
   name?: string;
 
   @ApiProperty({
-    description: 'Permissions for the API key',
-    example: ['read', 'write'],
+    description: "Permissions for the API key",
+    example: ["read", "write"],
     required: false,
   })
   @IsOptional()
@@ -58,7 +68,7 @@ export class UpdateApiKeyDto {
   permissions?: string[];
 
   @ApiProperty({
-    description: 'Rate limit (requests per minute)',
+    description: "Rate limit (requests per minute)",
     example: 1000,
     required: false,
   })
@@ -69,7 +79,7 @@ export class UpdateApiKeyDto {
   rateLimit?: number;
 
   @ApiProperty({
-    description: 'Whether the API key is active',
+    description: "Whether the API key is active",
     example: true,
     required: false,
   })

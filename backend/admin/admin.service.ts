@@ -1,7 +1,18 @@
-import { Injectable, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../common/prisma.service';
-import { UserRole, SubscriptionType, SubscriptionStatus, SupportTicketStatus, PaymentStatus } from '@prisma/client';
-import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { PrismaService } from "../common/prisma.service";
+import {
+  UserRole,
+  SubscriptionType,
+  SubscriptionStatus,
+  SupportTicketStatus,
+  PaymentStatus,
+} from "@prisma/client";
+import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 
 @Injectable()
 export class AdminService {
@@ -16,8 +27,11 @@ export class AdminService {
       select: { role: true },
     });
 
-    if (!user || (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN)) {
-      throw new ForbiddenException('Access denied. Admin privileges required.');
+    if (
+      !user ||
+      (user.role !== UserRole.ADMIN && user.role !== UserRole.SUPER_ADMIN)
+    ) {
+      throw new ForbiddenException("Access denied. Admin privileges required.");
     }
 
     return true;
@@ -30,13 +44,21 @@ export class AdminService {
     });
 
     if (!user || user.role !== UserRole.SUPER_ADMIN) {
-      throw new ForbiddenException('Access denied. Super admin privileges required.');
+      throw new ForbiddenException(
+        "Access denied. Super admin privileges required.",
+      );
     }
 
     return true;
   }
 
-  async logAdminAction(adminUserId: string, action: string, resource: string, resourceId?: string, details?: any) {
+  async logAdminAction(
+    adminUserId: string,
+    action: string,
+    resource: string,
+    resourceId?: string,
+    details?: any,
+  ) {
     return this.prisma.adminAction.create({
       data: {
         adminUserId,
@@ -90,12 +112,12 @@ export class AdminService {
       users: {
         total: totalUsers,
         active: activeUsers,
-        growth: await this.calculateGrowthRate('user'),
+        growth: await this.calculateGrowthRate("user"),
       },
       payments: {
         total: totalPayments,
         monthlyRevenue: monthlyRevenue._sum.amount || 0,
-        growth: await this.calculateGrowthRate('payment'),
+        growth: await this.calculateGrowthRate("payment"),
       },
       support: {
         openTickets,
@@ -109,15 +131,15 @@ export class AdminService {
     };
   }
 
-  private async calculateGrowthRate(type: 'user' | 'payment'): Promise<number> {
+  private async calculateGrowthRate(type: "user" | "payment"): Promise<number> {
     const now = new Date();
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     let lastMonthCount: number;
     let thisMonthCount: number;
-    
-    if (type === 'user') {
+
+    if (type === "user") {
       [lastMonthCount, thisMonthCount] = await Promise.all([
         this.prisma.user.count({
           where: {
@@ -155,7 +177,9 @@ export class AdminService {
       ]);
     }
 
-    return lastMonthCount > 0 ? ((thisMonthCount - lastMonthCount) / lastMonthCount) * 100 : 0;
+    return lastMonthCount > 0
+      ? ((thisMonthCount - lastMonthCount) / lastMonthCount) * 100
+      : 0;
   }
 
   private async getAverageResponseTime(): Promise<number> {
@@ -184,10 +208,10 @@ export class AdminService {
 
     if (search) {
       whereCondition.OR = [
-        { email: { contains: search, mode: 'insensitive' } },
-        { username: { contains: search, mode: 'insensitive' } },
-        { firstName: { contains: search, mode: 'insensitive' } },
-        { lastName: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: "insensitive" } },
+        { username: { contains: search, mode: "insensitive" } },
+        { firstName: { contains: search, mode: "insensitive" } },
+        { lastName: { contains: search, mode: "insensitive" } },
       ];
     }
 
@@ -201,11 +225,11 @@ export class AdminService {
         include: {
           subscriptions: {
             where: { status: SubscriptionStatus.ACTIVE },
-            orderBy: { createdAt: 'desc' },
+            orderBy: { createdAt: "desc" },
             take: 1,
           },
           payments: {
-            orderBy: { createdAt: 'desc' },
+            orderBy: { createdAt: "desc" },
             take: 1,
           },
           _count: {
@@ -216,7 +240,7 @@ export class AdminService {
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         skip,
         take: limit,
       }),
@@ -224,7 +248,7 @@ export class AdminService {
     ]);
 
     return {
-      users: users.map(user => ({
+      users: users.map((user) => ({
         ...user,
         currentSubscription: user.subscriptions[0] || null,
         lastPayment: user.payments[0] || null,
@@ -243,28 +267,28 @@ export class AdminService {
       where: { id: userId },
       include: {
         subscriptions: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
         },
         payments: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
           take: 10,
         },
         apiKeys: {
           where: { isActive: true },
         },
         supportTickets: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
           take: 5,
         },
         sessions: {
           where: { isActive: true },
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
         },
       },
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
 
     // Get usage stats
@@ -276,7 +300,11 @@ export class AdminService {
     };
   }
 
-  async updateUserRole(adminUserId: string, targetUserId: string, newRole: UserRole) {
+  async updateUserRole(
+    adminUserId: string,
+    targetUserId: string,
+    newRole: UserRole,
+  ) {
     await this.validateSuperAdmin(adminUserId);
 
     const user = await this.prisma.user.update({
@@ -284,9 +312,15 @@ export class AdminService {
       data: { role: newRole },
     });
 
-    await this.logAdminAction(adminUserId, 'UPDATE_USER_ROLE', 'USER', targetUserId, {
-      newRole,
-    });
+    await this.logAdminAction(
+      adminUserId,
+      "UPDATE_USER_ROLE",
+      "USER",
+      targetUserId,
+      {
+        newRole,
+      },
+    );
 
     return user;
   }
@@ -309,9 +343,15 @@ export class AdminService {
       data: { isActive: false },
     });
 
-    await this.logAdminAction(adminUserId, 'SUSPEND_USER', 'USER', targetUserId, {
-      reason,
-    });
+    await this.logAdminAction(
+      adminUserId,
+      "SUSPEND_USER",
+      "USER",
+      targetUserId,
+      {
+        reason,
+      },
+    );
 
     return user;
   }
@@ -328,30 +368,55 @@ export class AdminService {
       },
     });
 
-    await this.logAdminAction(adminUserId, 'UNSUSPEND_USER', 'USER', targetUserId);
+    await this.logAdminAction(
+      adminUserId,
+      "UNSUSPEND_USER",
+      "USER",
+      targetUserId,
+    );
 
     return user;
   }
 
-  async updateUserSubscription(adminUserId: string, targetUserId: string, planType: SubscriptionType) {
+  async updateUserSubscription(
+    adminUserId: string,
+    targetUserId: string,
+    planType: SubscriptionType,
+  ) {
     await this.validateAdminUser(adminUserId);
 
     // For admin upgrades, directly update the subscription
-    const updatedSubscription = await this.subscriptionsService.adminUpgradeSubscription(targetUserId, planType, {
-      adminUpgrade: true,
-      adminUserId,
-    });
+    const updatedSubscription =
+      await this.subscriptionsService.adminUpgradeSubscription(
+        targetUserId,
+        planType,
+        {
+          adminUpgrade: true,
+          adminUserId,
+        },
+      );
 
-    await this.logAdminAction(adminUserId, 'UPDATE_SUBSCRIPTION', 'SUBSCRIPTION', updatedSubscription?.id || targetUserId, {
-      planType,
-      targetUserId,
-    });
+    await this.logAdminAction(
+      adminUserId,
+      "UPDATE_SUBSCRIPTION",
+      "SUBSCRIPTION",
+      updatedSubscription?.id || targetUserId,
+      {
+        planType,
+        targetUserId,
+      },
+    );
 
     return updatedSubscription;
   }
 
   // Payment Management
-  async getAllPayments(page = 1, limit = 20, status?: PaymentStatus, provider?: string) {
+  async getAllPayments(
+    page = 1,
+    limit = 20,
+    status?: PaymentStatus,
+    provider?: string,
+  ) {
     const skip = (page - 1) * limit;
     const whereCondition: any = {};
 
@@ -378,7 +443,7 @@ export class AdminService {
           },
           subscription: true,
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         skip,
         take: limit,
       }),
@@ -400,35 +465,36 @@ export class AdminService {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const [totalRevenue, paymentsByStatus, paymentsByProvider, dailyPayments] = await Promise.all([
-      this.prisma.payment.aggregate({
-        where: {
-          status: PaymentStatus.COMPLETED,
-          createdAt: { gte: startDate },
-        },
-        _sum: { amount: true },
-        _count: { id: true },
-      }),
-      this.prisma.payment.groupBy({
-        by: ['status'],
-        where: { createdAt: { gte: startDate } },
-        _count: { id: true },
-      }),
-      this.prisma.payment.groupBy({
-        by: ['provider'],
-        where: { createdAt: { gte: startDate } },
-        _count: { id: true },
-        _sum: { amount: true },
-      }),
-      // Daily payments for chart
-      this.prisma.$queryRaw`
+    const [totalRevenue, paymentsByStatus, paymentsByProvider, dailyPayments] =
+      await Promise.all([
+        this.prisma.payment.aggregate({
+          where: {
+            status: PaymentStatus.COMPLETED,
+            createdAt: { gte: startDate },
+          },
+          _sum: { amount: true },
+          _count: { id: true },
+        }),
+        this.prisma.payment.groupBy({
+          by: ["status"],
+          where: { createdAt: { gte: startDate } },
+          _count: { id: true },
+        }),
+        this.prisma.payment.groupBy({
+          by: ["provider"],
+          where: { createdAt: { gte: startDate } },
+          _count: { id: true },
+          _sum: { amount: true },
+        }),
+        // Daily payments for chart
+        this.prisma.$queryRaw`
         SELECT DATE(created_at) as date, COUNT(*) as count, SUM(amount) as revenue
         FROM payments
         WHERE created_at >= ${startDate} AND status = 'COMPLETED'
         GROUP BY DATE(created_at)
         ORDER BY date
       `,
-    ]);
+      ]);
 
     return {
       totalRevenue: totalRevenue._sum.amount || 0,
@@ -440,7 +506,11 @@ export class AdminService {
   }
 
   // Support Ticket Management
-  async getAllSupportTickets(page = 1, limit = 20, status?: SupportTicketStatus) {
+  async getAllSupportTickets(
+    page = 1,
+    limit = 20,
+    status?: SupportTicketStatus,
+  ) {
     const skip = (page - 1) * limit;
     const whereCondition = status ? { status } : {};
 
@@ -458,14 +528,14 @@ export class AdminService {
             },
           },
           messages: {
-            orderBy: { createdAt: 'desc' },
+            orderBy: { createdAt: "desc" },
             take: 1,
           },
           _count: {
             select: { messages: true },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         skip,
         take: limit,
       }),
@@ -473,7 +543,7 @@ export class AdminService {
     ]);
 
     return {
-      tickets: tickets.map(ticket => ({
+      tickets: tickets.map((ticket) => ({
         ...ticket,
         lastMessage: ticket.messages[0] || null,
       })),
@@ -486,7 +556,12 @@ export class AdminService {
     };
   }
 
-  async updateTicketStatus(adminUserId: string, ticketId: string, status: SupportTicketStatus, assignedToEmail?: string) {
+  async updateTicketStatus(
+    adminUserId: string,
+    ticketId: string,
+    status: SupportTicketStatus,
+    assignedToEmail?: string,
+  ) {
     await this.validateAdminUser(adminUserId);
 
     const ticket = await this.prisma.supportTicket.update({
@@ -494,15 +569,23 @@ export class AdminService {
       data: {
         status,
         assignedToEmail: assignedToEmail || undefined,
-        resolvedAt: status === SupportTicketStatus.RESOLVED ? new Date() : undefined,
-        closedAt: status === SupportTicketStatus.CLOSED ? new Date() : undefined,
+        resolvedAt:
+          status === SupportTicketStatus.RESOLVED ? new Date() : undefined,
+        closedAt:
+          status === SupportTicketStatus.CLOSED ? new Date() : undefined,
       },
     });
 
-    await this.logAdminAction(adminUserId, 'UPDATE_TICKET_STATUS', 'SUPPORT_TICKET', ticketId, {
-      status,
-      assignedToEmail,
-    });
+    await this.logAdminAction(
+      adminUserId,
+      "UPDATE_TICKET_STATUS",
+      "SUPPORT_TICKET",
+      ticketId,
+      {
+        status,
+        assignedToEmail,
+      },
+    );
 
     return ticket;
   }
@@ -528,7 +611,7 @@ export class AdminService {
     ]);
 
     return {
-      status: 'healthy',
+      status: "healthy",
       metrics: {
         totalUsers,
         activeSubscriptions,
@@ -622,7 +705,7 @@ export class AdminService {
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         skip,
         take: limit,
       }),

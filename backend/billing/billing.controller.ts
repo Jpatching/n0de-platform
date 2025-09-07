@@ -1,19 +1,30 @@
-import { Controller, Get, Post, Put, Body, Param, UseGuards, Request, HttpStatus, HttpException } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { BillingSyncService } from './billing-sync.service';
-import { StripeService } from './stripe.service';
-import { UsageAnalyticsService } from './usage-analytics.service';
-import { Logger } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Body,
+  Param,
+  UseGuards,
+  Request,
+  HttpStatus,
+  HttpException,
+} from "@nestjs/common";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { BillingSyncService } from "./billing-sync.service";
+import { StripeService } from "./stripe.service";
+import { UsageAnalyticsService } from "./usage-analytics.service";
+import { Logger } from "@nestjs/common";
 
 /**
  * BillingController: Clean Billing API
- * 
+ *
  * This controller exposes N0DE's billing capabilities:
  * - Usage tracking and billing sync
  * - Stripe integration for payment processing
  * - Usage analytics
  */
-@Controller('billing')
+@Controller("billing")
 @UseGuards(JwtAuthGuard)
 export class BillingController {
   private readonly logger = new Logger(BillingController.name);
@@ -28,21 +39,25 @@ export class BillingController {
    * GET /api/v1/billing/usage
    * Real-time usage data for the current user
    */
-  @Get('usage')
+  @Get("usage")
   async getCurrentUsage(@Request() req) {
     try {
       const userId = req.user.id;
       const usage = await this.billingSyncService.getCurrentUsage(userId);
-      const analytics = await this.usageAnalyticsService.analyzeUsagePattern(userId);
-      
+      const analytics =
+        await this.usageAnalyticsService.analyzeUsagePattern(userId);
+
       return {
         usage,
         analytics,
         timestamp: new Date(),
       };
     } catch (error) {
-      this.logger.error('Failed to get current usage:', error);
-      throw new HttpException('Failed to retrieve usage data', HttpStatus.INTERNAL_SERVER_ERROR);
+      this.logger.error("Failed to get current usage:", error);
+      throw new HttpException(
+        "Failed to retrieve usage data",
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -50,25 +65,26 @@ export class BillingController {
    * GET /api/v1/billing/subscription
    * Current subscription details with Stripe integration
    */
-  @Get('subscription')
+  @Get("subscription")
   async getSubscription(@Request() req) {
     try {
       const userId = req.user.id;
-      
+
       // Get subscription from database
-      const subscription = await this.billingSyncService.getUserSubscription(userId);
+      const subscription =
+        await this.billingSyncService.getUserSubscription(userId);
       if (!subscription) {
         return { subscription: null, paymentMethods: [], billingAddress: null };
       }
 
       // Get payment methods via Stripe
       const paymentMethods = await this.stripeService.getCustomerPaymentMethods(
-        subscription.stripeCustomerId
+        subscription.stripeCustomerId,
       );
 
       // Get billing address via Stripe
       const billingAddress = await this.stripeService.getCustomerBillingAddress(
-        subscription.stripeCustomerId
+        subscription.stripeCustomerId,
       );
 
       return {
@@ -77,8 +93,11 @@ export class BillingController {
         billingAddress,
       };
     } catch (error) {
-      this.logger.error('Failed to get subscription:', error);
-      throw new HttpException('Failed to retrieve subscription data', HttpStatus.INTERNAL_SERVER_ERROR);
+      this.logger.error("Failed to get subscription:", error);
+      throw new HttpException(
+        "Failed to retrieve subscription data",
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -86,7 +105,7 @@ export class BillingController {
    * POST /api/v1/billing/subscription/create
    * Create new subscription with Stripe
    */
-  @Post('subscription/create')
+  @Post("subscription/create")
   async createSubscription(@Request() req, @Body() createData: any) {
     try {
       const userId = req.user.id;
@@ -94,8 +113,8 @@ export class BillingController {
 
       // Create Stripe customer
       const stripeCustomerId = await this.stripeService.createOrGetCustomer(
-        userId, 
-        userEmail
+        userId,
+        userEmail,
       );
 
       // Create checkout session for subscription
@@ -103,17 +122,20 @@ export class BillingController {
         stripeCustomerId,
         createData.planType,
         `${process.env.FRONTEND_URL}/payment/success`,
-        `${process.env.FRONTEND_URL}/checkout`
+        `${process.env.FRONTEND_URL}/checkout`,
       );
 
       return {
         checkoutUrl: session.url,
         sessionId: session.id,
-        message: 'Checkout session created successfully',
+        message: "Checkout session created successfully",
       };
     } catch (error) {
-      this.logger.error('Failed to create subscription:', error);
-      throw new HttpException('Failed to create subscription', HttpStatus.BAD_REQUEST);
+      this.logger.error("Failed to create subscription:", error);
+      throw new HttpException(
+        "Failed to create subscription",
+        HttpStatus.BAD_REQUEST,
+      );
     }
   }
 
@@ -121,18 +143,21 @@ export class BillingController {
    * POST /api/v1/billing/usage/report
    * Report RPC usage for billing (internal endpoint)
    */
-  @Post('usage/report')
-  async reportUsage(@Body() usageData: {
-    userId: string;
-    endpoint: string;
-    computeUnits: number;
-    metadata?: any;
-  }) {
+  @Post("usage/report")
+  async reportUsage(
+    @Body()
+    usageData: {
+      userId: string;
+      endpoint: string;
+      computeUnits: number;
+      metadata?: any;
+    },
+  ) {
     try {
       await this.billingSyncService.recordUsage(
         usageData.userId,
         usageData.endpoint,
-        usageData.computeUnits
+        usageData.computeUnits,
       );
 
       // Record for analytics
@@ -142,15 +167,18 @@ export class BillingController {
         userId: usageData.userId,
         computeUnits: usageData.computeUnits,
         latency: usageData.metadata?.latency || 0,
-        network: usageData.metadata?.network || 'mainnet',
+        network: usageData.metadata?.network || "mainnet",
         success: true,
         metadata: usageData.metadata || {},
       });
 
-      return { status: 'recorded', timestamp: new Date() };
+      return { status: "recorded", timestamp: new Date() };
     } catch (error) {
-      this.logger.error('Failed to report usage:', error);
-      throw new HttpException('Failed to record usage', HttpStatus.INTERNAL_SERVER_ERROR);
+      this.logger.error("Failed to report usage:", error);
+      throw new HttpException(
+        "Failed to record usage",
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -158,16 +186,20 @@ export class BillingController {
    * GET /api/v1/billing/analytics/optimization
    * Cost optimization recommendations
    */
-  @Get('analytics/optimization')
+  @Get("analytics/optimization")
   async getOptimizationReport(@Request() req) {
     try {
       const userId = req.user.id;
-      const report = await this.usageAnalyticsService.generateCostOptimizationReport(userId);
-      
+      const report =
+        await this.usageAnalyticsService.generateCostOptimizationReport(userId);
+
       return report;
     } catch (error) {
-      this.logger.error('Failed to generate optimization report:', error);
-      throw new HttpException('Failed to generate optimization report', HttpStatus.INTERNAL_SERVER_ERROR);
+      this.logger.error("Failed to generate optimization report:", error);
+      throw new HttpException(
+        "Failed to generate optimization report",
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 
@@ -175,54 +207,58 @@ export class BillingController {
    * GET /api/v1/billing/health
    * Billing system health check
    */
-  @Get('health')
+  @Get("health")
   async healthCheck() {
     try {
       // Check all services are responsive
       const checks = {
-        billingSyncService: await this.checkServiceHealth('billing'),
-        stripeService: await this.checkServiceHealth('stripe'),
-        usageAnalyticsService: await this.checkServiceHealth('analytics'),
+        billingSyncService: await this.checkServiceHealth("billing"),
+        stripeService: await this.checkServiceHealth("stripe"),
+        usageAnalyticsService: await this.checkServiceHealth("analytics"),
       };
 
-      const allHealthy = Object.values(checks).every(check => check.status === 'healthy');
+      const allHealthy = Object.values(checks).every(
+        (check) => check.status === "healthy",
+      );
 
       return {
-        status: allHealthy ? 'healthy' : 'degraded',
+        status: allHealthy ? "healthy" : "degraded",
         checks,
         timestamp: new Date(),
       };
     } catch (error) {
-      this.logger.error('Health check failed:', error);
+      this.logger.error("Health check failed:", error);
       return {
-        status: 'unhealthy',
+        status: "unhealthy",
         error: error.message,
         timestamp: new Date(),
       };
     }
   }
 
-  private async checkServiceHealth(service: string): Promise<{ status: string; message?: string }> {
+  private async checkServiceHealth(
+    service: string,
+  ): Promise<{ status: string; message?: string }> {
     try {
       switch (service) {
-        case 'billing':
+        case "billing":
           // Quick Redis connectivity test
-          await this.billingSyncService.getCurrentUsage('health-check-user');
-          return { status: 'healthy' };
-        
-        case 'stripe':
+          await this.billingSyncService.getCurrentUsage("health-check-user");
+          return { status: "healthy" };
+
+        case "stripe":
           // Test Stripe connectivity
-          return { status: 'healthy' };
-          
-        case 'analytics':
+          return { status: "healthy" };
+
+        case "analytics":
           // Test analytics service
-          return { status: 'healthy' };
-          
+          return { status: "healthy" };
+
         default:
-          return { status: 'unknown' };
+          return { status: "unknown" };
       }
     } catch (error) {
-      return { status: 'unhealthy', message: error.message };
+      return { status: "unhealthy", message: error.message };
     }
   }
 }

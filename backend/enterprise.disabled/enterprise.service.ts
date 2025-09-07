@@ -1,10 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../common/prisma.service';
-import { SecurityComplianceService } from './security-compliance.service';
-import { InfrastructureMonitoringService } from './infrastructure-monitoring.service';
-import { EnterpriseAnalyticsService } from './enterprise-analytics.service';
-import { AuditLoggingService } from './audit-logging.service';
-import { HighAvailabilityService } from './high-availability.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../common/prisma.service";
+import { SecurityComplianceService } from "./security-compliance.service";
+import { InfrastructureMonitoringService } from "./infrastructure-monitoring.service";
+import { EnterpriseAnalyticsService } from "./enterprise-analytics.service";
+import { AuditLoggingService } from "./audit-logging.service";
+import { HighAvailabilityService } from "./high-availability.service";
 
 export interface EnterpriseOverview {
   security: {
@@ -141,14 +141,17 @@ export class EnterpriseService {
     private highAvailabilityService: HighAvailabilityService,
   ) {}
 
-  async getEnterpriseOverview(organizationId: string): Promise<EnterpriseOverview> {
-    const [security, infrastructure, analytics, audit, highAvailability] = await Promise.all([
-      this.getSecurityOverview(organizationId),
-      this.getInfrastructureOverview(organizationId),
-      this.getAnalyticsOverview(organizationId),
-      this.getAuditOverview(organizationId),
-      this.getHighAvailabilityOverview(organizationId),
-    ]);
+  async getEnterpriseOverview(
+    organizationId: string,
+  ): Promise<EnterpriseOverview> {
+    const [security, infrastructure, analytics, audit, highAvailability] =
+      await Promise.all([
+        this.getSecurityOverview(organizationId),
+        this.getInfrastructureOverview(organizationId),
+        this.getAnalyticsOverview(organizationId),
+        this.getAuditOverview(organizationId),
+        this.getHighAvailabilityOverview(organizationId),
+      ]);
 
     return {
       security,
@@ -159,7 +162,9 @@ export class EnterpriseService {
     };
   }
 
-  async getEnterpriseConfiguration(organizationId: string): Promise<EnterpriseConfiguration> {
+  async getEnterpriseConfiguration(
+    organizationId: string,
+  ): Promise<EnterpriseConfiguration> {
     const organization = await this.prisma.organization.findUnique({
       where: { id: organizationId },
       include: {
@@ -168,11 +173,14 @@ export class EnterpriseService {
     });
 
     if (!organization) {
-      throw new Error('Organization not found');
+      throw new Error("Organization not found");
     }
 
     // Return current configuration or defaults
-    return organization.enterpriseSettings?.configuration || this.getDefaultConfiguration();
+    return (
+      organization.enterpriseSettings?.configuration ||
+      this.getDefaultConfiguration()
+    );
   }
 
   async updateEnterpriseConfiguration(
@@ -211,16 +219,19 @@ export class EnterpriseService {
     await this.auditLoggingService.logConfigurationChange(
       organizationId,
       userId,
-      'enterprise_configuration_updated',
+      "enterprise_configuration_updated",
       { changes: configuration },
     );
 
-    this.logger.log({
-      type: 'enterprise_configuration_updated',
-      organizationId,
-      userId,
-      changes: Object.keys(configuration),
-    }, 'ENTERPRISE');
+    this.logger.log(
+      {
+        type: "enterprise_configuration_updated",
+        organizationId,
+        userId,
+        changes: Object.keys(configuration),
+      },
+      "ENTERPRISE",
+    );
 
     return updatedConfig;
   }
@@ -230,15 +241,21 @@ export class EnterpriseService {
   }
 
   async getInfrastructureDashboard(organizationId: string): Promise<any> {
-    return this.infrastructureMonitoringService.getInfrastructureDashboard(organizationId);
+    return this.infrastructureMonitoringService.getInfrastructureDashboard(
+      organizationId,
+    );
   }
 
   async getComplianceReport(
     organizationId: string,
     framework: string,
-    format: 'PDF' | 'JSON' | 'CSV' = 'JSON',
+    format: "PDF" | "JSON" | "CSV" = "JSON",
   ): Promise<any> {
-    return this.securityComplianceService.generateComplianceReport(organizationId, framework, format);
+    return this.securityComplianceService.generateComplianceReport(
+      organizationId,
+      framework,
+      format,
+    );
   }
 
   async getAuditLogs(
@@ -256,17 +273,24 @@ export class EnterpriseService {
 
   async exportAuditLogs(
     organizationId: string,
-    format: 'CSV' | 'JSON' | 'XML',
+    format: "CSV" | "JSON" | "XML",
     filters?: any,
   ): Promise<Buffer> {
-    return this.auditLoggingService.exportAuditLogs(organizationId, format, filters);
+    return this.auditLoggingService.exportAuditLogs(
+      organizationId,
+      format,
+      filters,
+    );
   }
 
   async getPerformanceMetrics(
     organizationId: string,
-    timeframe: '1h' | '24h' | '7d' | '30d' = '24h',
+    timeframe: "1h" | "24h" | "7d" | "30d" = "24h",
   ): Promise<any> {
-    return this.infrastructureMonitoringService.getPerformanceMetrics(organizationId, timeframe);
+    return this.infrastructureMonitoringService.getPerformanceMetrics(
+      organizationId,
+      timeframe,
+    );
   }
 
   async getBusinessAnalytics(organizationId: string): Promise<any> {
@@ -274,12 +298,13 @@ export class EnterpriseService {
   }
 
   async generateExecutiveReport(organizationId: string): Promise<any> {
-    const [overview, businessMetrics, securitySummary, complianceStatus] = await Promise.all([
-      this.getEnterpriseOverview(organizationId),
-      this.enterpriseAnalyticsService.getBusinessAnalytics(organizationId),
-      this.securityComplianceService.getSecuritySummary(organizationId),
-      this.securityComplianceService.getComplianceStatus(organizationId),
-    ]);
+    const [overview, businessMetrics, securitySummary, complianceStatus] =
+      await Promise.all([
+        this.getEnterpriseOverview(organizationId),
+        this.enterpriseAnalyticsService.getBusinessAnalytics(organizationId),
+        this.securityComplianceService.getSecuritySummary(organizationId),
+        this.securityComplianceService.getComplianceStatus(organizationId),
+      ]);
 
     return {
       generatedAt: new Date(),
@@ -288,7 +313,11 @@ export class EnterpriseService {
         overallHealth: this.calculateOverallHealth(overview),
         keyMetrics: this.extractKeyMetrics(overview, businessMetrics),
         criticalAlerts: this.getCriticalAlerts(overview),
-        recommendations: this.generateRecommendations(overview, securitySummary, complianceStatus),
+        recommendations: this.generateRecommendations(
+          overview,
+          securitySummary,
+          complianceStatus,
+        ),
       },
       detailedAnalytics: {
         security: securitySummary,
@@ -329,22 +358,26 @@ export class EnterpriseService {
     await this.auditLoggingService.logConfigurationChange(
       organizationId,
       userId,
-      'high_availability_configured',
+      "high_availability_configured",
       { configuration: config },
     );
 
     return result;
   }
 
-  async performSecurityAudit(organizationId: string, userId: string): Promise<any> {
+  async performSecurityAudit(
+    organizationId: string,
+    userId: string,
+  ): Promise<any> {
     await this.verifyEnterpriseAdmin(userId, organizationId);
 
-    const auditResult = await this.securityComplianceService.performSecurityAudit(organizationId);
+    const auditResult =
+      await this.securityComplianceService.performSecurityAudit(organizationId);
 
     await this.auditLoggingService.logSecurityEvent(
       organizationId,
       userId,
-      'security_audit_performed',
+      "security_audit_performed",
       { auditId: auditResult.id },
     );
 
@@ -352,29 +385,32 @@ export class EnterpriseService {
   }
 
   async getResourceUtilization(organizationId: string): Promise<any> {
-    return this.infrastructureMonitoringService.getResourceUtilization(organizationId);
+    return this.infrastructureMonitoringService.getResourceUtilization(
+      organizationId,
+    );
   }
 
   async scaleInfrastructure(
     organizationId: string,
     userId: string,
     scalingAction: {
-      action: 'scale_up' | 'scale_down' | 'auto_scale';
+      action: "scale_up" | "scale_down" | "auto_scale";
       targetInstances?: number;
-      resourceType: 'compute' | 'storage' | 'network';
+      resourceType: "compute" | "storage" | "network";
     },
   ): Promise<any> {
     await this.verifyEnterpriseAdmin(userId, organizationId);
 
-    const result = await this.infrastructureMonitoringService.scaleInfrastructure(
-      organizationId,
-      scalingAction,
-    );
+    const result =
+      await this.infrastructureMonitoringService.scaleInfrastructure(
+        organizationId,
+        scalingAction,
+      );
 
     await this.auditLoggingService.logOperationalEvent(
       organizationId,
       userId,
-      'infrastructure_scaled',
+      "infrastructure_scaled",
       { action: scalingAction },
     );
 
@@ -383,30 +419,37 @@ export class EnterpriseService {
 
   // Private helper methods
   private async getSecurityOverview(organizationId: string) {
-    const [complianceScore, alerts, lastAudit, vulnerabilities] = await Promise.all([
-      this.securityComplianceService.getComplianceScore(organizationId),
-      this.securityComplianceService.getSecurityAlerts(organizationId),
-      this.securityComplianceService.getLastSecurityAudit(organizationId),
-      this.securityComplianceService.getVulnerabilities(organizationId),
-    ]);
+    const [complianceScore, alerts, lastAudit, vulnerabilities] =
+      await Promise.all([
+        this.securityComplianceService.getComplianceScore(organizationId),
+        this.securityComplianceService.getSecurityAlerts(organizationId),
+        this.securityComplianceService.getLastSecurityAudit(organizationId),
+        this.securityComplianceService.getVulnerabilities(organizationId),
+      ]);
 
     return {
       complianceScore,
       securityAlerts: alerts.length,
       lastSecurityAudit: lastAudit?.performedAt || new Date(),
-      complianceFrameworks: ['SOC2', 'ISO27001', 'PCI-DSS', 'GDPR', 'HIPAA'],
+      complianceFrameworks: ["SOC2", "ISO27001", "PCI-DSS", "GDPR", "HIPAA"],
       vulnerabilities: this.categorizeVulnerabilities(vulnerabilities),
     };
   }
 
   private async getInfrastructureOverview(organizationId: string) {
-    const [healthScore, uptime, performance, resources, scaling] = await Promise.all([
-      this.infrastructureMonitoringService.getHealthScore(organizationId),
-      this.infrastructureMonitoringService.getUptime(organizationId),
-      this.infrastructureMonitoringService.getPerformanceMetrics(organizationId, '1h'),
-      this.infrastructureMonitoringService.getResourceUtilization(organizationId),
-      this.infrastructureMonitoringService.getScalingStatus(organizationId),
-    ]);
+    const [healthScore, uptime, performance, resources, scaling] =
+      await Promise.all([
+        this.infrastructureMonitoringService.getHealthScore(organizationId),
+        this.infrastructureMonitoringService.getUptime(organizationId),
+        this.infrastructureMonitoringService.getPerformanceMetrics(
+          organizationId,
+          "1h",
+        ),
+        this.infrastructureMonitoringService.getResourceUtilization(
+          organizationId,
+        ),
+        this.infrastructureMonitoringService.getScalingStatus(organizationId),
+      ]);
 
     return {
       healthScore,
@@ -431,7 +474,9 @@ export class EnterpriseService {
   }
 
   private async getHighAvailabilityOverview(organizationId: string) {
-    return this.highAvailabilityService.getHighAvailabilityStatus(organizationId);
+    return this.highAvailabilityService.getHighAvailabilityStatus(
+      organizationId,
+    );
   }
 
   private getDefaultConfiguration(): EnterpriseConfiguration {
@@ -471,26 +516,26 @@ export class EnterpriseService {
             errorRateAlert: 5,
             latencyAlert: 1000,
           },
-          notificationChannels: ['email', 'slack', 'webhook'],
+          notificationChannels: ["email", "slack", "webhook"],
         },
         backups: {
           enabled: true,
-          frequency: 'daily',
+          frequency: "daily",
           retention: 30,
           encryption: true,
           offSiteBackup: true,
         },
       },
       compliance: {
-        frameworks: ['SOC2', 'ISO27001'],
+        frameworks: ["SOC2", "ISO27001"],
         dataRetention: 2555, // 7 years in days
-        auditFrequency: 'quarterly',
+        auditFrequency: "quarterly",
         reportGeneration: true,
         anonymizeData: true,
       },
       analytics: {
         enableAdvancedAnalytics: true,
-        dataExportFormats: ['JSON', 'CSV', 'PDF'],
+        dataExportFormats: ["JSON", "CSV", "PDF"],
         realTimeReporting: true,
         customDashboards: true,
         aiInsights: true,
@@ -508,7 +553,10 @@ export class EnterpriseService {
       infrastructure: {
         ...current.infrastructure,
         ...updates.infrastructure,
-        autoScaling: { ...current.infrastructure.autoScaling, ...updates.infrastructure?.autoScaling },
+        autoScaling: {
+          ...current.infrastructure.autoScaling,
+          ...updates.infrastructure?.autoScaling,
+        },
         monitoring: {
           ...current.infrastructure.monitoring,
           ...updates.infrastructure?.monitoring,
@@ -517,25 +565,36 @@ export class EnterpriseService {
             ...updates.infrastructure?.monitoring?.alertThresholds,
           },
         },
-        backups: { ...current.infrastructure.backups, ...updates.infrastructure?.backups },
+        backups: {
+          ...current.infrastructure.backups,
+          ...updates.infrastructure?.backups,
+        },
       },
       compliance: { ...current.compliance, ...updates.compliance },
       analytics: { ...current.analytics, ...updates.analytics },
     };
   }
 
-  private async validateConfiguration(config: EnterpriseConfiguration): Promise<void> {
+  private async validateConfiguration(
+    config: EnterpriseConfiguration,
+  ): Promise<void> {
     // Validate configuration values
-    if (config.security.sessionTimeout < 300000) { // Minimum 5 minutes
-      throw new Error('Session timeout must be at least 5 minutes');
+    if (config.security.sessionTimeout < 300000) {
+      // Minimum 5 minutes
+      throw new Error("Session timeout must be at least 5 minutes");
     }
 
     if (config.infrastructure.autoScaling.minInstances < 1) {
-      throw new Error('Minimum instances must be at least 1');
+      throw new Error("Minimum instances must be at least 1");
     }
 
-    if (config.infrastructure.autoScaling.maxInstances < config.infrastructure.autoScaling.minInstances) {
-      throw new Error('Maximum instances must be greater than minimum instances');
+    if (
+      config.infrastructure.autoScaling.maxInstances <
+      config.infrastructure.autoScaling.minInstances
+    ) {
+      throw new Error(
+        "Maximum instances must be greater than minimum instances",
+      );
     }
 
     // Add more validation rules as needed
@@ -546,7 +605,10 @@ export class EnterpriseService {
     config: EnterpriseConfiguration,
   ): Promise<void> {
     // Apply security configuration
-    await this.securityComplianceService.applySecurityConfiguration(organizationId, config.security);
+    await this.securityComplianceService.applySecurityConfiguration(
+      organizationId,
+      config.security,
+    );
 
     // Apply infrastructure configuration
     await this.infrastructureMonitoringService.applyInfrastructureConfiguration(
@@ -557,26 +619,32 @@ export class EnterpriseService {
     // Apply other configurations...
   }
 
-  private async verifyEnterpriseAdmin(userId: string, organizationId: string): Promise<void> {
+  private async verifyEnterpriseAdmin(
+    userId: string,
+    organizationId: string,
+  ): Promise<void> {
     const membership = await this.prisma.organizationMember.findFirst({
       where: {
         userId,
         organizationId,
-        role: { in: ['OWNER', 'ADMIN'] },
+        role: { in: ["OWNER", "ADMIN"] },
       },
     });
 
     if (!membership) {
-      throw new Error('Insufficient permissions for enterprise operations');
+      throw new Error("Insufficient permissions for enterprise operations");
     }
   }
 
   private categorizeVulnerabilities(vulnerabilities: any[]): any {
-    return vulnerabilities.reduce((acc, vuln) => {
-      const severity = vuln.severity.toLowerCase();
-      acc[severity] = (acc[severity] || 0) + 1;
-      return acc;
-    }, { critical: 0, high: 0, medium: 0, low: 0 });
+    return vulnerabilities.reduce(
+      (acc, vuln) => {
+        const severity = vuln.severity.toLowerCase();
+        acc[severity] = (acc[severity] || 0) + 1;
+        return acc;
+      },
+      { critical: 0, high: 0, medium: 0, low: 0 },
+    );
   }
 
   private calculateOverallHealth(overview: EnterpriseOverview): number {
@@ -587,13 +655,18 @@ export class EnterpriseService {
 
     return Math.round(
       overview.security.complianceScore * securityWeight +
-      overview.infrastructure.healthScore * infrastructureWeight +
-      (overview.audit.complianceStatus === 'compliant' ? 100 : 50) * complianceWeight +
-      overview.infrastructure.performanceMetrics.availability * availabilityWeight
+        overview.infrastructure.healthScore * infrastructureWeight +
+        (overview.audit.complianceStatus === "compliant" ? 100 : 50) *
+          complianceWeight +
+        overview.infrastructure.performanceMetrics.availability *
+          availabilityWeight,
     );
   }
 
-  private extractKeyMetrics(overview: EnterpriseOverview, businessMetrics: any): any {
+  private extractKeyMetrics(
+    overview: EnterpriseOverview,
+    businessMetrics: any,
+  ): any {
     return {
       totalUsers: overview.analytics.totalUsers,
       revenue: overview.analytics.revenue,
@@ -609,16 +682,16 @@ export class EnterpriseService {
 
     if (overview.security.vulnerabilities.critical > 0) {
       alerts.push({
-        type: 'security',
-        severity: 'critical',
+        type: "security",
+        severity: "critical",
         message: `${overview.security.vulnerabilities.critical} critical security vulnerabilities detected`,
       });
     }
 
     if (overview.infrastructure.performanceMetrics.availability < 99.5) {
       alerts.push({
-        type: 'infrastructure',
-        severity: 'high',
+        type: "infrastructure",
+        severity: "high",
         message: `Low availability: ${overview.infrastructure.performanceMetrics.availability}%`,
       });
     }
@@ -626,16 +699,24 @@ export class EnterpriseService {
     return alerts;
   }
 
-  private generateRecommendations(overview: any, security: any, compliance: any): any[] {
+  private generateRecommendations(
+    overview: any,
+    security: any,
+    compliance: any,
+  ): any[] {
     const recommendations = [];
 
     if (overview.security.complianceScore < 90) {
       recommendations.push({
-        category: 'security',
-        priority: 'high',
-        title: 'Improve Security Compliance',
-        description: 'Current compliance score is below recommended threshold',
-        actions: ['Review security policies', 'Update access controls', 'Enhance monitoring'],
+        category: "security",
+        priority: "high",
+        title: "Improve Security Compliance",
+        description: "Current compliance score is below recommended threshold",
+        actions: [
+          "Review security policies",
+          "Update access controls",
+          "Enhance monitoring",
+        ],
       });
     }
 
@@ -643,10 +724,24 @@ export class EnterpriseService {
   }
 
   // Placeholder methods for trend calculations and forecasting
-  private async calculatePerformanceTrends(organizationId: string): Promise<any> { return {}; }
-  private async calculateSecurityTrends(organizationId: string): Promise<any> { return {}; }
-  private async calculateBusinessTrends(organizationId: string): Promise<any> { return {}; }
-  private async forecastUsage(organizationId: string): Promise<any> { return {}; }
-  private async forecastCosts(organizationId: string): Promise<any> { return {}; }
-  private async forecastScaling(organizationId: string): Promise<any> { return {}; }
+  private async calculatePerformanceTrends(
+    organizationId: string,
+  ): Promise<any> {
+    return {};
+  }
+  private async calculateSecurityTrends(organizationId: string): Promise<any> {
+    return {};
+  }
+  private async calculateBusinessTrends(organizationId: string): Promise<any> {
+    return {};
+  }
+  private async forecastUsage(organizationId: string): Promise<any> {
+    return {};
+  }
+  private async forecastCosts(organizationId: string): Promise<any> {
+    return {};
+  }
+  private async forecastScaling(organizationId: string): Promise<any> {
+    return {};
+  }
 }

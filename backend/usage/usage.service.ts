@@ -1,11 +1,9 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../common/prisma.service';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../common/prisma.service";
 
 @Injectable()
 export class UsageService {
-  constructor(
-    private prisma: PrismaService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   async getUserUsageStats(userId: string) {
     // Get current usage stats
@@ -29,8 +27,8 @@ export class UsageService {
     return {
       totalRequests,
       avgLatency: Number(avgLatency.toFixed(2)),
-      uptime: totalRequests > 0 ? ((successCount / totalRequests) * 100) : 100,
-      errorRate: totalRequests > 0 ? ((errorCount / totalRequests) * 100) : 0,
+      uptime: totalRequests > 0 ? (successCount / totalRequests) * 100 : 100,
+      errorRate: totalRequests > 0 ? (errorCount / totalRequests) * 100 : 0,
       requestsToday: await this.getTodayRequests(userId),
       activeKeys: await this.getActiveKeysCount(userId),
     };
@@ -101,7 +99,9 @@ export class UsageService {
             successCount: data.success ? { increment: 1 } : undefined,
             errorCount: !data.success ? { increment: 1 } : undefined,
             totalLatency: { increment: data.responseTime },
-            avgLatency: (existingStats.totalLatency + data.responseTime) / (existingStats.requestCount + 1),
+            avgLatency:
+              (existingStats.totalLatency + data.responseTime) /
+              (existingStats.requestCount + 1),
           },
         });
       } else {
@@ -122,7 +122,7 @@ export class UsageService {
         });
       }
     } catch (error) {
-      console.error('Failed to record request:', error);
+      console.error("Failed to record request:", error);
     }
   }
 }

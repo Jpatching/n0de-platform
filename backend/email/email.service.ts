@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import * as sgMail from '@sendgrid/mail';
+import { Injectable, Logger } from "@nestjs/common";
+import * as sgMail from "@sendgrid/mail";
 
 export interface EmailOptions {
   to: string | string[];
@@ -37,14 +37,16 @@ export class EmailService {
   private readonly sendGridEnabled: boolean;
 
   constructor() {
-    this.isProduction = process.env.NODE_ENV === 'production';
+    this.isProduction = process.env.NODE_ENV === "production";
     this.sendGridEnabled = !!process.env.SENDGRID_API_KEY;
-    
+
     if (this.sendGridEnabled) {
       sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-      this.logger.log('EmailService initialized with SendGrid');
+      this.logger.log("EmailService initialized with SendGrid");
     } else {
-      this.logger.log('EmailService initialized in development mode - emails will be logged');
+      this.logger.log(
+        "EmailService initialized in development mode - emails will be logged",
+      );
     }
   }
 
@@ -55,8 +57,8 @@ export class EmailService {
         const msg = {
           to: options.to,
           from: {
-            email: process.env.SENDGRID_FROM_EMAIL || 'noreply@n0de.pro',
-            name: 'N0DE Platform'
+            email: process.env.SENDGRID_FROM_EMAIL || "noreply@n0de.pro",
+            name: "N0DE Platform",
           },
           subject: options.subject,
           text: options.text,
@@ -67,7 +69,7 @@ export class EmailService {
         this.logger.log(`📧 Email sent successfully to ${options.to}`);
       } else {
         // Development mode: log email instead of sending
-        this.logger.log('📧 Email would be sent:', {
+        this.logger.log("📧 Email would be sent:", {
           to: options.to,
           subject: options.subject,
           template: options.template,
@@ -78,7 +80,7 @@ export class EmailService {
 
       return true;
     } catch (error) {
-      this.logger.error('Failed to send email:', error);
+      this.logger.error("Failed to send email:", error);
       return false;
     }
   }
@@ -86,12 +88,12 @@ export class EmailService {
   async sendPaymentSuccessEmail(data: BillingEmailData): Promise<boolean> {
     const subject = `Payment Confirmation - ${data.planName} Plan`;
     const html = this.generatePaymentSuccessHtml(data);
-    
+
     return this.sendEmail({
       to: data.userEmail,
       subject,
       html,
-      template: 'payment_success',
+      template: "payment_success",
       context: data,
     });
   }
@@ -99,12 +101,12 @@ export class EmailService {
   async sendPaymentFailureEmail(data: BillingEmailData): Promise<boolean> {
     const subject = `Payment Failed - ${data.planName} Plan`;
     const html = this.generatePaymentFailureHtml(data);
-    
+
     return this.sendEmail({
       to: data.userEmail,
       subject,
       html,
-      template: 'payment_failure',
+      template: "payment_failure",
       context: data,
     });
   }
@@ -112,38 +114,43 @@ export class EmailService {
   async sendSubscriptionUpgradeEmail(data: BillingEmailData): Promise<boolean> {
     const subject = `Welcome to ${data.planName} - Subscription Upgraded!`;
     const html = this.generateSubscriptionUpgradeHtml(data);
-    
+
     return this.sendEmail({
       to: data.userEmail,
       subject,
       html,
-      template: 'subscription_upgrade',
+      template: "subscription_upgrade",
       context: data,
     });
   }
 
-  async sendSubscriptionCancelledEmail(data: BillingEmailData): Promise<boolean> {
+  async sendSubscriptionCancelledEmail(
+    data: BillingEmailData,
+  ): Promise<boolean> {
     const subject = `Subscription Cancelled - ${data.planName} Plan`;
     const html = this.generateSubscriptionCancelledHtml(data);
-    
+
     return this.sendEmail({
       to: data.userEmail,
       subject,
       html,
-      template: 'subscription_cancelled',
+      template: "subscription_cancelled",
       context: data,
     });
   }
 
-  async sendWelcomeEmail(userEmail: string, userName?: string): Promise<boolean> {
-    const subject = 'Welcome to N0DE Platform!';
+  async sendWelcomeEmail(
+    userEmail: string,
+    userName?: string,
+  ): Promise<boolean> {
+    const subject = "Welcome to N0DE Platform!";
     const html = this.generateWelcomeHtml(userName);
-    
+
     return this.sendEmail({
       to: userEmail,
       subject,
       html,
-      template: 'welcome',
+      template: "welcome",
       context: { userName, userEmail },
     });
   }
@@ -151,40 +158,48 @@ export class EmailService {
   async sendTeamInvitation(data: TeamInvitationData): Promise<boolean> {
     const subject = `You're invited to join ${data.organizationName} on N0DE Platform`;
     const html = this.generateTeamInvitationHtml(data);
-    
+
     return this.sendEmail({
       to: data.to,
       subject,
       html,
-      template: 'team_invitation',
+      template: "team_invitation",
       context: data,
     });
   }
 
-  async sendEmailVerification(userEmail: string, verificationToken: string, userName?: string): Promise<boolean> {
-    const subject = 'Please verify your N0DE Platform account';
-    const verificationUrl = `${process.env.FRONTEND_URL || 'https://www.n0de.pro'}/auth/verify?token=${verificationToken}`;
+  async sendEmailVerification(
+    userEmail: string,
+    verificationToken: string,
+    userName?: string,
+  ): Promise<boolean> {
+    const subject = "Please verify your N0DE Platform account";
+    const verificationUrl = `${process.env.FRONTEND_URL || "https://www.n0de.pro"}/auth/verify?token=${verificationToken}`;
     const html = this.generateEmailVerificationHtml(userName, verificationUrl);
-    
+
     return this.sendEmail({
       to: userEmail,
       subject,
       html,
-      template: 'email_verification',
+      template: "email_verification",
       context: { userName, userEmail, verificationUrl },
     });
   }
 
-  async sendPasswordResetEmail(userEmail: string, resetToken: string, userName?: string): Promise<boolean> {
-    const subject = 'Reset your N0DE Platform password';
-    const resetUrl = `${process.env.FRONTEND_URL || 'https://www.n0de.pro'}/auth/reset-password?token=${resetToken}`;
+  async sendPasswordResetEmail(
+    userEmail: string,
+    resetToken: string,
+    userName?: string,
+  ): Promise<boolean> {
+    const subject = "Reset your N0DE Platform password";
+    const resetUrl = `${process.env.FRONTEND_URL || "https://www.n0de.pro"}/auth/reset-password?token=${resetToken}`;
     const html = this.generatePasswordResetHtml(userName, resetUrl);
-    
+
     return this.sendEmail({
       to: userEmail,
       subject,
       html,
-      template: 'password_reset',
+      template: "password_reset",
       context: { userName, userEmail, resetUrl },
     });
   }
@@ -200,7 +215,7 @@ export class EmailService {
             
             <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
               <h2 style="color: #059669; margin-top: 0;">Payment Successful! 🎉</h2>
-              <p>Hi ${data.userName || 'there'},</p>
+              <p>Hi ${data.userName || "there"},</p>
               <p>Your payment for the <strong>${data.planName}</strong> plan has been processed successfully.</p>
             </div>
             
@@ -222,11 +237,15 @@ export class EmailService {
               </table>
             </div>
             
-            ${data.receiptUrl ? `
+            ${
+              data.receiptUrl
+                ? `
               <div style="text-align: center; margin: 20px 0;">
                 <a href="${data.receiptUrl}" style="background: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Download Receipt</a>
               </div>
-            ` : ''}
+            `
+                : ""
+            }
             
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 14px; color: #6b7280;">
               <p>Thank you for choosing N0DE Platform!</p>
@@ -249,7 +268,7 @@ export class EmailService {
             
             <div style="background: #fef2f2; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #fecaca;">
               <h2 style="color: #dc2626; margin-top: 0;">Payment Failed ⚠️</h2>
-              <p>Hi ${data.userName || 'there'},</p>
+              <p>Hi ${data.userName || "there"},</p>
               <p>We were unable to process your payment for the <strong>${data.planName}</strong> plan.</p>
             </div>
             
@@ -290,7 +309,7 @@ export class EmailService {
             
             <div style="background: #f0fdf4; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #bbf7d0;">
               <h2 style="color: #059669; margin-top: 0;">Welcome to ${data.planName}! 🚀</h2>
-              <p>Hi ${data.userName || 'there'},</p>
+              <p>Hi ${data.userName || "there"},</p>
               <p>Congratulations! Your account has been successfully upgraded to the <strong>${data.planName}</strong> plan.</p>
             </div>
             
@@ -330,7 +349,7 @@ export class EmailService {
             
             <div style="background: #fef3c7; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #fed7aa;">
               <h2 style="color: #d97706; margin-top: 0;">Subscription Cancelled</h2>
-              <p>Hi ${data.userName || 'there'},</p>
+              <p>Hi ${data.userName || "there"},</p>
               <p>Your <strong>${data.planName}</strong> subscription has been cancelled as requested.</p>
             </div>
             
@@ -367,7 +386,7 @@ export class EmailService {
             </div>
             
             <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-              <p>Hi ${userName || 'there'},</p>
+              <p>Hi ${userName || "there"},</p>
               <p>Welcome to N0DE Platform! We're excited to have you on board.</p>
             </div>
             
@@ -429,12 +448,16 @@ export class EmailService {
                 </tr>
               </table>
               
-              ${data.message ? `
+              ${
+                data.message
+                  ? `
                 <div style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 6px; border-left: 4px solid #4f46e5;">
                   <p style="margin: 0;"><strong>Personal Message:</strong></p>
                   <p style="margin: 10px 0 0 0; font-style: italic;">"${data.message}"</p>
                 </div>
-              ` : ''}
+              `
+                  : ""
+              }
             </div>
             
             <div style="text-align: center; margin: 30px 0;">
@@ -468,7 +491,10 @@ export class EmailService {
     `;
   }
 
-  private generateEmailVerificationHtml(userName?: string, verificationUrl?: string): string {
+  private generateEmailVerificationHtml(
+    userName?: string,
+    verificationUrl?: string,
+  ): string {
     return `
       <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -479,7 +505,7 @@ export class EmailService {
             
             <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #bae6fd;">
               <h2 style="color: #0284c7; margin-top: 0;">Verify Your Email Address 📧</h2>
-              <p>Hi ${userName || 'there'},</p>
+              <p>Hi ${userName || "there"},</p>
               <p>Thank you for signing up for N0DE Platform! Please verify your email address to activate your account and start using our services.</p>
             </div>
             
@@ -519,7 +545,10 @@ export class EmailService {
     `;
   }
 
-  private generatePasswordResetHtml(userName?: string, resetUrl?: string): string {
+  private generatePasswordResetHtml(
+    userName?: string,
+    resetUrl?: string,
+  ): string {
     return `
       <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -530,7 +559,7 @@ export class EmailService {
             
             <div style="background: #fef2f2; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #fecaca;">
               <h2 style="color: #dc2626; margin-top: 0;">Password Reset Request 🔒</h2>
-              <p>Hi ${userName || 'there'},</p>
+              <p>Hi ${userName || "there"},</p>
               <p>We received a request to reset your N0DE Platform account password. If you made this request, click the button below to reset your password.</p>
             </div>
             

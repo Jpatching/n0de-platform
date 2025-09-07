@@ -1,7 +1,11 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../common/prisma.service';
-import { RedisService } from '../common/redis.service';
-import { SubscriptionType, SubscriptionStatus } from '@prisma/client';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from "@nestjs/common";
+import { PrismaService } from "../common/prisma.service";
+import { RedisService } from "../common/redis.service";
+import { SubscriptionType, SubscriptionStatus } from "@prisma/client";
 
 export interface PlanDetails {
   id: string;
@@ -25,71 +29,77 @@ export interface PlanDetails {
 export class SubscriptionsService {
   private plans: Record<SubscriptionType, PlanDetails> = {
     FREE: {
-      id: 'FREE',
-      name: 'Free',
+      id: "FREE",
+      name: "Free",
       type: SubscriptionType.FREE,
       price: 0,
-      interval: 'month',
-      currency: 'USD',
+      interval: "month",
+      currency: "USD",
       limits: {
         requests: 100000,
         apiKeys: 1,
         rateLimit: 100,
-        networks: ['devnet', 'testnet'],
-        features: ['Basic RPC', 'Community Support'],
+        networks: ["devnet", "testnet"],
+        features: ["Basic RPC", "Community Support"],
       },
     },
     STARTER: {
-      id: 'STARTER',
-      name: 'Starter',
+      id: "STARTER",
+      name: "Starter",
       type: SubscriptionType.STARTER,
       price: 49,
-      interval: 'month',
-      currency: 'USD',
+      interval: "month",
+      currency: "USD",
       popular: true,
       limits: {
         requests: 1000000,
         apiKeys: 3,
         rateLimit: 1000,
-        networks: ['mainnet', 'devnet', 'testnet'],
-        features: ['Priority RPC', 'Email Support', 'Basic Analytics'],
+        networks: ["mainnet", "devnet", "testnet"],
+        features: ["Priority RPC", "Email Support", "Basic Analytics"],
       },
     },
     PROFESSIONAL: {
-      id: 'PROFESSIONAL',
-      name: 'Professional',
+      id: "PROFESSIONAL",
+      name: "Professional",
       type: SubscriptionType.PROFESSIONAL,
       price: 299,
-      interval: 'month',
-      currency: 'USD',
+      interval: "month",
+      currency: "USD",
       limits: {
         requests: 10000000,
         apiKeys: 10,
         rateLimit: 5000,
-        networks: ['mainnet', 'devnet', 'testnet'],
-        features: ['Priority RPC', 'Websockets', 'Priority Support', 'Advanced Analytics', 'Custom Domains'],
+        networks: ["mainnet", "devnet", "testnet"],
+        features: [
+          "Priority RPC",
+          "Websockets",
+          "Priority Support",
+          "Advanced Analytics",
+          "Custom Domains",
+        ],
       },
     },
     ENTERPRISE: {
-      id: 'ENTERPRISE',
-      name: 'Enterprise',
+      id: "ENTERPRISE",
+      name: "Enterprise",
       type: SubscriptionType.ENTERPRISE,
       price: 999,
-      interval: 'month',
-      currency: 'USD',
+      interval: "month",
+      currency: "USD",
       enterprise: true,
       limits: {
         requests: -1, // Unlimited
         apiKeys: -1, // Unlimited
         rateLimit: 25000,
-        networks: ['mainnet', 'devnet', 'testnet', 'custom'],
+        networks: ["mainnet", "devnet", "testnet", "custom"],
         features: [
-          'Dedicated Infrastructure',
-          'Yellowstone gRPC',
-          '24/7 Phone Support',
-          'SLA Guarantee',
-          'Custom Integration',
-          'White-label Options',
+          "Dedicated Infrastructure",
+          "Yellowstone gRPC",
+          "24/7 Phone Support",
+          "SLA Guarantee",
+          "Custom Integration",
+          "White-label Options",
         ],
       },
     },
@@ -104,9 +114,11 @@ export class SubscriptionsService {
     const subscription = await this.prisma.subscription.findFirst({
       where: {
         userId,
-        status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING] },
+        status: {
+          in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING],
+        },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
 
     if (!subscription) {
@@ -120,7 +132,7 @@ export class SubscriptionsService {
         where: { id: subscription.id },
         data: { status: SubscriptionStatus.EXPIRED },
       });
-      
+
       // Create free subscription
       return this.createFreeSubscription(userId);
     }
@@ -141,7 +153,7 @@ export class SubscriptionsService {
       where: { userId },
       create: {
         userId,
-        planName: 'Free',
+        planName: "Free",
         planType: SubscriptionType.FREE,
         status: SubscriptionStatus.ACTIVE,
         currentPeriodStart: now,
@@ -161,45 +173,58 @@ export class SubscriptionsService {
     };
   }
 
-  async upgradePlan(userId: string, planType: SubscriptionType | string, paymentInfo?: any) {
+  async upgradePlan(
+    userId: string,
+    planType: SubscriptionType | string,
+    paymentInfo?: any,
+  ) {
     // CRITICAL SECURITY: This method should NOT directly upgrade without payment verification
     // Instead, it should create a payment intent and return checkout URL
-    
+
     // Handle both plan ID (string) and plan type (enum)
     let resolvedPlanType: SubscriptionType;
-    
-    if (typeof planType === 'string' && planType in SubscriptionType) {
-      resolvedPlanType = SubscriptionType[planType as keyof typeof SubscriptionType];
-    } else if (Object.values(SubscriptionType).includes(planType as SubscriptionType)) {
+
+    if (typeof planType === "string" && planType in SubscriptionType) {
+      resolvedPlanType =
+        SubscriptionType[planType as keyof typeof SubscriptionType];
+    } else if (
+      Object.values(SubscriptionType).includes(planType as SubscriptionType)
+    ) {
       resolvedPlanType = planType as SubscriptionType;
     } else {
-      throw new BadRequestException('Invalid plan type');
+      throw new BadRequestException("Invalid plan type");
     }
 
     if (resolvedPlanType === SubscriptionType.FREE) {
-      throw new BadRequestException('Cannot downgrade to free plan');
+      throw new BadRequestException("Cannot downgrade to free plan");
     }
 
     const plan = this.plans[resolvedPlanType];
     if (!plan) {
-      throw new BadRequestException('Invalid plan type');
+      throw new BadRequestException("Invalid plan type");
     }
 
     // Check if user already has this plan
     const currentSubscription = await this.getUserSubscription(userId);
     if (currentSubscription.planType === resolvedPlanType) {
-      throw new BadRequestException('User already has this plan');
+      throw new BadRequestException("User already has this plan");
     }
 
     // Return error - direct upgrades not allowed without payment
-    throw new BadRequestException('Plan upgrades require payment verification. Use /upgrade/checkout endpoint to initiate payment flow.');
+    throw new BadRequestException(
+      "Plan upgrades require payment verification. Use /upgrade/checkout endpoint to initiate payment flow.",
+    );
   }
 
   // Admin-only method for direct subscription upgrades
-  async adminUpgradeSubscription(userId: string, planType: SubscriptionType, adminOptions: any) {
+  async adminUpgradeSubscription(
+    userId: string,
+    planType: SubscriptionType,
+    adminOptions: any,
+  ) {
     const plan = this.plans[planType];
     if (!plan) {
-      throw new BadRequestException('Invalid plan type');
+      throw new BadRequestException("Invalid plan type");
     }
 
     // Update subscription directly for admin upgrades
@@ -209,7 +234,7 @@ export class SubscriptionsService {
         userId,
         planName: plan.name,
         planType,
-        status: 'ACTIVE',
+        status: "ACTIVE",
         currentPeriodStart: new Date(),
         currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
         metadata: {
@@ -221,7 +246,7 @@ export class SubscriptionsService {
       update: {
         planName: plan.name,
         planType,
-        status: 'ACTIVE',
+        status: "ACTIVE",
         metadata: {
           adminUpgrade: true,
           adminUserId: adminOptions.adminUserId,
@@ -235,14 +260,14 @@ export class SubscriptionsService {
 
   // New method for completing upgrade AFTER payment verification
   async completeUpgradeAfterPayment(
-    userId: string, 
-    planType: SubscriptionType, 
+    userId: string,
+    planType: SubscriptionType,
     paymentId: string,
-    stripeSessionId?: string
+    stripeSessionId?: string,
   ) {
     const plan = this.plans[planType];
     if (!plan) {
-      throw new BadRequestException('Invalid plan type');
+      throw new BadRequestException("Invalid plan type");
     }
 
     // Verify payment exists and is completed
@@ -251,20 +276,22 @@ export class SubscriptionsService {
     });
 
     if (!payment) {
-      throw new NotFoundException('Payment not found');
+      throw new NotFoundException("Payment not found");
     }
 
     if (payment.userId !== userId) {
-      throw new BadRequestException('Payment does not belong to user');
+      throw new BadRequestException("Payment does not belong to user");
     }
 
-    if (payment.status !== 'COMPLETED') {
-      throw new BadRequestException('Payment not completed');
+    if (payment.status !== "COMPLETED") {
+      throw new BadRequestException("Payment not completed");
     }
 
     // Get the current subscription to avoid null reference
-    const currentSubscription = await this.getUserSubscription(userId).catch(() => null);
-    
+    const currentSubscription = await this.getUserSubscription(userId).catch(
+      () => null,
+    );
+
     const now = new Date();
     const endDate = new Date();
     endDate.setMonth(endDate.getMonth() + 1); // Monthly billing
@@ -309,16 +336,18 @@ export class SubscriptionsService {
     const subscription = await this.prisma.subscription.findFirst({
       where: {
         userId,
-        status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING] },
+        status: {
+          in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING],
+        },
       },
     });
 
     if (!subscription) {
-      throw new NotFoundException('No active subscription found');
+      throw new NotFoundException("No active subscription found");
     }
 
     if (subscription.planType === SubscriptionType.FREE) {
-      throw new BadRequestException('Cannot cancel free plan');
+      throw new BadRequestException("Cannot cancel free plan");
     }
 
     // Set to cancel at period end
@@ -386,28 +415,32 @@ export class SubscriptionsService {
     const usageKey = `usage:${userId}:${currentPeriodKey}`;
     const computeKey = `compute:${userId}:${currentPeriodKey}`;
 
-    const [currentUsage, currentCompute, dbUsage, apiKeyCount] = await Promise.all([
-      this.redisService.get(usageKey),
-      this.redisService.get(computeKey),
-      this.getDatabaseUsage(userId, subscription.currentPeriodStart),
-      this.prisma.apiKey.count({
-        where: {
-          userId,
-          isActive: true,
-        },
-      }),
-    ]);
+    const [currentUsage, currentCompute, dbUsage, apiKeyCount] =
+      await Promise.all([
+        this.redisService.get(usageKey),
+        this.redisService.get(computeKey),
+        this.getDatabaseUsage(userId, subscription.currentPeriodStart),
+        this.prisma.apiKey.count({
+          where: {
+            userId,
+            isActive: true,
+          },
+        }),
+      ]);
 
     const realTimeRequests = currentUsage ? parseInt(currentUsage) : 0;
     const computeUnits = currentCompute ? parseInt(currentCompute) : 0;
     const dbRequests = dbUsage._sum.requestCount || 0;
-    
+
     // Use the higher of the two (Redis for real-time, DB for historical accuracy)
     const totalRequests = Math.max(realTimeRequests, dbRequests);
 
     // Calculate overage
-    const isOverLimit = plan.limits.requests !== -1 && totalRequests > plan.limits.requests;
-    const overageAmount = isOverLimit ? totalRequests - plan.limits.requests : 0;
+    const isOverLimit =
+      plan.limits.requests !== -1 && totalRequests > plan.limits.requests;
+    const overageAmount = isOverLimit
+      ? totalRequests - plan.limits.requests
+      : 0;
     const overageCost = overageAmount * 0.01; // $0.01 per request overage
 
     return {
@@ -419,9 +452,10 @@ export class SubscriptionsService {
         requests: {
           used: totalRequests,
           limit: plan.limits.requests,
-          percentage: plan.limits.requests === -1 
-            ? 0 
-            : Math.round((totalRequests / plan.limits.requests) * 100),
+          percentage:
+            plan.limits.requests === -1
+              ? 0
+              : Math.round((totalRequests / plan.limits.requests) * 100),
           overage: overageAmount,
           overageCost: overageCost.toFixed(2),
         },
@@ -435,7 +469,7 @@ export class SubscriptionsService {
         },
         rateLimit: {
           limit: plan.limits.rateLimit,
-          window: '1 minute',
+          window: "1 minute",
         },
       },
       billing: {
@@ -455,7 +489,9 @@ export class SubscriptionsService {
     const [usage, compute, rateLimitUsage] = await Promise.all([
       this.redisService.get(`usage:${userId}:${currentPeriodKey}`),
       this.redisService.get(`compute:${userId}:${currentPeriodKey}`),
-      this.redisService.get(`ratelimit:${userId}:${Math.floor(Date.now() / 60000)}`),
+      this.redisService.get(
+        `ratelimit:${userId}:${Math.floor(Date.now() / 60000)}`,
+      ),
     ]);
 
     const currentRequests = usage ? parseInt(usage) : 0;
@@ -466,12 +502,17 @@ export class SubscriptionsService {
       requests: {
         used: currentRequests,
         limit: plan.limits.requests,
-        percentage: plan.limits.requests === -1 
-          ? 0 
-          : Math.min(Math.round((currentRequests / plan.limits.requests) * 100), 100),
-        remaining: plan.limits.requests === -1 
-          ? 'unlimited' 
-          : Math.max(0, plan.limits.requests - currentRequests),
+        percentage:
+          plan.limits.requests === -1
+            ? 0
+            : Math.min(
+                Math.round((currentRequests / plan.limits.requests) * 100),
+                100,
+              ),
+        remaining:
+          plan.limits.requests === -1
+            ? "unlimited"
+            : Math.max(0, plan.limits.requests - currentRequests),
       },
       computeUnits: {
         used: currentCompute,
@@ -486,7 +527,10 @@ export class SubscriptionsService {
       period: {
         start: subscription.currentPeriodStart,
         end: subscription.currentPeriodEnd,
-        daysRemaining: Math.ceil((subscription.currentPeriodEnd.getTime() - Date.now()) / (24 * 60 * 60 * 1000)),
+        daysRemaining: Math.ceil(
+          (subscription.currentPeriodEnd.getTime() - Date.now()) /
+            (24 * 60 * 60 * 1000),
+        ),
       },
     };
   }
@@ -505,7 +549,7 @@ export class SubscriptionsService {
 
   private getCurrentPeriodKey(): string {
     const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   }
 
   async getAllPlans() {

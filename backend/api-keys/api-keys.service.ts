@@ -1,10 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import * as crypto from 'crypto';
-import * as bcrypt from 'bcrypt';
-import { PrismaService } from '../common/prisma.service';
-import { LoggerService } from '../common/logger.service';
-import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import { CreateApiKeyDto, UpdateApiKeyDto } from './dto/api-keys.dto';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import * as crypto from "crypto";
+import * as bcrypt from "bcrypt";
+import { PrismaService } from "../common/prisma.service";
+import { LoggerService } from "../common/logger.service";
+import { SubscriptionsService } from "../subscriptions/subscriptions.service";
+import { CreateApiKeyDto, UpdateApiKeyDto } from "./dto/api-keys.dto";
 
 @Injectable()
 export class ApiKeysService {
@@ -18,15 +22,17 @@ export class ApiKeysService {
     // Check subscription limits
     const canCreate = await this.subscriptionsService.checkApiKeyLimit(userId);
     if (!canCreate) {
-      throw new BadRequestException('API key limit reached for your subscription plan. Please upgrade to create more keys.');
+      throw new BadRequestException(
+        "API key limit reached for your subscription plan. Please upgrade to create more keys.",
+      );
     }
 
-    const { name, permissions = ['read'], rateLimit = 1000 } = createApiKeyDto;
+    const { name, permissions = ["read"], rateLimit = 1000 } = createApiKeyDto;
 
     // Generate API key
     const apiKey = this.generateApiKey();
     const keyHash = await bcrypt.hash(apiKey, 10);
-    const keyPreview = apiKey.substring(0, 8) + '...';
+    const keyPreview = apiKey.substring(0, 8) + "...";
 
     // Create API key in database
     const createdKey = await this.prisma.apiKey.create({
@@ -53,13 +59,16 @@ export class ApiKeysService {
     });
 
     // Log API key creation
-    this.logger.log({
-      type: 'api_key_created',
-      userId,
-      apiKeyId: createdKey.id,
-      name,
-      permissions,
-    }, 'API_KEYS');
+    this.logger.log(
+      {
+        type: "api_key_created",
+        userId,
+        apiKeyId: createdKey.id,
+        name,
+        permissions,
+      },
+      "API_KEYS",
+    );
 
     return {
       ...createdKey,
@@ -82,7 +91,7 @@ export class ApiKeysService {
         createdAt: true,
         updatedAt: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -105,13 +114,17 @@ export class ApiKeysService {
     });
 
     if (!apiKey) {
-      throw new NotFoundException('API key not found');
+      throw new NotFoundException("API key not found");
     }
 
     return apiKey;
   }
 
-  async updateApiKey(userId: string, keyId: string, updateApiKeyDto: UpdateApiKeyDto) {
+  async updateApiKey(
+    userId: string,
+    keyId: string,
+    updateApiKeyDto: UpdateApiKeyDto,
+  ) {
     const { name, permissions, rateLimit, isActive } = updateApiKeyDto;
 
     const apiKey = await this.prisma.apiKey.findFirst({
@@ -119,7 +132,7 @@ export class ApiKeysService {
     });
 
     if (!apiKey) {
-      throw new NotFoundException('API key not found');
+      throw new NotFoundException("API key not found");
     }
 
     const updatedKey = await this.prisma.apiKey.update({
@@ -147,12 +160,15 @@ export class ApiKeysService {
     // Note: API key cache cleared (Redis removed)
 
     // Log API key update
-    this.logger.log({
-      type: 'api_key_updated',
-      userId,
-      apiKeyId: keyId,
-      changes: updateApiKeyDto,
-    }, 'API_KEYS');
+    this.logger.log(
+      {
+        type: "api_key_updated",
+        userId,
+        apiKeyId: keyId,
+        changes: updateApiKeyDto,
+      },
+      "API_KEYS",
+    );
 
     return updatedKey;
   }
@@ -163,7 +179,7 @@ export class ApiKeysService {
     });
 
     if (!apiKey) {
-      throw new NotFoundException('API key not found');
+      throw new NotFoundException("API key not found");
     }
 
     await this.prisma.apiKey.delete({
@@ -173,14 +189,17 @@ export class ApiKeysService {
     // Note: API key cache cleared (Redis removed)
 
     // Log API key deletion
-    this.logger.log({
-      type: 'api_key_deleted',
-      userId,
-      apiKeyId: keyId,
-      name: apiKey.name,
-    }, 'API_KEYS');
+    this.logger.log(
+      {
+        type: "api_key_deleted",
+        userId,
+        apiKeyId: keyId,
+        name: apiKey.name,
+      },
+      "API_KEYS",
+    );
 
-    return { message: 'API key deleted successfully' };
+    return { message: "API key deleted successfully" };
   }
 
   async validateApiKey(apiKey: string): Promise<{
@@ -191,7 +210,7 @@ export class ApiKeysService {
     rateLimit: number;
     isValid: boolean;
   } | null> {
-    if (!apiKey || !apiKey.startsWith('n0de_')) {
+    if (!apiKey || !apiKey.startsWith("n0de_")) {
       return null;
     }
 
@@ -216,7 +235,14 @@ export class ApiKeysService {
       if (isMatch) {
         // Check if expired
         if (key.expiresAt && key.expiresAt < new Date()) {
-          return { userId: key.userId, id: key.id, apiKeyId: key.id, permissions: [], rateLimit: 0, isValid: false };
+          return {
+            userId: key.userId,
+            id: key.id,
+            apiKeyId: key.id,
+            permissions: [],
+            rateLimit: 0,
+            isValid: false,
+          };
         }
 
         const result = {
@@ -233,7 +259,7 @@ export class ApiKeysService {
         // Update last used
         await this.prisma.apiKey.update({
           where: { id: key.id },
-          data: { 
+          data: {
             lastUsedAt: new Date(),
             totalRequests: { increment: 1 },
           },
@@ -247,9 +273,10 @@ export class ApiKeysService {
   }
 
   private generateApiKey(): string {
-    const prefix = 'n0de_';
-    const environment = process.env.NODE_ENV === 'production' ? 'live_' : 'test_';
-    const randomBytes = crypto.randomBytes(32).toString('hex');
+    const prefix = "n0de_";
+    const environment =
+      process.env.NODE_ENV === "production" ? "live_" : "test_";
+    const randomBytes = crypto.randomBytes(32).toString("hex");
     return `${prefix}${environment}${randomBytes}`;
   }
 }

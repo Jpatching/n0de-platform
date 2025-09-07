@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../common/prisma.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../common/prisma.service";
 
 export interface LiveMetrics {
   responseTime: number;
@@ -25,7 +25,7 @@ export class MetricsService {
 
   async getPerformanceMetrics() {
     return {
-      status: 'operational',
+      status: "operational",
       uptime: process.uptime(),
       memory: process.memoryUsage(),
       timestamp: new Date().toISOString(),
@@ -47,7 +47,7 @@ export class MetricsService {
           },
         },
         orderBy: {
-          createdAt: 'desc',
+          createdAt: "desc",
         },
       });
 
@@ -65,15 +65,24 @@ export class MetricsService {
       });
 
       // Calculate totals for today
-      const totalRequests = userUsage.reduce((sum, stat) => sum + stat.requestCount, 0);
-      const totalErrors = userUsage.reduce((sum, stat) => sum + stat.errorCount, 0);
-      const avgLatency = userUsage.length > 0 
-        ? userUsage.reduce((sum, stat) => sum + stat.avgLatency, 0) / userUsage.length
-        : 1.8;
+      const totalRequests = userUsage.reduce(
+        (sum, stat) => sum + stat.requestCount,
+        0,
+      );
+      const totalErrors = userUsage.reduce(
+        (sum, stat) => sum + stat.errorCount,
+        0,
+      );
+      const avgLatency =
+        userUsage.length > 0
+          ? userUsage.reduce((sum, stat) => sum + stat.avgLatency, 0) /
+            userUsage.length
+          : 1.8;
 
-      const successRate = totalRequests > 0 
-        ? ((totalRequests - totalErrors) / totalRequests) * 100 
-        : 99.99;
+      const successRate =
+        totalRequests > 0
+          ? ((totalRequests - totalErrors) / totalRequests) * 100
+          : 99.99;
 
       // Get uptime percentage (assume 99.99% for now)
       const uptime = 99.99;
@@ -98,7 +107,7 @@ export class MetricsService {
           bundleLatency: 1, // <1ms as shown
         },
         // Performance by hour for the last 24 hours
-        hourlyStats: userUsage.map(stat => ({
+        hourlyStats: userUsage.map((stat) => ({
           hour: stat.hour,
           date: stat.date,
           requests: stat.requestCount,
@@ -107,7 +116,11 @@ export class MetricsService {
         })),
       };
     } catch (error) {
-      this.logger.error('Failed to get dashboard metrics for user:', userId, error);
+      this.logger.error(
+        "Failed to get dashboard metrics for user:",
+        userId,
+        error,
+      );
       // Return fallback data with realistic numbers
       return {
         totalRequests: 2847291,
@@ -134,9 +147,9 @@ export class MetricsService {
 
   async getLiveMetrics(): Promise<LiveMetrics> {
     const now = Date.now();
-    
+
     // Return cached metrics if still valid
-    if (this.metricsCache && (now - this.lastUpdateTime) < this.CACHE_TTL) {
+    if (this.metricsCache && now - this.lastUpdateTime < this.CACHE_TTL) {
       return { ...this.metricsCache, timestamp: now };
     }
 
@@ -147,7 +160,10 @@ export class MetricsService {
       this.lastUpdateTime = now;
       return metrics;
     } catch (error) {
-      this.logger.error('Failed to calculate real metrics, using fallback', error);
+      this.logger.error(
+        "Failed to calculate real metrics, using fallback",
+        error,
+      );
       return this.getFallbackMetrics();
     }
   }
@@ -173,20 +189,32 @@ export class MetricsService {
     });
 
     // Calculate metrics
-    const totalRequests = recentUsage.reduce((sum, stat) => sum + stat.requestCount, 0);
-    const totalSuccess = recentUsage.reduce((sum, stat) => sum + stat.successCount, 0);
-    const totalErrors = recentUsage.reduce((sum, stat) => sum + stat.errorCount, 0);
-    
-    const avgLatency = recentUsage.length > 0 
-      ? recentUsage.reduce((sum, stat) => sum + stat.avgLatency, 0) / recentUsage.length
-      : 0;
+    const totalRequests = recentUsage.reduce(
+      (sum, stat) => sum + stat.requestCount,
+      0,
+    );
+    const totalSuccess = recentUsage.reduce(
+      (sum, stat) => sum + stat.successCount,
+      0,
+    );
+    const totalErrors = recentUsage.reduce(
+      (sum, stat) => sum + stat.errorCount,
+      0,
+    );
 
-    const successRate = totalRequests > 0 ? (totalSuccess / totalRequests) * 100 : 100;
+    const avgLatency =
+      recentUsage.length > 0
+        ? recentUsage.reduce((sum, stat) => sum + stat.avgLatency, 0) /
+          recentUsage.length
+        : 0;
+
+    const successRate =
+      totalRequests > 0 ? (totalSuccess / totalRequests) * 100 : 100;
     const requestsPerSecond = totalRequests / 3600; // requests over 1 hour / 3600 seconds
 
     // Get active connections from system metrics
     const activeConnections = await this.getActiveConnections();
-    
+
     // Calculate uptime (process uptime in seconds)
     const uptime = process.uptime();
 
@@ -199,7 +227,7 @@ export class MetricsService {
       errorCount: totalErrors,
       uptime: Math.round(uptime),
       timestamp: Date.now(),
-      status: 'operational',
+      status: "operational",
       memory: process.memoryUsage(),
     };
   }
@@ -217,7 +245,7 @@ export class MetricsService {
       });
       return activeSessions;
     } catch (error) {
-      this.logger.warn('Failed to get active connections from database');
+      this.logger.warn("Failed to get active connections from database");
       return 0;
     }
   }
@@ -232,18 +260,22 @@ export class MetricsService {
     return {
       responseTime: baseResponseTime + Math.floor(Math.random() * 20),
       requestsPerSecond: baseRPS + Math.floor(Math.random() * 100),
-      successRate: baseSuccessRate + (Math.random() * 0.8),
+      successRate: baseSuccessRate + Math.random() * 0.8,
       activeConnections: baseConnections + Math.floor(Math.random() * 40),
       totalRequests: Math.floor(Math.random() * 10000) + 5000,
       errorCount: Math.floor(Math.random() * 50),
       uptime: Math.round(process.uptime()),
       timestamp: Date.now(),
-      status: 'operational',
+      status: "operational",
       memory: process.memoryUsage(),
     };
   }
 
-  async recordMetric(metricType: string, value: number, metadata?: any): Promise<void> {
+  async recordMetric(
+    metricType: string,
+    value: number,
+    metadata?: any,
+  ): Promise<void> {
     try {
       await this.prisma.systemMetrics.create({
         data: {
@@ -260,18 +292,18 @@ export class MetricsService {
 
   private getUnitForMetricType(metricType: string): string {
     switch (metricType) {
-      case 'latency':
-      case 'response_time':
-        return 'ms';
-      case 'uptime':
-        return 'seconds';
-      case 'success_rate':
-        return 'percent';
-      case 'throughput':
-      case 'requests_per_second':
-        return 'rps';
+      case "latency":
+      case "response_time":
+        return "ms";
+      case "uptime":
+        return "seconds";
+      case "success_rate":
+        return "percent";
+      case "throughput":
+      case "requests_per_second":
+        return "rps";
       default:
-        return 'count';
+        return "count";
     }
   }
 }

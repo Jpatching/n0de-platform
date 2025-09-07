@@ -1,13 +1,19 @@
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException, NotFoundException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcrypt';
-import { v4 as uuidv4 } from 'uuid';
-import { PrismaService } from '../common/prisma.service';
-import { LoggerService } from '../common/logger.service';
-import { RedisService } from '../common/redis.service';
-import { EmailService } from '../email/email.service';
-import { RegisterDto, LoginDto } from './dto/auth.dto';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  BadRequestException,
+  NotFoundException,
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { ConfigService } from "@nestjs/config";
+import * as bcrypt from "bcrypt";
+import { v4 as uuidv4 } from "uuid";
+import { PrismaService } from "../common/prisma.service";
+import { LoggerService } from "../common/logger.service";
+import { RedisService } from "../common/redis.service";
+import { EmailService } from "../email/email.service";
+import { RegisterDto, LoginDto } from "./dto/auth.dto";
 
 @Injectable()
 export class AuthService {
@@ -21,7 +27,7 @@ export class AuthService {
     private redis: RedisService,
     private emailService: EmailService,
   ) {
-    this.bcryptRounds = parseInt(this.configService.get('BCRYPT_ROUNDS')) || 12;
+    this.bcryptRounds = parseInt(this.configService.get("BCRYPT_ROUNDS")) || 12;
   }
 
   async register(registerDto: RegisterDto, ipAddress?: string) {
@@ -30,19 +36,16 @@ export class AuthService {
     // Check if user already exists
     const existingUser = await this.prisma.user.findFirst({
       where: {
-        OR: [
-          { email },
-          ...(username ? [{ username }] : []),
-        ],
+        OR: [{ email }, ...(username ? [{ username }] : [])],
       },
     });
 
     if (existingUser) {
       if (existingUser.email === email) {
-        throw new ConflictException('Email already registered');
+        throw new ConflictException("Email already registered");
       }
       if (existingUser.username === username) {
-        throw new ConflictException('Username already taken');
+        throw new ConflictException("Username already taken");
       }
     }
 
@@ -72,13 +75,16 @@ export class AuthService {
     });
 
     // Create email verification token
-    const verificationToken = await this.createEmailVerificationToken(user.id, email);
-    
+    const verificationToken = await this.createEmailVerificationToken(
+      user.id,
+      email,
+    );
+
     // Send verification email
     await this.emailService.sendEmailVerification(
-      email, 
-      verificationToken.token, 
-      user.firstName || user.username
+      email,
+      verificationToken.token,
+      user.firstName || user.username,
     );
 
     // Create session with refresh token
@@ -99,30 +105,69 @@ export class AuthService {
     });
 
     // Generate JWT tokens
-    const payload = { 
-      sub: user.id, 
+    const payload = {
+      sub: user.id,
       email: user.email,
       sessionId,
     };
     const accessToken = this.jwtService.sign(payload, {
-      expiresIn: '15m',
+      expiresIn: "15m",
     });
 
     const refreshTokenJwt = this.jwtService.sign(
-      { sub: user.id, sessionId, type: 'refresh' },
-      { expiresIn: '30d' },
+      { sub: user.id, sessionId, type: "refresh" },
+      { expiresIn: "30d" },
     );
 
     // Log registration
-    this.logger.log({
-      type: 'user_registered',
-      userId: user.id,
-      email: user.email,
-      ipAddress,
-    }, 'AUTH');
+    this.logger.log(
+      {
+        type: "user_registered",
+        userId: user.id,
+        email: user.email,
+        ipAddress,
+      },
+      "AUTH",
+    );
 
     // Create audit log
-    await this.createAuditLog(user.id, 'CREATE', 'USER', user.id, null, user, ipAddress);
+    await this.createAuditLog(
+      user.id,
+      "CREATE",
+      "USER",
+      user.id,
+      null,
+      user,
+      ipAddress,
+    );
+
+    // Auto-create starter API key for new user
+    try {
+      const apiKeyRaw = `n0de_live_${this.generateRandomKey()}`;
+      const starterApiKey = await this.prisma.apiKey.create({
+        data: {
+          userId: user.id,
+          name: "Starter API Key",
+          keyHash: await bcrypt.hash(apiKeyRaw, 10), // Hash the API key
+          keyPreview: `n0de_live_${this.generateRandomKey().substring(0, 8)}...`,
+          permissions: ["read"],
+          rateLimit: 100, // Starter rate limit
+          isActive: true,
+        },
+      });
+
+      this.logger.log(
+        {
+          type: "starter_api_key_created",
+          userId: user.id,
+          apiKeyId: starterApiKey.id,
+        },
+        "AUTH",
+      );
+    } catch (error) {
+      // Don't fail registration if API key creation fails
+      this.logger.error("Failed to create starter API key", error, "AUTH");
+    }
 
     return {
       user,
@@ -159,24 +204,31 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException("Invalid credentials");
     }
 
     // Check if user is active
     if (!user.isActive) {
-      throw new UnauthorizedException('Account is inactive');
+      throw new UnauthorizedException("Account is inactive");
     }
 
     if (user.isSuspended) {
-      throw new UnauthorizedException(`Account is suspended: ${user.suspendedReason}`);
+      throw new UnauthorizedException(
+        `Account is suspended: ${user.suspendedReason}`,
+      );
     }
 
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
       // Log failed login attempt
-      this.logger.logSecurityEvent('failed_login', { email, ipAddress }, user.id, ipAddress);
-      throw new UnauthorizedException('Invalid credentials');
+      this.logger.logSecurityEvent(
+        "failed_login",
+        { email, ipAddress },
+        user.id,
+        ipAddress,
+      );
+      throw new UnauthorizedException("Invalid credentials");
     }
 
     // Update login stats
@@ -207,34 +259,45 @@ export class AuthService {
     });
 
     // Generate JWT tokens
-    const payload = { 
-      sub: user.id, 
+    const payload = {
+      sub: user.id,
       email: user.email,
       sessionId,
     };
     const accessToken = this.jwtService.sign(payload, {
-      expiresIn: '15m',
+      expiresIn: "15m",
     });
 
     const refreshTokenJwt = this.jwtService.sign(
-      { sub: user.id, sessionId, refreshTokenId, type: 'refresh' },
-      { expiresIn: '30d' },
+      { sub: user.id, sessionId, refreshTokenId, type: "refresh" },
+      { expiresIn: "30d" },
     );
 
     // Remove password hash from response
     const { passwordHash, ...userResponse } = user;
 
     // Log successful login
-    this.logger.log({
-      type: 'user_login',
-      userId: user.id,
-      email: user.email,
-      ipAddress,
-      userAgent,
-    }, 'AUTH');
+    this.logger.log(
+      {
+        type: "user_login",
+        userId: user.id,
+        email: user.email,
+        ipAddress,
+        userAgent,
+      },
+      "AUTH",
+    );
 
     // Create audit log
-    await this.createAuditLog(user.id, 'LOGIN', 'USER', user.id, null, { ipAddress, userAgent }, ipAddress);
+    await this.createAuditLog(
+      user.id,
+      "LOGIN",
+      "USER",
+      user.id,
+      null,
+      { ipAddress, userAgent },
+      ipAddress,
+    );
 
     return {
       user: userResponse,
@@ -256,16 +319,21 @@ export class AuthService {
     // Session removed from database (Redis removed)
 
     // Log logout
-    this.logger.log({
-      type: 'user_logout',
-      userId,
-      sessionId,
-    }, 'AUTH');
+    this.logger.log(
+      {
+        type: "user_logout",
+        userId,
+        sessionId,
+      },
+      "AUTH",
+    );
 
     // Create audit log
-    await this.createAuditLog(userId, 'LOGOUT', 'USER', userId, null, { sessionId });
+    await this.createAuditLog(userId, "LOGOUT", "USER", userId, null, {
+      sessionId,
+    });
 
-    return { message: 'Logged out successfully' };
+    return { message: "Logged out successfully" };
   }
 
   async validateUser(email: string, password: string) {
@@ -303,11 +371,14 @@ export class AuthService {
       // Check Redis cache first
       const cacheKey = `session:${sessionId}`;
       const cached = await this.redis.get(cacheKey);
-      
+
       if (cached) {
         const sessionData = JSON.parse(cached);
         // Verify not expired
-        if (sessionData.expiresAt && new Date(sessionData.expiresAt) > new Date()) {
+        if (
+          sessionData.expiresAt &&
+          new Date(sessionData.expiresAt) > new Date()
+        ) {
           return sessionData;
         }
       }
@@ -334,12 +405,12 @@ export class AuthService {
 
       if (!session || !session.isActive || session.expiresAt < new Date()) {
         // Cache negative result briefly to prevent repeated DB hits
-        await this.redis.set(`session:invalid:${sessionId}`, 'true', 60);
+        await this.redis.set(`session:invalid:${sessionId}`, "true", 60);
         return null;
       }
 
       if (!session.user.isActive || session.user.isSuspended) {
-        await this.redis.set(`session:invalid:${sessionId}`, 'true', 60);
+        await this.redis.set(`session:invalid:${sessionId}`, "true", 60);
         return null;
       }
 
@@ -350,9 +421,9 @@ export class AuthService {
         username: session.user.username,
         expiresAt: session.expiresAt,
       };
-      
+
       await this.redis.set(cacheKey, JSON.stringify(sessionData), 300);
-      
+
       return {
         userId: session.user.id,
         email: session.user.email,
@@ -360,8 +431,11 @@ export class AuthService {
       };
     } catch (error) {
       // On Redis error, fall back to database but log the issue
-      this.logger.error('Redis error in validateSession, falling back to database:', error);
-      
+      this.logger.error(
+        "Redis error in validateSession, falling back to database:",
+        error,
+      );
+
       const session = await this.prisma.userSession.findUnique({
         where: { sessionId },
         include: {
@@ -377,7 +451,13 @@ export class AuthService {
         },
       });
 
-      if (!session || !session.isActive || session.expiresAt < new Date() || !session.user.isActive || session.user.isSuspended) {
+      if (
+        !session ||
+        !session.isActive ||
+        session.expiresAt < new Date() ||
+        !session.user.isActive ||
+        session.user.isSuspended
+      ) {
         return null;
       }
 
@@ -408,8 +488,8 @@ export class AuthService {
         createdAt: true,
         updatedAt: true,
         subscriptions: {
-          where: { status: 'ACTIVE' },
-          orderBy: { createdAt: 'desc' },
+          where: { status: "ACTIVE" },
+          orderBy: { createdAt: "desc" },
           take: 1,
           select: {
             id: true,
@@ -440,22 +520,24 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('User not found');
+      throw new UnauthorizedException("User not found");
     }
 
     // Add subscription info to user object
     const activeSubscription = user.subscriptions[0] || null;
-    const subscription = activeSubscription ? {
-      planName: activeSubscription.planName,
-      planType: activeSubscription.planType,
-      status: activeSubscription.status,
-      currentPeriodEnd: activeSubscription.currentPeriodEnd,
-    } : {
-      planName: 'Free',
-      planType: 'FREE',
-      status: 'ACTIVE',
-      currentPeriodEnd: null,
-    };
+    const subscription = activeSubscription
+      ? {
+          planName: activeSubscription.planName,
+          planType: activeSubscription.planType,
+          status: activeSubscription.status,
+          currentPeriodEnd: activeSubscription.currentPeriodEnd,
+        }
+      : {
+          planName: "Free",
+          planType: "FREE",
+          status: "ACTIVE",
+          currentPeriodEnd: null,
+        };
 
     return {
       ...user,
@@ -471,12 +553,15 @@ export class AuthService {
     };
   }
 
-  async updateProfile(userId: string, updateData: {
-    firstName?: string;
-    lastName?: string;
-    username?: string;
-    avatar?: string;
-  }) {
+  async updateProfile(
+    userId: string,
+    updateData: {
+      firstName?: string;
+      lastName?: string;
+      username?: string;
+      avatar?: string;
+    },
+  ) {
     const { username, ...otherData } = updateData;
 
     // Check if username is already taken
@@ -489,7 +574,7 @@ export class AuthService {
       });
 
       if (existingUser) {
-        throw new ConflictException('Username already taken');
+        throw new ConflictException("Username already taken");
       }
     }
 
@@ -512,25 +597,39 @@ export class AuthService {
     });
 
     // Create audit log
-    await this.createAuditLog(userId, 'UPDATE', 'USER', userId, null, updateData);
+    await this.createAuditLog(
+      userId,
+      "UPDATE",
+      "USER",
+      userId,
+      null,
+      updateData,
+    );
 
     return user;
   }
 
-  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { passwordHash: true },
     });
 
     if (!user) {
-      throw new UnauthorizedException('User not found');
+      throw new UnauthorizedException("User not found");
     }
 
     // Verify current password
-    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    const isCurrentPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.passwordHash,
+    );
     if (!isCurrentPasswordValid) {
-      throw new BadRequestException('Current password is incorrect');
+      throw new BadRequestException("Current password is incorrect");
     }
 
     // Hash new password
@@ -549,19 +648,24 @@ export class AuthService {
     });
 
     // Create audit log
-    await this.createAuditLog(userId, 'UPDATE', 'PASSWORD', userId, null, { action: 'password_changed' });
+    await this.createAuditLog(userId, "UPDATE", "PASSWORD", userId, null, {
+      action: "password_changed",
+    });
 
     // Log security event
-    this.logger.logSecurityEvent('password_changed', { userId }, userId);
+    this.logger.logSecurityEvent("password_changed", { userId }, userId);
 
-    return { message: 'Password changed successfully. Please log in again.' };
+    return { message: "Password changed successfully. Please log in again." };
   }
 
   async validateOAuthUser(oauthUser: any) {
-    const { email, name, firstName, lastName, username, avatar, provider } = oauthUser;
+    const { email, name, firstName, lastName, username, avatar, provider } =
+      oauthUser;
 
     if (!email) {
-      throw new BadRequestException('Email is required for OAuth authentication');
+      throw new BadRequestException(
+        "Email is required for OAuth authentication",
+      );
     }
 
     // Check if user already exists
@@ -586,9 +690,9 @@ export class AuthService {
       user = await this.prisma.user.create({
         data: {
           email,
-          firstName: firstName || name?.split(' ')[0] || '',
-          lastName: lastName || name?.split(' ').slice(1).join(' ') || '',
-          username: username || email.split('@')[0],
+          firstName: firstName || name?.split(" ")[0] || "",
+          lastName: lastName || name?.split(" ").slice(1).join(" ") || "",
+          username: username || email.split("@")[0],
           avatar,
           emailVerified: true, // OAuth emails are pre-verified
         },
@@ -607,15 +711,21 @@ export class AuthService {
       });
 
       // Log registration
-      this.logger.log({
-        type: 'oauth_user_registered',
-        userId: user.id,
-        email: user.email,
-        provider,
-      }, 'AUTH');
+      this.logger.log(
+        {
+          type: "oauth_user_registered",
+          userId: user.id,
+          email: user.email,
+          provider,
+        },
+        "AUTH",
+      );
 
       // Create audit log
-      await this.createAuditLog(user.id, 'CREATE', 'USER', user.id, null, { ...user, provider });
+      await this.createAuditLog(user.id, "CREATE", "USER", user.id, null, {
+        ...user,
+        provider,
+      });
     } else {
       // Update existing user with OAuth info if not already set
       const updateData: any = {};
@@ -637,7 +747,7 @@ export class AuthService {
             emailVerified: true,
             isActive: true,
             isSuspended: true,
-                createdAt: true,
+            createdAt: true,
           },
         });
       }
@@ -645,11 +755,11 @@ export class AuthService {
 
     // Check if user is active
     if (!user.isActive) {
-      throw new UnauthorizedException('Account is inactive');
+      throw new UnauthorizedException("Account is inactive");
     }
 
     if (user.isSuspended) {
-      throw new UnauthorizedException('Account is suspended');
+      throw new UnauthorizedException("Account is suspended");
     }
 
     return user;
@@ -684,31 +794,42 @@ export class AuthService {
     });
 
     // Generate JWT tokens
-    const payload = { 
-      sub: user.id, 
+    const payload = {
+      sub: user.id,
       email: user.email,
       sessionId,
     };
     const accessToken = this.jwtService.sign(payload, {
-      expiresIn: '15m',
+      expiresIn: "15m",
     });
 
     const refreshTokenJwt = this.jwtService.sign(
-      { sub: user.id, sessionId, refreshTokenId, type: 'refresh' },
-      { expiresIn: '30d' },
+      { sub: user.id, sessionId, refreshTokenId, type: "refresh" },
+      { expiresIn: "30d" },
     );
 
     // Log successful login
-    this.logger.log({
-      type: 'oauth_user_login',
-      userId: user.id,
-      email: user.email,
-      ipAddress,
-      userAgent,
-    }, 'AUTH');
+    this.logger.log(
+      {
+        type: "oauth_user_login",
+        userId: user.id,
+        email: user.email,
+        ipAddress,
+        userAgent,
+      },
+      "AUTH",
+    );
 
     // Create audit log
-    await this.createAuditLog(user.id, 'LOGIN', 'USER', user.id, null, { ipAddress, userAgent, method: 'oauth' }, ipAddress);
+    await this.createAuditLog(
+      user.id,
+      "LOGIN",
+      "USER",
+      user.id,
+      null,
+      { ipAddress, userAgent, method: "oauth" },
+      ipAddress,
+    );
 
     return {
       user,
@@ -720,18 +841,22 @@ export class AuthService {
     };
   }
 
-  async refreshAccessToken(refreshToken: string, ipAddress?: string, userAgent?: string) {
+  async refreshAccessToken(
+    refreshToken: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
     try {
       // Verify refresh token
       const decoded = this.jwtService.verify(refreshToken);
-      
-      if (decoded.type !== 'refresh' || !decoded.refreshTokenId) {
-        throw new UnauthorizedException('Invalid refresh token');
+
+      if (decoded.type !== "refresh" || !decoded.refreshTokenId) {
+        throw new UnauthorizedException("Invalid refresh token");
       }
 
       // Find session by sessionId AND verify refresh token matches
       const session = await this.prisma.userSession.findFirst({
-        where: { 
+        where: {
           sessionId: decoded.sessionId,
           refreshToken: decoded.refreshTokenId, // Verify the refresh token ID matches
           isActive: true,
@@ -754,11 +879,11 @@ export class AuthService {
       });
 
       if (!session || session.expiresAt < new Date()) {
-        throw new UnauthorizedException('Session expired or invalid token');
+        throw new UnauthorizedException("Session expired or invalid token");
       }
 
       if (!session.user.isActive || session.user.isSuspended) {
-        throw new UnauthorizedException('Account is not active');
+        throw new UnauthorizedException("Account is not active");
       }
 
       // Update last activity
@@ -778,16 +903,19 @@ export class AuthService {
         sessionId: session.sessionId,
       };
       const newAccessToken = this.jwtService.sign(payload, {
-        expiresIn: '15m',
+        expiresIn: "15m",
       });
 
       // Log token refresh
-      this.logger.log({
-        type: 'token_refreshed',
-        userId: session.user.id,
-        sessionId: session.sessionId,
-        ipAddress,
-      }, 'AUTH');
+      this.logger.log(
+        {
+          type: "token_refreshed",
+          userId: session.user.id,
+          sessionId: session.sessionId,
+          ipAddress,
+        },
+        "AUTH",
+      );
 
       return {
         accessToken: newAccessToken,
@@ -795,8 +923,13 @@ export class AuthService {
         expiresAt: new Date(Date.now() + 15 * 60 * 1000),
       };
     } catch (error) {
-      this.logger.logSecurityEvent('invalid_refresh_token', { ipAddress }, null, ipAddress);
-      throw new UnauthorizedException('Invalid refresh token');
+      this.logger.logSecurityEvent(
+        "invalid_refresh_token",
+        { ipAddress },
+        null,
+        ipAddress,
+      );
+      throw new UnauthorizedException("Invalid refresh token");
     }
   }
 
@@ -824,7 +957,7 @@ export class AuthService {
         },
       });
     } catch (error) {
-      this.logger.error('Failed to create audit log:', error, 'AUTH');
+      this.logger.error("Failed to create audit log:", error, "AUTH");
     }
   }
 
@@ -833,7 +966,7 @@ export class AuthService {
     await this.prisma.verificationToken.deleteMany({
       where: {
         userId,
-        type: 'EMAIL_VERIFICATION',
+        type: "EMAIL_VERIFICATION",
       },
     });
 
@@ -844,7 +977,7 @@ export class AuthService {
       data: {
         userId,
         email,
-        type: 'EMAIL_VERIFICATION',
+        type: "EMAIL_VERIFICATION",
         expiresAt,
       },
     });
@@ -859,15 +992,15 @@ export class AuthService {
     });
 
     if (!verificationToken) {
-      throw new BadRequestException('Invalid verification token');
+      throw new BadRequestException("Invalid verification token");
     }
 
     if (verificationToken.usedAt) {
-      throw new BadRequestException('Verification token has already been used');
+      throw new BadRequestException("Verification token has already been used");
     }
 
     if (verificationToken.expiresAt < new Date()) {
-      throw new BadRequestException('Verification token has expired');
+      throw new BadRequestException("Verification token has expired");
     }
 
     // Update user as verified and mark token as used
@@ -886,17 +1019,20 @@ export class AuthService {
     ]);
 
     // Log email verification
-    this.logger.log({
-      type: 'email_verified',
-      userId: verificationToken.userId,
-      email: verificationToken.email,
-    }, 'AUTH');
+    this.logger.log(
+      {
+        type: "email_verified",
+        userId: verificationToken.userId,
+        email: verificationToken.email,
+      },
+      "AUTH",
+    );
 
     // Create audit log
     await this.createAuditLog(
       verificationToken.userId,
-      'UPDATE',
-      'USER',
+      "UPDATE",
+      "USER",
       verificationToken.userId,
       { emailVerified: false },
       { emailVerified: true },
@@ -905,7 +1041,7 @@ export class AuthService {
 
     return {
       success: true,
-      message: 'Email verified successfully',
+      message: "Email verified successfully",
       user: {
         id: verificationToken.user.id,
         email: verificationToken.user.email,
@@ -927,26 +1063,29 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
 
     if (user.emailVerified) {
-      throw new BadRequestException('Email is already verified');
+      throw new BadRequestException("Email is already verified");
     }
 
     // Create new verification token
-    const verificationToken = await this.createEmailVerificationToken(user.id, email);
+    const verificationToken = await this.createEmailVerificationToken(
+      user.id,
+      email,
+    );
 
     // Send verification email
     await this.emailService.sendEmailVerification(
       email,
       verificationToken.token,
-      user.firstName || user.username
+      user.firstName || user.username,
     );
 
     return {
       success: true,
-      message: 'Verification email sent successfully',
+      message: "Verification email sent successfully",
     };
   }
 
@@ -958,14 +1097,17 @@ export class AuthService {
 
     if (!user) {
       // Don't reveal if user exists or not for security
-      return { success: true, message: 'If the email exists, a reset link has been sent' };
+      return {
+        success: true,
+        message: "If the email exists, a reset link has been sent",
+      };
     }
 
     // Clean up any existing password reset tokens
     await this.prisma.verificationToken.deleteMany({
       where: {
         userId: user.id,
-        type: 'PASSWORD_RESET',
+        type: "PASSWORD_RESET",
       },
     });
 
@@ -976,7 +1118,7 @@ export class AuthService {
       data: {
         userId: user.id,
         email,
-        type: 'PASSWORD_RESET',
+        type: "PASSWORD_RESET",
         expiresAt,
       },
     });
@@ -985,12 +1127,24 @@ export class AuthService {
     await this.emailService.sendPasswordResetEmail(
       email,
       resetToken.token,
-      user.firstName || user.username
+      user.firstName || user.username,
     );
 
     return {
       success: true,
-      message: 'If the email exists, a reset link has been sent',
+      message: "If the email exists, a reset link has been sent",
     };
+  }
+
+  private generateRandomKey(): string {
+    const characters =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let result = "";
+    for (let i = 0; i < 32; i++) {
+      result += characters.charAt(
+        Math.floor(Math.random() * characters.length),
+      );
+    }
+    return result;
   }
 }

@@ -1,17 +1,19 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as crypto from 'crypto';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import * as crypto from "crypto";
 
 @Injectable()
 export class CoinbaseCommerceService {
   private readonly logger = new Logger(CoinbaseCommerceService.name);
   private readonly apiKey: string;
   private readonly webhookSecret: string;
-  private readonly baseUrl = 'https://api.commerce.coinbase.com';
+  private readonly baseUrl = "https://api.commerce.coinbase.com";
 
   constructor(private configService: ConfigService) {
-    this.apiKey = this.configService.get<string>('COINBASE_COMMERCE_API_KEY');
-    this.webhookSecret = this.configService.get<string>('COINBASE_COMMERCE_WEBHOOK_SECRET');
+    this.apiKey = this.configService.get<string>("COINBASE_COMMERCE_API_KEY");
+    this.webhookSecret = this.configService.get<string>(
+      "COINBASE_COMMERCE_WEBHOOK_SECRET",
+    );
   }
 
   async createCharge(payment: any) {
@@ -23,22 +25,22 @@ export class CoinbaseCommerceService {
           amount: payment.amount.toString(),
           currency: payment.currency,
         },
-        pricing_type: 'fixed_price',
+        pricing_type: "fixed_price",
         metadata: {
           paymentId: payment.id,
           userId: payment.userId,
           planType: payment.planType,
         },
-        redirect_url: `${this.configService.get('FRONTEND_URL')}/payment/success?paymentId=${payment.id}`,
-        cancel_url: `${this.configService.get('FRONTEND_URL')}/payment/cancel?paymentId=${payment.id}`,
+        redirect_url: `${this.configService.get("FRONTEND_URL")}/payment/success?paymentId=${payment.id}`,
+        cancel_url: `${this.configService.get("FRONTEND_URL")}/payment/cancel?paymentId=${payment.id}`,
       };
 
       const response = await fetch(`${this.baseUrl}/charges`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'X-CC-Api-Key': this.apiKey,
-          'X-CC-Version': '2018-03-22',
+          "Content-Type": "application/json",
+          "X-CC-Api-Key": this.apiKey,
+          "X-CC-Version": "2018-03-22",
         },
         body: JSON.stringify(chargeData),
       });
@@ -49,9 +51,9 @@ export class CoinbaseCommerceService {
       }
 
       const result = await response.json();
-      
+
       this.logger.log(`Created Coinbase charge: ${result.data.id}`);
-      
+
       return {
         id: result.data.id,
         hosted_url: result.data.hosted_url,
@@ -68,10 +70,10 @@ export class CoinbaseCommerceService {
   async getCharge(chargeId: string) {
     try {
       const response = await fetch(`${this.baseUrl}/charges/${chargeId}`, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'X-CC-Api-Key': this.apiKey,
-          'X-CC-Version': '2018-03-22',
+          "X-CC-Api-Key": this.apiKey,
+          "X-CC-Version": "2018-03-22",
         },
       });
 
@@ -95,16 +97,18 @@ export class CoinbaseCommerceService {
 
     try {
       const computedSignature = crypto
-        .createHmac('sha256', this.webhookSecret)
+        .createHmac("sha256", this.webhookSecret)
         .update(JSON.stringify(payload))
-        .digest('hex');
+        .digest("hex");
 
       return crypto.timingSafeEqual(
-        Buffer.from(signature, 'hex'),
-        Buffer.from(computedSignature, 'hex')
+        Buffer.from(signature, "hex"),
+        Buffer.from(computedSignature, "hex"),
       );
     } catch (error) {
-      this.logger.error(`Webhook signature verification failed: ${error.message}`);
+      this.logger.error(
+        `Webhook signature verification failed: ${error.message}`,
+      );
       return false;
     }
   }
@@ -116,14 +120,14 @@ export class CoinbaseCommerceService {
       });
 
       if (startingAfter) {
-        params.append('starting_after', startingAfter);
+        params.append("starting_after", startingAfter);
       }
 
       const response = await fetch(`${this.baseUrl}/charges?${params}`, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'X-CC-Api-Key': this.apiKey,
-          'X-CC-Version': '2018-03-22',
+          "X-CC-Api-Key": this.apiKey,
+          "X-CC-Version": "2018-03-22",
         },
       });
 

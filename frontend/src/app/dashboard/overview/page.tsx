@@ -129,37 +129,8 @@ const AppOverview = () => {
         console.error("Error fetching overview metrics:", err);
         setError(err instanceof Error ? err.message : "Failed to load metrics");
 
-        // Fallback to demo data
-        setMetrics([
-          {
-            label: "API Requests",
-            value: "2.4M",
-            change: "+12.3%",
-            changeType: "positive",
-            icon: Activity,
-          },
-          {
-            label: "Response Time",
-            value: "42ms",
-            change: "-8.2%",
-            changeType: "positive",
-            icon: Clock,
-          },
-          {
-            label: "Success Rate",
-            value: "99.97%",
-            change: "+0.02%",
-            changeType: "positive",
-            icon: CheckCircle,
-          },
-          {
-            label: "Active Keys",
-            value: "8",
-            change: "+2",
-            changeType: "positive",
-            icon: Key,
-          },
-        ]);
+        // No fallback data - show real metrics or empty state
+        setMetrics([]);
       } finally {
         setLoading(false);
       }
@@ -168,36 +139,41 @@ const AppOverview = () => {
     fetchMetrics();
   }, []);
 
-  const [recentActivity] = useState<Activity[]>([
-    {
-      id: "1",
-      title: "API Key Created",
-      description: 'New production API key "mobile-app-v2" was created',
-      timestamp: "2 minutes ago",
-      type: "success",
-    },
-    {
-      id: "2",
-      title: "Rate Limit Alert",
-      description: 'API key "legacy-system" approaching rate limit (85% used)',
-      timestamp: "12 minutes ago",
-      type: "warning",
-    },
-    {
-      id: "3",
-      title: "Database Query Optimized",
-      description: "Slow query detected and automatically optimized",
-      timestamp: "1 hour ago",
-      type: "info",
-    },
-    {
-      id: "4",
-      title: "New Team Member",
-      description: "john@company.com was added to your team",
-      timestamp: "2 hours ago",
-      type: "success",
-    },
-  ]);
+  const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
+
+  // Fetch real activity data
+  useEffect(() => {
+    const fetchActivity = async () => {
+      try {
+        setActivityLoading(true);
+        const backendUrl =
+          process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.n0de.pro";
+        const endpoint =
+          process.env.NODE_ENV === "development"
+            ? "/api/activity/recent"
+            : `${backendUrl}/api/v1/activity/recent`;
+
+        const response = await fetch(endpoint, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("n0de_token")}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setRecentActivity(data.activities || []);
+        }
+      } catch (err) {
+        console.error("Error fetching activity:", err);
+      } finally {
+        setActivityLoading(false);
+      }
+    };
+
+    fetchActivity();
+  }, []);
 
   const getActivityIcon = (type: string) => {
     switch (type) {
@@ -256,41 +232,69 @@ const AppOverview = () => {
 
           {/* Metrics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {metrics.map((metric, index) => {
-              const Icon = metric.icon;
-              return (
-                <motion.div
-                  key={metric.label}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="bg-zinc-950/50 border border-zinc-800 rounded-lg p-6 hover:border-zinc-700 transition-colors"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-2 bg-cyan-500/10 rounded-lg">
-                      <Icon className="h-5 w-5 text-cyan-400" />
-                    </div>
-                    <span
-                      className={`text-sm font-medium ${
-                        metric.changeType === "positive"
-                          ? "text-green-400"
-                          : metric.changeType === "negative"
-                            ? "text-red-400"
-                            : "text-zinc-400"
-                      }`}
+            {metrics.length > 0
+              ? metrics.map((metric, index) => {
+                  const Icon = metric.icon;
+                  return (
+                    <motion.div
+                      key={metric.label}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="bg-zinc-950/50 border border-zinc-800 rounded-lg p-6 hover:border-zinc-700 transition-colors"
                     >
-                      {metric.change}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-white mb-1">
-                      {metric.value}
-                    </p>
-                    <p className="text-sm text-zinc-400">{metric.label}</p>
-                  </div>
-                </motion.div>
-              );
-            })}
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="p-2 bg-cyan-500/10 rounded-lg">
+                          <Icon className="h-5 w-5 text-cyan-400" />
+                        </div>
+                        <span
+                          className={`text-sm font-medium ${
+                            metric.changeType === "positive"
+                              ? "text-green-400"
+                              : metric.changeType === "negative"
+                                ? "text-red-400"
+                                : "text-zinc-400"
+                          }`}
+                        >
+                          {metric.change}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-2xl font-bold text-white mb-1">
+                          {metric.value}
+                        </p>
+                        <p className="text-sm text-zinc-400">{metric.label}</p>
+                      </div>
+                    </motion.div>
+                  );
+                })
+              : // Show default empty metrics
+                [
+                  { label: "API Requests", icon: Activity },
+                  { label: "Response Time", icon: Clock },
+                  { label: "Success Rate", icon: CheckCircle },
+                  { label: "Active Keys", icon: Key },
+                ].map((item, index) => (
+                  <motion.div
+                    key={item.label}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="bg-zinc-950/50 border border-zinc-800 rounded-lg p-6"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="p-2 bg-zinc-800 rounded-lg">
+                        <item.icon className="h-5 w-5 text-zinc-500" />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-zinc-500 mb-1">
+                        --
+                      </p>
+                      <p className="text-sm text-zinc-400">{item.label}</p>
+                    </div>
+                  </motion.div>
+                ))}
           </div>
 
           {/* Main Content Grid */}
@@ -344,28 +348,42 @@ const AppOverview = () => {
               </div>
 
               <div className="space-y-4">
-                {recentActivity.map((activity, index) => (
-                  <motion.div
-                    key={activity.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.6 + index * 0.1 }}
-                    className="flex items-start space-x-3 p-3 rounded-lg hover:bg-zinc-800/30 transition-colors"
-                  >
-                    {getActivityIcon(activity.type)}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white">
-                        {activity.title}
-                      </p>
-                      <p className="text-xs text-zinc-400 mt-1">
-                        {activity.description}
-                      </p>
-                      <p className="text-xs text-zinc-500 mt-1">
-                        {activity.timestamp}
-                      </p>
-                    </div>
-                  </motion.div>
-                ))}
+                {activityLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-400"></div>
+                  </div>
+                ) : recentActivity.length > 0 ? (
+                  recentActivity.map((activity, index) => (
+                    <motion.div
+                      key={activity.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.6 + index * 0.1 }}
+                      className="flex items-start space-x-3 p-3 rounded-lg hover:bg-zinc-800/30 transition-colors"
+                    >
+                      {getActivityIcon(activity.type)}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-white">
+                          {activity.title}
+                        </p>
+                        <p className="text-xs text-zinc-400 mt-1">
+                          {activity.description}
+                        </p>
+                        <p className="text-xs text-zinc-500 mt-1">
+                          {activity.timestamp}
+                        </p>
+                      </div>
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <Activity className="h-8 w-8 text-zinc-600 mx-auto mb-3" />
+                    <p className="text-sm text-zinc-400">No recent activity</p>
+                    <p className="text-xs text-zinc-500 mt-1">
+                      Activity will appear here as you use the platform
+                    </p>
+                  </div>
+                )}
               </div>
             </motion.div>
           </div>

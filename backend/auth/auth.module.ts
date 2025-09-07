@@ -1,34 +1,36 @@
-import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
-import { ThrottlerModule } from '@nestjs/throttler';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
-import { JwtStrategy } from './strategies/jwt.strategy';
-import { LocalStrategy } from './strategies/local.strategy';
-import { GitHubStrategy } from './strategies/github.strategy';
-import { GoogleStrategy } from './strategies/google.strategy';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { LocalAuthGuard } from './guards/local-auth.guard';
-import { CommonModule } from '../common/common.module';
-import { EmailModule } from '../email/email.module';
+import { Module } from "@nestjs/common";
+import { JwtModule } from "@nestjs/jwt";
+import { PassportModule } from "@nestjs/passport";
+import { ThrottlerModule } from "@nestjs/throttler";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { AuthController } from "./auth.controller";
+import { AuthService } from "./auth.service";
+import { JwtStrategy } from "./strategies/jwt.strategy";
+import { LocalStrategy } from "./strategies/local.strategy";
+import { GitHubStrategy } from "./strategies/github.strategy";
+import { GoogleStrategy } from "./strategies/google.strategy";
+import { JwtAuthGuard } from "./guards/jwt-auth.guard";
+import { LocalAuthGuard } from "./guards/local-auth.guard";
+import { CommonModule } from "../common/common.module";
+import { EmailModule } from "../email/email.module";
 
 @Module({
   imports: [
     ConfigModule,
     CommonModule,
     EmailModule,
-    PassportModule.register({ defaultStrategy: 'jwt' }),
-    ThrottlerModule.forRoot([{
-      ttl: 60000,
-      limit: 100,
-    }]),
+    PassportModule.register({ defaultStrategy: "jwt" }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100,
+      },
+    ]),
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get('JWT_SECRET'),
+        secret: configService.get("JWT_SECRET"),
         signOptions: {
-          expiresIn: configService.get('JWT_EXPIRES_IN') || '7d',
+          expiresIn: configService.get("JWT_EXPIRES_IN") || "7d",
         },
       }),
       inject: [ConfigService],

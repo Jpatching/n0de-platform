@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ErrorLogDto } from './dto/error-log.dto';
-import { randomUUID } from 'crypto';
+import { Injectable, Logger } from "@nestjs/common";
+import { ErrorLogDto } from "./dto/error-log.dto";
+import { randomUUID } from "crypto";
 
 interface ClientInfo {
   ip: string;
@@ -13,16 +13,19 @@ interface ClientInfo {
 export class ErrorsService {
   private readonly logger = new Logger(ErrorsService.name);
 
-  async logError(errorLogDto: ErrorLogDto, clientInfo: ClientInfo): Promise<string> {
+  async logError(
+    errorLogDto: ErrorLogDto,
+    clientInfo: ClientInfo,
+  ): Promise<string> {
     const errorId = randomUUID();
-    
+
     // Create structured error log
     const errorLog = {
       errorId,
       message: errorLogDto.message,
       stack: errorLogDto.stack,
       url: errorLogDto.url,
-      severity: errorLogDto.severity || 'medium',
+      severity: errorLogDto.severity || "medium",
       context: errorLogDto.context,
       client: {
         ip: clientInfo.ip,
@@ -34,7 +37,7 @@ export class ErrorsService {
 
     // Log the error with appropriate level based on severity
     switch (errorLogDto.severity) {
-      case 'critical':
+      case "critical":
         this.logger.error(`[CRITICAL] Frontend Error: ${errorLogDto.message}`, {
           errorId,
           stack: errorLogDto.stack,
@@ -43,15 +46,24 @@ export class ErrorsService {
           context: errorLogDto.context,
         });
         break;
-      case 'high':
-        this.logger.error(`[HIGH] Frontend Error: ${errorLogDto.message}`, errorLog);
+      case "high":
+        this.logger.error(
+          `[HIGH] Frontend Error: ${errorLogDto.message}`,
+          errorLog,
+        );
         break;
-      case 'medium':
-        this.logger.warn(`[MEDIUM] Frontend Error: ${errorLogDto.message}`, errorLog);
+      case "medium":
+        this.logger.warn(
+          `[MEDIUM] Frontend Error: ${errorLogDto.message}`,
+          errorLog,
+        );
         break;
-      case 'low':
+      case "low":
       default:
-        this.logger.log(`[LOW] Frontend Error: ${errorLogDto.message}`, errorLog);
+        this.logger.log(
+          `[LOW] Frontend Error: ${errorLogDto.message}`,
+          errorLog,
+        );
         break;
     }
 
@@ -59,7 +71,7 @@ export class ErrorsService {
     // 1. Store errors in a database
     // 2. Send critical errors to monitoring services (Sentry, DataDog, etc.)
     // 3. Alert on high-frequency error patterns
-    
+
     return errorId;
   }
 

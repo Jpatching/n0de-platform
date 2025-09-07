@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import Stripe from 'stripe';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import Stripe from "stripe";
 
 @Injectable()
 export class PaymentsStripeService {
@@ -8,42 +8,44 @@ export class PaymentsStripeService {
   private stripe: Stripe;
 
   constructor(private configService: ConfigService) {
-    const stripeSecretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
+    const stripeSecretKey = this.configService.get<string>("STRIPE_SECRET_KEY");
     if (stripeSecretKey) {
       this.stripe = new Stripe(stripeSecretKey, {
-        apiVersion: '2025-08-27.basil',
+        apiVersion: "2025-08-27.basil",
       });
     }
   }
 
   async createCheckoutSession(payment: any) {
     if (!this.stripe) {
-      throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.');
+      throw new Error(
+        "Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.",
+      );
     }
 
     try {
       const session = await this.stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        mode: 'subscription',
+        payment_method_types: ["card"],
+        mode: "subscription",
         line_items: [
           {
             price_data: {
-              currency: 'usd',
+              currency: "usd",
               product_data: {
                 name: `N0DE ${payment.planType} Plan`,
                 description: `N0DE RPC Infrastructure - ${payment.planType} Plan Subscription`,
-                images: ['https://n0de.pro/logo.png'], // Add your logo URL
+                images: ["https://n0de.pro/logo.png"], // Add your logo URL
               },
               unit_amount: payment.amount * 100, // Convert to cents
               recurring: {
-                interval: 'month',
+                interval: "month",
               },
             },
             quantity: 1,
           },
         ],
-        success_url: `${this.configService.get('FRONTEND_URL')}/payment/success?session_id={CHECKOUT_SESSION_ID}&paymentId=${payment.id}`,
-        cancel_url: `${this.configService.get('FRONTEND_URL')}/checkout?plan=${payment.planType}`,
+        success_url: `${this.configService.get("FRONTEND_URL")}/payment/success?session_id={CHECKOUT_SESSION_ID}&paymentId=${payment.id}`,
+        cancel_url: `${this.configService.get("FRONTEND_URL")}/checkout?plan=${payment.planType}`,
         metadata: {
           paymentId: payment.id,
           userId: payment.userId,
@@ -68,28 +70,38 @@ export class PaymentsStripeService {
         checkoutUrl: session.url,
       };
     } catch (error) {
-      this.logger.error(`Stripe checkout session creation failed: ${error.message}`);
-      throw new Error(`Failed to create Stripe checkout session: ${error.message}`);
+      this.logger.error(
+        `Stripe checkout session creation failed: ${error.message}`,
+      );
+      throw new Error(
+        `Failed to create Stripe checkout session: ${error.message}`,
+      );
     }
   }
 
   async handleWebhook(payload: string, signature: string) {
-    const webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
-    
+    const webhookSecret = this.configService.get<string>(
+      "STRIPE_WEBHOOK_SECRET",
+    );
+
     if (!webhookSecret) {
-      throw new Error('Stripe webhook secret is not configured');
+      throw new Error("Stripe webhook secret is not configured");
     }
 
     try {
-      const event = this.stripe.webhooks.constructEvent(payload, signature, webhookSecret);
-      
+      const event = this.stripe.webhooks.constructEvent(
+        payload,
+        signature,
+        webhookSecret,
+      );
+
       this.logger.log(`Received Stripe webhook: ${event.type}`);
 
       switch (event.type) {
-        case 'checkout.session.completed':
+        case "checkout.session.completed":
           const session = event.data.object as Stripe.Checkout.Session;
           return {
-            type: 'payment_completed',
+            type: "payment_completed",
             paymentId: session.metadata?.paymentId,
             userId: session.metadata?.userId,
             planType: session.metadata?.planType,
@@ -97,19 +109,19 @@ export class PaymentsStripeService {
             customerEmail: session.customer_email,
           };
 
-        case 'invoice.payment_succeeded':
+        case "invoice.payment_succeeded":
           const invoice = event.data.object as Stripe.Invoice;
           return {
-            type: 'subscription_renewed',
+            type: "subscription_renewed",
             subscriptionId: (invoice as any).subscription || null,
             customerId: invoice.customer,
             amount: invoice.amount_paid,
           };
 
-        case 'customer.subscription.deleted':
+        case "customer.subscription.deleted":
           const subscription = event.data.object as Stripe.Subscription;
           return {
-            type: 'subscription_cancelled',
+            type: "subscription_cancelled",
             subscriptionId: subscription.id,
             customerId: subscription.customer,
           };
@@ -120,7 +132,9 @@ export class PaymentsStripeService {
       }
     } catch (error) {
       this.logger.error(`Stripe webhook handling failed: ${error.message}`);
-      throw new Error(`Webhook signature verification failed: ${error.message}`);
+      throw new Error(
+        `Webhook signature verification failed: ${error.message}`,
+      );
     }
   }
 
@@ -131,30 +145,32 @@ export class PaymentsStripeService {
     metadata?: any;
   }) {
     if (!this.stripe) {
-      throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.');
+      throw new Error(
+        "Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable.",
+      );
     }
 
     try {
       // Create a checkout session for one-time payment
       const session = await this.stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        mode: 'payment',
+        payment_method_types: ["card"],
+        mode: "payment",
         line_items: [
           {
             price_data: {
               currency: options.currency.toLowerCase(),
               product_data: {
-                name: 'N0DE API Usage Overage',
+                name: "N0DE API Usage Overage",
                 description: options.description,
-                images: ['https://n0de.pro/logo.png'],
+                images: ["https://n0de.pro/logo.png"],
               },
               unit_amount: Math.round(options.amount * 100), // Convert to cents
             },
             quantity: 1,
           },
         ],
-        success_url: `${this.configService.get('FRONTEND_URL')}/payment/success?session_id={CHECKOUT_SESSION_ID}&type=overage`,
-        cancel_url: `${this.configService.get('FRONTEND_URL')}/dashboard/billing`,
+        success_url: `${this.configService.get("FRONTEND_URL")}/payment/success?session_id={CHECKOUT_SESSION_ID}&type=overage`,
+        cancel_url: `${this.configService.get("FRONTEND_URL")}/dashboard/billing`,
         metadata: options.metadata || {},
       });
 
@@ -175,7 +191,7 @@ export class PaymentsStripeService {
 
   async retrieveSession(sessionId: string) {
     if (!this.stripe) {
-      throw new Error('Stripe is not configured');
+      throw new Error("Stripe is not configured");
     }
 
     try {
@@ -189,14 +205,17 @@ export class PaymentsStripeService {
 
   async cancelSubscription(subscriptionId: string) {
     if (!this.stripe) {
-      throw new Error('Stripe is not configured');
+      throw new Error("Stripe is not configured");
     }
 
     try {
-      const subscription = await this.stripe.subscriptions.cancel(subscriptionId);
+      const subscription =
+        await this.stripe.subscriptions.cancel(subscriptionId);
       return subscription;
     } catch (error) {
-      this.logger.error(`Failed to cancel Stripe subscription: ${error.message}`);
+      this.logger.error(
+        `Failed to cancel Stripe subscription: ${error.message}`,
+      );
       throw error;
     }
   }

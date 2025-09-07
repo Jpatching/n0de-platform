@@ -1,17 +1,20 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../common/prisma.service';
+import { Injectable, BadRequestException } from "@nestjs/common";
+import { PrismaService } from "../common/prisma.service";
 
 @Injectable()
 export class SupportService {
   constructor(private prisma: PrismaService) {}
 
-  async createTicket(userId: string, data: {
-    subject: string;
-    category: string;
-    priority: string;
-    message: string;
-    attachments?: any[];
-  }) {
+  async createTicket(
+    userId: string,
+    data: {
+      subject: string;
+      category: string;
+      priority: string;
+      message: string;
+      attachments?: any[];
+    },
+  ) {
     try {
       const ticket = await this.prisma.supportTicket.create({
         data: {
@@ -20,7 +23,7 @@ export class SupportService {
           description: data.message,
           category: data.category as any,
           priority: data.priority as any,
-          status: 'OPEN',
+          status: "OPEN",
         },
         include: {
           user: {
@@ -39,19 +42,19 @@ export class SupportService {
         data: {
           ticketId: ticket.id,
           content: data.message,
-          senderType: 'USER',
+          senderType: "USER",
         },
       });
 
       return ticket;
     } catch (error) {
-      throw new BadRequestException('Failed to create support ticket');
+      throw new BadRequestException("Failed to create support ticket");
     }
   }
 
   async getTickets(userId: string, isStaff: boolean = false) {
     const where = isStaff ? {} : { userId };
-    
+
     return this.prisma.supportTicket.findMany({
       where,
       include: {
@@ -64,7 +67,7 @@ export class SupportService {
         },
         messages: {
           take: 1,
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
         },
         _count: {
           select: {
@@ -73,14 +76,16 @@ export class SupportService {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
   }
 
-  async getTicketById(ticketId: string, userId: string, isStaff: boolean = false) {
-    const where = isStaff 
-      ? { id: ticketId }
-      : { id: ticketId, userId };
+  async getTicketById(
+    ticketId: string,
+    userId: string,
+    isStaff: boolean = false,
+  ) {
+    const where = isStaff ? { id: ticketId } : { id: ticketId, userId };
 
     const ticket = await this.prisma.supportTicket.findUnique({
       where,
@@ -97,20 +102,25 @@ export class SupportService {
           include: {
             attachments: true,
           },
-          orderBy: { createdAt: 'asc' },
+          orderBy: { createdAt: "asc" },
         },
         attachments: true,
       },
     });
 
     if (!ticket) {
-      throw new BadRequestException('Ticket not found');
+      throw new BadRequestException("Ticket not found");
     }
 
     return ticket;
   }
 
-  async addMessage(ticketId: string, userId: string, message: string, isStaff: boolean = false) {
+  async addMessage(
+    ticketId: string,
+    userId: string,
+    message: string,
+    isStaff: boolean = false,
+  ) {
     // Verify ticket exists and user has access
     const ticket = await this.getTicketById(ticketId, userId, isStaff);
 
@@ -118,16 +128,16 @@ export class SupportService {
       data: {
         ticketId,
         content: message,
-        senderType: isStaff ? 'AGENT' : 'USER',
+        senderType: isStaff ? "AGENT" : "USER",
       },
     });
 
     // Update ticket status if needed
-    if (isStaff && ticket.status === 'OPEN') {
+    if (isStaff && ticket.status === "OPEN") {
       await this.prisma.supportTicket.update({
         where: { id: ticketId },
-        data: { 
-          status: 'IN_PROGRESS',
+        data: {
+          status: "IN_PROGRESS",
         },
       });
     }
@@ -135,16 +145,19 @@ export class SupportService {
     return newMessage;
   }
 
-  async updateTicketStatus(ticketId: string, status: string, userId: string, isStaff: boolean = false) {
-    const where = isStaff 
-      ? { id: ticketId }
-      : { id: ticketId, userId };
+  async updateTicketStatus(
+    ticketId: string,
+    status: string,
+    userId: string,
+    isStaff: boolean = false,
+  ) {
+    const where = isStaff ? { id: ticketId } : { id: ticketId, userId };
 
     return this.prisma.supportTicket.update({
       where,
-      data: { 
+      data: {
         status: status as any,
-        ...(status === 'RESOLVED' && { resolvedAt: new Date() }),
+        ...(status === "RESOLVED" && { resolvedAt: new Date() }),
       },
     });
   }

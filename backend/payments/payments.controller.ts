@@ -15,17 +15,23 @@ import {
   BadRequestException,
   Inject,
   forwardRef,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
-import { Throttle } from '@nestjs/throttler';
-import { PaymentsService } from './payments.service';
-import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CreatePaymentDto, WebhookPayloadDto } from './dto/payments.dto';
-import { PaymentProvider, SubscriptionType } from '@prisma/client';
+} from "@nestjs/common";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiQuery,
+} from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
+import { PaymentsService } from "./payments.service";
+import { SubscriptionsService } from "../subscriptions/subscriptions.service";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { CreatePaymentDto, WebhookPayloadDto } from "./dto/payments.dto";
+import { PaymentProvider, SubscriptionType } from "@prisma/client";
 
-@ApiTags('payments')
-@Controller('payments')
+@ApiTags("payments")
+@Controller("payments")
 export class PaymentsController {
   constructor(
     private paymentsService: PaymentsService,
@@ -37,49 +43,55 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 50, ttl: 60000 } })
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create a new payment' })
-  @ApiResponse({ 
-    status: 201, 
-    description: 'Payment created successfully',
+  @ApiOperation({ summary: "Create a new payment" })
+  @ApiResponse({
+    status: 201,
+    description: "Payment created successfully",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        id: { type: 'string' },
-        userId: { type: 'string' },
-        provider: { type: 'string' },
-        amount: { type: 'number' },
-        currency: { type: 'string' },
-        status: { type: 'string' },
-        planType: { type: 'string' },
-        chargeUrl: { type: 'string' },
-        paymentUrl: { type: 'string' },
-        expiresAt: { type: 'string', format: 'date-time' },
-        createdAt: { type: 'string', format: 'date-time' },
+        id: { type: "string" },
+        userId: { type: "string" },
+        provider: { type: "string" },
+        amount: { type: "number" },
+        currency: { type: "string" },
+        status: { type: "string" },
+        planType: { type: "string" },
+        chargeUrl: { type: "string" },
+        paymentUrl: { type: "string" },
+        expiresAt: { type: "string", format: "date-time" },
+        createdAt: { type: "string", format: "date-time" },
       },
     },
   })
-  @ApiResponse({ status: 400, description: 'Invalid payment data' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async createPayment(@Request() req, @Body() createPaymentDto: CreatePaymentDto) {
-    return this.paymentsService.createPayment(req.user.userId, createPaymentDto);
+  @ApiResponse({ status: 400, description: "Invalid payment data" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  async createPayment(
+    @Request() req,
+    @Body() createPaymentDto: CreatePaymentDto,
+  ) {
+    return this.paymentsService.createPayment(
+      req.user.userId,
+      createPaymentDto,
+    );
   }
 
-  @Post('overage')
+  @Post("overage")
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 25, ttl: 60000 } })
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Pay for usage overage' })
-  @ApiResponse({ 
-    status: 201, 
-    description: 'Overage payment created successfully',
+  @ApiOperation({ summary: "Pay for usage overage" })
+  @ApiResponse({
+    status: 201,
+    description: "Overage payment created successfully",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        id: { type: 'string' },
-        amount: { type: 'number' },
-        overageAmount: { type: 'number' },
-        paymentUrl: { type: 'string' },
-        expiresAt: { type: 'string', format: 'date-time' },
+        id: { type: "string" },
+        amount: { type: "number" },
+        overageAmount: { type: "number" },
+        paymentUrl: { type: "string" },
+        expiresAt: { type: "string", format: "date-time" },
       },
     },
   })
@@ -87,21 +99,21 @@ export class PaymentsController {
     return this.paymentsService.createOveragePayment(req.user.userId);
   }
 
-  @Post('subscription/upgrade/checkout')
+  @Post("subscription/upgrade/checkout")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get checkout URL for subscription plan upgrade' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Checkout URL created successfully',
+  @ApiOperation({ summary: "Get checkout URL for subscription plan upgrade" })
+  @ApiResponse({
+    status: 200,
+    description: "Checkout URL created successfully",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        checkoutUrl: { type: 'string' },
-        paymentId: { type: 'string' },
-        planName: { type: 'string' },
-        planPrice: { type: 'number' },
-        message: { type: 'string' },
+        checkoutUrl: { type: "string" },
+        paymentId: { type: "string" },
+        planName: { type: "string" },
+        planPrice: { type: "number" },
+        message: { type: "string" },
       },
     },
   })
@@ -109,18 +121,20 @@ export class PaymentsController {
     @Request() req,
     @Body() body: { planType: string },
   ) {
-    const plan = await this.subscriptionsService.getPlanByType(body.planType as any);
+    const plan = await this.subscriptionsService.getPlanByType(
+      body.planType as any,
+    );
     if (!plan) {
-      throw new BadRequestException('Invalid plan type');
+      throw new BadRequestException("Invalid plan type");
     }
 
     // Convert planType string to SubscriptionType enum
     const subscriptionType = Object.values(SubscriptionType).find(
-      type => type === body.planType
+      (type) => type === body.planType,
     ) as SubscriptionType;
-    
+
     if (!subscriptionType) {
-      throw new BadRequestException('Invalid plan type');
+      throw new BadRequestException("Invalid plan type");
     }
 
     // Create actual payment session
@@ -128,7 +142,7 @@ export class PaymentsController {
       provider: PaymentProvider.STRIPE,
       planType: subscriptionType,
       amount: plan.price,
-      currency: 'USD',
+      currency: "USD",
     });
 
     return {
@@ -143,38 +157,48 @@ export class PaymentsController {
   @Get()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get user payments' })
-  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'User payments retrieved successfully',
+  @ApiOperation({ summary: "Get user payments" })
+  @ApiQuery({
+    name: "page",
+    required: false,
+    type: Number,
+    description: "Page number",
+  })
+  @ApiQuery({
+    name: "limit",
+    required: false,
+    type: Number,
+    description: "Items per page",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "User payments retrieved successfully",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
         payments: {
-          type: 'array',
+          type: "array",
           items: {
-            type: 'object',
+            type: "object",
             properties: {
-              id: { type: 'string' },
-              provider: { type: 'string' },
-              amount: { type: 'number' },
-              currency: { type: 'string' },
-              status: { type: 'string' },
-              planType: { type: 'string' },
-              createdAt: { type: 'string', format: 'date-time' },
-              paidAt: { type: 'string', format: 'date-time', nullable: true },
+              id: { type: "string" },
+              provider: { type: "string" },
+              amount: { type: "number" },
+              currency: { type: "string" },
+              status: { type: "string" },
+              planType: { type: "string" },
+              createdAt: { type: "string", format: "date-time" },
+              paidAt: { type: "string", format: "date-time", nullable: true },
             },
           },
         },
         pagination: {
-          type: 'object',
+          type: "object",
           properties: {
-            page: { type: 'number' },
-            limit: { type: 'number' },
-            total: { type: 'number' },
-            pages: { type: 'number' },
+            page: { type: "number" },
+            limit: { type: "number" },
+            total: { type: "number" },
+            pages: { type: "number" },
           },
         },
       },
@@ -182,35 +206,35 @@ export class PaymentsController {
   })
   async getUserPayments(
     @Request() req,
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+    @Query("page", new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query("limit", new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ) {
     return this.paymentsService.getUserPayments(req.user.userId, page, limit);
   }
 
-  @Get('stats')
+  @Get("stats")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get user payment statistics' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Payment statistics retrieved successfully',
+  @ApiOperation({ summary: "Get user payment statistics" })
+  @ApiResponse({
+    status: 200,
+    description: "Payment statistics retrieved successfully",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        totalPayments: { type: 'number' },
-        completedPayments: { type: 'number' },
-        successRate: { type: 'number' },
-        totalRevenue: { type: 'number' },
+        totalPayments: { type: "number" },
+        completedPayments: { type: "number" },
+        successRate: { type: "number" },
+        totalRevenue: { type: "number" },
         recentPayments: {
-          type: 'array',
+          type: "array",
           items: {
-            type: 'object',
+            type: "object",
             properties: {
-              id: { type: 'string' },
-              amount: { type: 'number' },
-              status: { type: 'string' },
-              createdAt: { type: 'string', format: 'date-time' },
+              id: { type: "string" },
+              amount: { type: "number" },
+              status: { type: "string" },
+              createdAt: { type: "string", format: "date-time" },
             },
           },
         },
@@ -221,85 +245,97 @@ export class PaymentsController {
     return this.paymentsService.getPaymentStats(req.user.userId);
   }
 
-  @Get(':id')
+  @Get(":id")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get payment by ID' })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Payment retrieved successfully',
+  @ApiOperation({ summary: "Get payment by ID" })
+  @ApiResponse({
+    status: 200,
+    description: "Payment retrieved successfully",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        id: { type: 'string' },
-        userId: { type: 'string' },
-        provider: { type: 'string' },
-        amount: { type: 'number' },
-        currency: { type: 'string' },
-        status: { type: 'string' },
-        planType: { type: 'string' },
-        chargeUrl: { type: 'string', nullable: true },
-        paymentUrl: { type: 'string', nullable: true },
-        createdAt: { type: 'string', format: 'date-time' },
-        paidAt: { type: 'string', format: 'date-time', nullable: true },
+        id: { type: "string" },
+        userId: { type: "string" },
+        provider: { type: "string" },
+        amount: { type: "number" },
+        currency: { type: "string" },
+        status: { type: "string" },
+        planType: { type: "string" },
+        chargeUrl: { type: "string", nullable: true },
+        paymentUrl: { type: "string", nullable: true },
+        createdAt: { type: "string", format: "date-time" },
+        paidAt: { type: "string", format: "date-time", nullable: true },
         user: {
-          type: 'object',
+          type: "object",
           properties: {
-            id: { type: 'string' },
-            email: { type: 'string' },
-            username: { type: 'string' },
+            id: { type: "string" },
+            email: { type: "string" },
+            username: { type: "string" },
           },
         },
         paymentHistory: {
-          type: 'array',
+          type: "array",
           items: {
-            type: 'object',
+            type: "object",
             properties: {
-              status: { type: 'string' },
-              statusReason: { type: 'string' },
-              timestamp: { type: 'string', format: 'date-time' },
+              status: { type: "string" },
+              statusReason: { type: "string" },
+              timestamp: { type: "string", format: "date-time" },
             },
           },
         },
       },
     },
   })
-  @ApiResponse({ status: 404, description: 'Payment not found' })
-  async getPayment(@Request() req, @Param('id') paymentId: string) {
+  @ApiResponse({ status: 404, description: "Payment not found" })
+  async getPayment(@Request() req, @Param("id") paymentId: string) {
     return this.paymentsService.getPayment(paymentId, req.user.userId);
   }
 
   // Webhook endpoints
-  @Post('webhooks/coinbase')
+  @Post("webhooks/coinbase")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Coinbase Commerce webhook handler' })
-  @ApiResponse({ status: 200, description: 'Webhook processed successfully' })
+  @ApiOperation({ summary: "Coinbase Commerce webhook handler" })
+  @ApiResponse({ status: 200, description: "Webhook processed successfully" })
   async coinbaseWebhook(
     @Body() payload: any,
-    @Headers('X-CC-Webhook-Signature') signature: string,
+    @Headers("X-CC-Webhook-Signature") signature: string,
   ) {
-    return this.paymentsService.processWebhook(PaymentProvider.COINBASE_COMMERCE, payload, signature);
+    return this.paymentsService.processWebhook(
+      PaymentProvider.COINBASE_COMMERCE,
+      payload,
+      signature,
+    );
   }
 
-  @Post('webhooks/nowpayments')
+  @Post("webhooks/nowpayments")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'NOWPayments IPN webhook handler' })
-  @ApiResponse({ status: 200, description: 'Webhook processed successfully' })
+  @ApiOperation({ summary: "NOWPayments IPN webhook handler" })
+  @ApiResponse({ status: 200, description: "Webhook processed successfully" })
   async nowpaymentsWebhook(
     @Body() payload: any,
-    @Headers('x-nowpayments-sig') signature: string,
+    @Headers("x-nowpayments-sig") signature: string,
   ) {
-    return this.paymentsService.processWebhook(PaymentProvider.NOWPAYMENTS, payload, signature);
+    return this.paymentsService.processWebhook(
+      PaymentProvider.NOWPAYMENTS,
+      payload,
+      signature,
+    );
   }
 
-  @Post('webhooks/stripe')
+  @Post("webhooks/stripe")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Stripe webhook handler' })
-  @ApiResponse({ status: 200, description: 'Webhook processed successfully' })
+  @ApiOperation({ summary: "Stripe webhook handler" })
+  @ApiResponse({ status: 200, description: "Webhook processed successfully" })
   async stripeWebhook(
     @Body() payload: any,
-    @Headers('stripe-signature') signature: string,
+    @Headers("stripe-signature") signature: string,
   ) {
-    return this.paymentsService.processWebhook(PaymentProvider.STRIPE, payload, signature);
+    return this.paymentsService.processWebhook(
+      PaymentProvider.STRIPE,
+      payload,
+      signature,
+    );
   }
 }

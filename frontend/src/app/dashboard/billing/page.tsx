@@ -189,57 +189,7 @@ const BillingPage = () => {
           backendUrl: process.env.NEXT_PUBLIC_BACKEND_URL,
         });
 
-        // Only use fallback data in development for testing UI
-        if (process.env.NODE_ENV === "development") {
-          console.warn("Using fallback demo data for development testing");
-          setUsageData({
-            requests: { current: 2400000, limit: 5000000, percentage: 48 },
-            bandwidth: { current: "1.2TB", limit: "2TB", percentage: 60 },
-            storage: { current: "245GB", limit: "500GB", percentage: 49 },
-          });
-          setSubscriptionData({
-            plan: {
-              name: "Pro Plan",
-              price: 49,
-              billing_cycle: "monthly",
-              status: "active",
-            },
-            next_billing_date: "2024-04-01",
-            payment_method: {
-              last_four: "4242",
-              expires: "12/25",
-              brand: "visa",
-            },
-            billing_address: {
-              company: "Your Company",
-              address_line1: "123 Business Ave",
-              city: "San Francisco",
-              state: "CA",
-              postal_code: "94105",
-              country: "United States",
-            },
-          });
-          setInvoices([
-            {
-              id: "INV-001",
-              date: "Mar 1, 2024",
-              amount: "$49.00",
-              status: "paid",
-            },
-            {
-              id: "INV-002",
-              date: "Feb 1, 2024",
-              amount: "$49.00",
-              status: "paid",
-            },
-            {
-              id: "INV-003",
-              date: "Jan 1, 2024",
-              amount: "$29.00",
-              status: "paid",
-            },
-          ]);
-        }
+        // No fallback data - real data only
       } finally {
         setLoading(false);
       }
@@ -386,18 +336,18 @@ const BillingPage = () => {
                   <p className="text-xl font-bold text-white">
                     {usageData
                       ? formatNumber(usageData.requests.current)
-                      : "2.4M"}
+                      : "--"}
                   </p>
                   <p className="text-xs text-zinc-400">
                     of{" "}
-                    {usageData ? formatNumber(usageData.requests.limit) : "5M"}{" "}
+                    {usageData ? formatNumber(usageData.requests.limit) : "--"}{" "}
                     included
                   </p>
                   <div className="w-full h-1 bg-zinc-700 rounded-full mt-2">
                     <div
                       className="h-1 bg-green-400 rounded-full transition-all duration-500"
                       style={{
-                        width: `${Math.min(usageData?.requests.percentage || 48, 100)}%`,
+                        width: `${Math.min(usageData?.requests.percentage || 0, 100)}%`,
                       }}
                     ></div>
                   </div>
@@ -411,16 +361,16 @@ const BillingPage = () => {
                     </span>
                   </div>
                   <p className="text-xl font-bold text-white">
-                    {usageData?.bandwidth.current || "1.2TB"}
+                    {usageData?.bandwidth.current || "--"}
                   </p>
                   <p className="text-xs text-zinc-400">
-                    of {usageData?.bandwidth.limit || "2TB"} included
+                    of {usageData?.bandwidth.limit || "--"} included
                   </p>
                   <div className="w-full h-1 bg-zinc-700 rounded-full mt-2">
                     <div
                       className="h-1 bg-blue-400 rounded-full transition-all duration-500"
                       style={{
-                        width: `${Math.min(usageData?.bandwidth.percentage || 60, 100)}%`,
+                        width: `${Math.min(usageData?.bandwidth.percentage || 0, 100)}%`,
                       }}
                     ></div>
                   </div>
@@ -434,16 +384,16 @@ const BillingPage = () => {
                     </span>
                   </div>
                   <p className="text-xl font-bold text-white">
-                    {usageData?.storage.current || "245GB"}
+                    {usageData?.storage.current || "--"}
                   </p>
                   <p className="text-xs text-zinc-400">
-                    of {usageData?.storage.limit || "500GB"} included
+                    of {usageData?.storage.limit || "--"} included
                   </p>
                   <div className="w-full h-1 bg-zinc-700 rounded-full mt-2">
                     <div
                       className="h-1 bg-purple-400 rounded-full transition-all duration-500"
                       style={{
-                        width: `${Math.min(usageData?.storage.percentage || 49, 100)}%`,
+                        width: `${Math.min(usageData?.storage.percentage || 0, 100)}%`,
                       }}
                     ></div>
                   </div>

@@ -1,19 +1,19 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../common/prisma.service';
-import { RedisService } from '../common/redis.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../common/prisma.service";
+import { RedisService } from "../common/redis.service";
 
 export enum NotificationType {
-  USAGE_WARNING = 'USAGE_WARNING',
-  USAGE_LIMIT_EXCEEDED = 'USAGE_LIMIT_EXCEEDED',
-  OVERAGE_ACCRUED = 'OVERAGE_ACCRUED',
-  BILLING_REMINDER = 'BILLING_REMINDER',
+  USAGE_WARNING = "USAGE_WARNING",
+  USAGE_LIMIT_EXCEEDED = "USAGE_LIMIT_EXCEEDED",
+  OVERAGE_ACCRUED = "OVERAGE_ACCRUED",
+  BILLING_REMINDER = "BILLING_REMINDER",
 }
 
 export enum NotificationPriority {
-  LOW = 'LOW',
-  MEDIUM = 'MEDIUM',
-  HIGH = 'HIGH',
-  CRITICAL = 'CRITICAL',
+  LOW = "LOW",
+  MEDIUM = "MEDIUM",
+  HIGH = "HIGH",
+  CRITICAL = "CRITICAL",
 }
 
 export interface NotificationData {
@@ -35,10 +35,7 @@ export class NotificationsService {
     private redisService: RedisService,
   ) {}
 
-  async createNotification(
-    userId: string,
-    notificationData: NotificationData,
-  ) {
+  async createNotification(userId: string, notificationData: NotificationData) {
     try {
       // Store notification in database
       const notification = await this.prisma.notification.create({
@@ -48,7 +45,9 @@ export class NotificationsService {
           priority: notificationData.priority,
           title: notificationData.title,
           message: notificationData.message,
-          data: notificationData.data ? JSON.stringify(notificationData.data) : null,
+          data: notificationData.data
+            ? JSON.stringify(notificationData.data)
+            : null,
           actionUrl: notificationData.actionUrl,
           actionLabel: notificationData.actionLabel,
           isRead: false,
@@ -57,16 +56,22 @@ export class NotificationsService {
 
       // Store in Redis for real-time notifications
       const redisKey = `notifications:${userId}:unread`;
-      await this.redisService.zadd(redisKey, Date.now(), JSON.stringify({
-        id: notification.id,
-        ...notificationData,
-        createdAt: notification.createdAt,
-      }));
-      
+      await this.redisService.zadd(
+        redisKey,
+        Date.now(),
+        JSON.stringify({
+          id: notification.id,
+          ...notificationData,
+          createdAt: notification.createdAt,
+        }),
+      );
+
       // Set TTL for Redis key (30 days)
       await this.redisService.expire(redisKey, 30 * 24 * 60 * 60);
 
-      this.logger.log(`Created notification for user ${userId}: ${notificationData.title}`);
+      this.logger.log(
+        `Created notification for user ${userId}: ${notificationData.title}`,
+      );
       return notification;
     } catch (error) {
       this.logger.error(`Failed to create notification: ${error.message}`);
@@ -82,7 +87,7 @@ export class NotificationsService {
 
     return this.prisma.notification.findMany({
       where: whereClause,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: 50,
     });
   }
@@ -123,7 +128,11 @@ export class NotificationsService {
     await this.redisService.del(redisKey);
   }
 
-  async checkUsageThresholds(userId: string, currentUsage: number, limit: number) {
+  async checkUsageThresholds(
+    userId: string,
+    currentUsage: number,
+    limit: number,
+  ) {
     if (limit === -1) return; // Unlimited plan
 
     const percentage = (currentUsage / limit) * 100;
@@ -134,11 +143,14 @@ export class NotificationsService {
         // Check if we've already sent this threshold notification today
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         const existingNotification = await this.prisma.notification.findFirst({
           where: {
             userId,
-            type: threshold >= 100 ? NotificationType.USAGE_LIMIT_EXCEEDED : NotificationType.USAGE_WARNING,
+            type:
+              threshold >= 100
+                ? NotificationType.USAGE_LIMIT_EXCEEDED
+                : NotificationType.USAGE_WARNING,
             createdAt: { gte: today },
           },
         });
@@ -151,21 +163,24 @@ export class NotificationsService {
           notificationData = {
             type: NotificationType.USAGE_LIMIT_EXCEEDED,
             priority: NotificationPriority.CRITICAL,
-            title: 'Usage Limit Exceeded',
+            title: "Usage Limit Exceeded",
             message: `You've exceeded your monthly API request limit. Additional requests will incur overage charges at $0.01 per request.`,
             data: { currentUsage, limit, percentage: Math.round(percentage) },
-            actionUrl: '/dashboard/billing',
-            actionLabel: 'View Billing',
+            actionUrl: "/dashboard/billing",
+            actionLabel: "View Billing",
           };
         } else {
           notificationData = {
             type: NotificationType.USAGE_WARNING,
-            priority: threshold >= 90 ? NotificationPriority.HIGH : NotificationPriority.MEDIUM,
+            priority:
+              threshold >= 90
+                ? NotificationPriority.HIGH
+                : NotificationPriority.MEDIUM,
             title: `Usage Alert - ${threshold}% Reached`,
             message: `You've used ${Math.round(percentage)}% of your monthly API request limit (${currentUsage.toLocaleString()}/${limit.toLocaleString()} requests).`,
             data: { currentUsage, limit, percentage: Math.round(percentage) },
-            actionUrl: '/dashboard/billing',
-            actionLabel: 'View Usage',
+            actionUrl: "/dashboard/billing",
+            actionLabel: "View Usage",
           };
         }
 
@@ -175,31 +190,39 @@ export class NotificationsService {
     }
   }
 
-  async sendOverageNotification(userId: string, overageAmount: number, cost: string) {
+  async sendOverageNotification(
+    userId: string,
+    overageAmount: number,
+    cost: string,
+  ) {
     const notificationData: NotificationData = {
       type: NotificationType.OVERAGE_ACCRUED,
       priority: NotificationPriority.HIGH,
-      title: 'Overage Charges Accrued',
+      title: "Overage Charges Accrued",
       message: `You have ${overageAmount.toLocaleString()} requests in overage, resulting in $${cost} additional charges.`,
       data: { overageAmount, cost },
-      actionUrl: '/dashboard/billing',
-      actionLabel: 'Pay Now',
+      actionUrl: "/dashboard/billing",
+      actionLabel: "Pay Now",
     };
 
     return this.createNotification(userId, notificationData);
   }
 
-  async sendBillingReminder(userId: string, daysUntilBilling: number, amount: number) {
+  async sendBillingReminder(
+    userId: string,
+    daysUntilBilling: number,
+    amount: number,
+  ) {
     if (daysUntilBilling > 7) return; // Only remind within 7 days
 
     const notificationData: NotificationData = {
       type: NotificationType.BILLING_REMINDER,
       priority: NotificationPriority.LOW,
-      title: 'Upcoming Billing',
+      title: "Upcoming Billing",
       message: `Your subscription will be billed $${amount} in ${daysUntilBilling} days.`,
       data: { daysUntilBilling, amount },
-      actionUrl: '/dashboard/billing',
-      actionLabel: 'View Billing',
+      actionUrl: "/dashboard/billing",
+      actionLabel: "View Billing",
     };
 
     return this.createNotification(userId, notificationData);

@@ -1,11 +1,22 @@
-import { Injectable, BadRequestException, NotFoundException, Logger, Inject, forwardRef } from '@nestjs/common';
-import { PrismaService } from '../common/prisma.service';
-import { PaymentProvider, PaymentStatus, SubscriptionType } from '@prisma/client';
-import { CoinbaseCommerceService } from './coinbase-commerce.service';
-import { NOWPaymentsService } from './nowpayments.service';
-import { PaymentsStripeService } from './stripe.service';
-import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import { CreatePaymentDto, PaymentCallbackDto } from './dto/payments.dto';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  Logger,
+  Inject,
+  forwardRef,
+} from "@nestjs/common";
+import { PrismaService } from "../common/prisma.service";
+import {
+  PaymentProvider,
+  PaymentStatus,
+  SubscriptionType,
+} from "@prisma/client";
+import { CoinbaseCommerceService } from "./coinbase-commerce.service";
+import { NOWPaymentsService } from "./nowpayments.service";
+import { PaymentsStripeService } from "./stripe.service";
+import { SubscriptionsService } from "../subscriptions/subscriptions.service";
+import { CreatePaymentDto, PaymentCallbackDto } from "./dto/payments.dto";
 
 @Injectable()
 export class PaymentsService {
@@ -21,17 +32,17 @@ export class PaymentsService {
   ) {}
 
   async createPayment(userId: string, createPaymentDto: CreatePaymentDto) {
-    const { provider, planType, amount, currency = 'USD' } = createPaymentDto;
+    const { provider, planType, amount, currency = "USD" } = createPaymentDto;
 
     // Validate plan
     const plan = await this.subscriptionsService.getPlanByType(planType);
     if (!plan) {
-      throw new BadRequestException('Invalid plan type');
+      throw new BadRequestException("Invalid plan type");
     }
 
     // Validate amount matches plan price
     if (amount !== plan.price) {
-      throw new BadRequestException('Payment amount does not match plan price');
+      throw new BadRequestException("Payment amount does not match plan price");
     }
 
     // Get user details for payment processing
@@ -46,7 +57,7 @@ export class PaymentsService {
     });
 
     if (!user) {
-      throw new BadRequestException('User not found');
+      throw new BadRequestException("User not found");
     }
 
     // Create payment record
@@ -62,7 +73,9 @@ export class PaymentsService {
           planName: plan.name,
           features: plan.limits.features,
           userEmail: user.email,
-          userName: user.firstName ? `${user.firstName} ${user.lastName}`.trim() : user.email,
+          userName: user.firstName
+            ? `${user.firstName} ${user.lastName}`.trim()
+            : user.email,
         },
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
       },
@@ -82,7 +95,7 @@ export class PaymentsService {
           paymentData = await this.stripeService.createCheckoutSession(payment);
           break;
         default:
-          throw new BadRequestException('Unsupported payment provider');
+          throw new BadRequestException("Unsupported payment provider");
       }
 
       // Update payment with provider data
@@ -90,10 +103,18 @@ export class PaymentsService {
         where: { id: payment.id },
         data: {
           providerPaymentId: paymentData.id || paymentData.sessionId,
-          chargeUrl: paymentData.hosted_url || paymentData.chargeUrl || paymentData.url || paymentData.checkoutUrl,
-          paymentUrl: paymentData.payment_url || paymentData.paymentUrl || paymentData.url || paymentData.checkoutUrl,
+          chargeUrl:
+            paymentData.hosted_url ||
+            paymentData.chargeUrl ||
+            paymentData.url ||
+            paymentData.checkoutUrl,
+          paymentUrl:
+            paymentData.payment_url ||
+            paymentData.paymentUrl ||
+            paymentData.url ||
+            paymentData.checkoutUrl,
           metadata: {
-            ...(payment.metadata as object || {}),
+            ...((payment.metadata as object) || {}),
             providerData: paymentData,
           },
         },
@@ -107,14 +128,16 @@ export class PaymentsService {
           amount: Math.round(payment.amount * 100), // Convert to cents
           currency: payment.currency,
           status: PaymentStatus.PENDING,
-          description: 'Payment created with provider',
+          description: "Payment created with provider",
         },
       });
 
       return updatedPayment;
     } catch (error) {
-      this.logger.error(`Failed to create payment with provider: ${error.message}`);
-      
+      this.logger.error(
+        `Failed to create payment with provider: ${error.message}`,
+      );
+
       // Update payment status to failed
       await this.prisma.payment.update({
         where: { id: payment.id },
@@ -124,7 +147,9 @@ export class PaymentsService {
         },
       });
 
-      throw new BadRequestException(`Payment creation failed: ${error.message}`);
+      throw new BadRequestException(
+        `Payment creation failed: ${error.message}`,
+      );
     }
   }
 
@@ -142,18 +167,18 @@ export class PaymentsService {
           },
         },
         paymentHistory: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
         },
       },
     });
 
     if (!payment) {
-      throw new NotFoundException('Payment not found');
+      throw new NotFoundException("Payment not found");
     }
 
     // Check if user has permission to view this payment
     if (userId && payment.userId !== userId) {
-      throw new BadRequestException('Access denied');
+      throw new BadRequestException("Access denied");
     }
 
     return payment;
@@ -167,11 +192,11 @@ export class PaymentsService {
         where: { userId },
         include: {
           paymentHistory: {
-            orderBy: { createdAt: 'desc' },
+            orderBy: { createdAt: "desc" },
             take: 1,
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         skip,
         take: limit,
       }),
@@ -191,21 +216,29 @@ export class PaymentsService {
     };
   }
 
-  async processWebhook(provider: PaymentProvider, payload: any, signature?: string) {
+  async processWebhook(
+    provider: PaymentProvider,
+    payload: any,
+    signature?: string,
+  ) {
     let event;
-    
+
     try {
       // Verify webhook signature
       switch (provider) {
         case PaymentProvider.COINBASE_COMMERCE:
-          if (!this.coinbaseService.verifyWebhookSignature(payload, signature)) {
-            throw new Error('Invalid webhook signature');
+          if (
+            !this.coinbaseService.verifyWebhookSignature(payload, signature)
+          ) {
+            throw new Error("Invalid webhook signature");
           }
           event = payload.event;
           break;
         case PaymentProvider.NOWPAYMENTS:
-          if (!this.nowPaymentsService.verifyWebhookSignature(payload, signature)) {
-            throw new Error('Invalid webhook signature');
+          if (
+            !this.nowPaymentsService.verifyWebhookSignature(payload, signature)
+          ) {
+            throw new Error("Invalid webhook signature");
           }
           event = payload;
           break;
@@ -213,7 +246,7 @@ export class PaymentsService {
           event = await this.stripeService.handleWebhook(payload, signature);
           break;
         default:
-          throw new Error('Unsupported payment provider');
+          throw new Error("Unsupported payment provider");
       }
 
       // Check if we already processed this event
@@ -252,13 +285,13 @@ export class PaymentsService {
       return result;
     } catch (error) {
       this.logger.error(`Webhook processing failed: ${error.message}`);
-      
+
       // Store failed webhook event
       if (payload) {
         await this.prisma.webhookEvent.create({
           data: {
             provider,
-            eventType: payload.type || 'unknown',
+            eventType: payload.type || "unknown",
             eventId: payload.id || null,
             payload,
             processed: false,
@@ -274,7 +307,7 @@ export class PaymentsService {
 
   private async handlePaymentEvent(webhookEvent: any) {
     const { provider, eventType, payload } = webhookEvent;
-    
+
     let paymentId: string;
     let newStatus: PaymentStatus;
 
@@ -292,11 +325,11 @@ export class PaymentsService {
         newStatus = this.mapStripeStatus(payload.type);
         break;
       default:
-        throw new Error('Unsupported payment provider');
+        throw new Error("Unsupported payment provider");
     }
 
     if (!paymentId) {
-      throw new Error('Payment ID not found in webhook payload');
+      throw new Error("Payment ID not found in webhook payload");
     }
 
     // Find payment
@@ -349,10 +382,12 @@ export class PaymentsService {
         payment.userId,
         payment.planType,
         payment.id,
-        payment.providerPaymentId
+        payment.providerPaymentId,
       );
 
-      this.logger.log(`Subscription upgraded for user ${payment.userId} to ${payment.planType} after payment verification`);
+      this.logger.log(
+        `Subscription upgraded for user ${payment.userId} to ${payment.planType} after payment verification`,
+      );
     }
 
     return { processed: true, status: newStatus };
@@ -360,15 +395,15 @@ export class PaymentsService {
 
   private mapCoinbaseStatus(coinbaseStatus: string): PaymentStatus {
     switch (coinbaseStatus) {
-      case 'charge:confirmed':
+      case "charge:confirmed":
         return PaymentStatus.COMPLETED;
-      case 'charge:failed':
+      case "charge:failed":
         return PaymentStatus.FAILED;
-      case 'charge:delayed':
+      case "charge:delayed":
         return PaymentStatus.PROCESSING;
-      case 'charge:pending':
+      case "charge:pending":
         return PaymentStatus.PENDING;
-      case 'charge:resolved':
+      case "charge:resolved":
         return PaymentStatus.COMPLETED;
       default:
         return PaymentStatus.PENDING;
@@ -377,17 +412,17 @@ export class PaymentsService {
 
   private mapNOWPaymentsStatus(nowStatus: string): PaymentStatus {
     switch (nowStatus) {
-      case 'finished':
+      case "finished":
         return PaymentStatus.COMPLETED;
-      case 'failed':
+      case "failed":
         return PaymentStatus.FAILED;
-      case 'expired':
+      case "expired":
         return PaymentStatus.EXPIRED;
-      case 'sending':
-      case 'confirming':
+      case "sending":
+      case "confirming":
         return PaymentStatus.PROCESSING;
-      case 'waiting':
-      case 'partially_paid':
+      case "waiting":
+      case "partially_paid":
         return PaymentStatus.PENDING;
       default:
         return PaymentStatus.PENDING;
@@ -396,11 +431,11 @@ export class PaymentsService {
 
   private mapStripeStatus(stripeEventType: string): PaymentStatus {
     switch (stripeEventType) {
-      case 'payment_completed':
+      case "payment_completed":
         return PaymentStatus.COMPLETED;
-      case 'subscription_renewed':
+      case "subscription_renewed":
         return PaymentStatus.COMPLETED;
-      case 'subscription_cancelled':
+      case "subscription_cancelled":
         return PaymentStatus.CANCELED;
       default:
         return PaymentStatus.PROCESSING;
@@ -410,31 +445,33 @@ export class PaymentsService {
   async getPaymentStats(userId?: string) {
     const whereCondition = userId ? { userId } : {};
 
-    const [totalPayments, completedPayments, revenue, recentPayments] = await Promise.all([
-      this.prisma.payment.count({ where: whereCondition }),
-      this.prisma.payment.count({ 
-        where: { ...whereCondition, status: PaymentStatus.COMPLETED } 
-      }),
-      this.prisma.payment.aggregate({
-        where: { ...whereCondition, status: PaymentStatus.COMPLETED },
-        _sum: { amount: true },
-      }),
-      this.prisma.payment.findMany({
-        where: whereCondition,
-        include: {
-          user: {
-            select: { id: true, email: true, username: true },
+    const [totalPayments, completedPayments, revenue, recentPayments] =
+      await Promise.all([
+        this.prisma.payment.count({ where: whereCondition }),
+        this.prisma.payment.count({
+          where: { ...whereCondition, status: PaymentStatus.COMPLETED },
+        }),
+        this.prisma.payment.aggregate({
+          where: { ...whereCondition, status: PaymentStatus.COMPLETED },
+          _sum: { amount: true },
+        }),
+        this.prisma.payment.findMany({
+          where: whereCondition,
+          include: {
+            user: {
+              select: { id: true, email: true, username: true },
+            },
           },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
-      }),
-    ]);
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        }),
+      ]);
 
     return {
       totalPayments,
       completedPayments,
-      successRate: totalPayments > 0 ? (completedPayments / totalPayments) * 100 : 0,
+      successRate:
+        totalPayments > 0 ? (completedPayments / totalPayments) * 100 : 0,
       totalRevenue: revenue._sum.amount || 0,
       recentPayments,
     };
@@ -443,14 +480,14 @@ export class PaymentsService {
   async createOveragePayment(userId: string) {
     // Get current usage and check for overage
     const usage = await this.subscriptionsService.getUsageStats(userId);
-    
+
     if (!usage.usage.requests.overage || usage.usage.requests.overage <= 0) {
-      throw new BadRequestException('No overage to pay for');
+      throw new BadRequestException("No overage to pay for");
     }
 
     const overageAmount = parseFloat(usage.usage.requests.overageCost);
     if (overageAmount <= 0) {
-      throw new BadRequestException('Invalid overage amount');
+      throw new BadRequestException("Invalid overage amount");
     }
 
     // Create overage payment record
@@ -459,11 +496,11 @@ export class PaymentsService {
         userId,
         provider: PaymentProvider.STRIPE, // Default to Stripe for overage payments
         amount: overageAmount,
-        currency: 'USD',
+        currency: "USD",
         status: PaymentStatus.PENDING,
         planType: SubscriptionType.FREE, // Overage payments don't change plan
         metadata: {
-          type: 'overage',
+          type: "overage",
           requestsOverage: usage.usage.requests.overage,
           overageCost: usage.usage.requests.overageCost,
           billingPeriod: {
@@ -480,18 +517,18 @@ export class PaymentsService {
     try {
       const result = await this.stripeService.createPayment({
         amount: overageAmount,
-        currency: 'USD',
+        currency: "USD",
         description: `Usage overage payment - ${usage.usage.requests.overage} requests`,
         metadata: {
           paymentId: payment.id,
           userId,
-          type: 'overage',
+          type: "overage",
         },
       });
-      
+
       paymentUrl = result.checkoutUrl || result.paymentUrl;
     } catch (error) {
-      this.logger.error('Failed to create Stripe payment for overage:', error);
+      this.logger.error("Failed to create Stripe payment for overage:", error);
       // Fallback to a simple checkout URL
       paymentUrl = `/checkout/overage/${payment.id}`;
     }

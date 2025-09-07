@@ -158,57 +158,8 @@ const AnalyticsPage = () => {
           err instanceof Error ? err.message : "Failed to load analytics",
         );
 
-        // Fallback to demo data
-        setMetrics([
-          {
-            title: "Total Requests",
-            value: "2.4M",
-            change: "+12.3%",
-            changeType: "positive",
-            icon: Activity,
-            description: "API requests in selected period",
-          },
-          {
-            title: "Average Response Time",
-            value: "42ms",
-            change: "-8.2%",
-            changeType: "positive",
-            icon: Clock,
-            description: "Average response time across all endpoints",
-          },
-          {
-            title: "Success Rate",
-            value: "99.97%",
-            change: "+0.02%",
-            changeType: "positive",
-            icon: CheckCircle,
-            description: "Successful requests vs total requests",
-          },
-          {
-            title: "Error Rate",
-            value: "0.03%",
-            change: "-0.02%",
-            changeType: "positive",
-            icon: AlertTriangle,
-            description: "Failed requests requiring attention",
-          },
-          {
-            title: "Bandwidth Usage",
-            value: "1.2TB",
-            change: "+15.7%",
-            changeType: "neutral",
-            icon: Globe,
-            description: "Total data transferred",
-          },
-          {
-            title: "Peak RPS",
-            value: "1,234",
-            change: "+5.8%",
-            changeType: "positive",
-            icon: Zap,
-            description: "Maximum requests per second",
-          },
-        ]);
+        // No fallback data - real metrics only
+        setMetrics([]);
       } finally {
         setLoading(false);
       }
@@ -217,59 +168,9 @@ const AnalyticsPage = () => {
     fetchAnalytics();
   }, [timeRange]); // Re-fetch when time range changes
 
-  const topEndpoints = [
-    {
-      endpoint: "/api/v1/users",
-      requests: 856432,
-      percentage: 35.7,
-      responseTime: 38,
-    },
-    {
-      endpoint: "/api/v1/data/fetch",
-      requests: 624891,
-      percentage: 26.1,
-      responseTime: 45,
-    },
-    {
-      endpoint: "/api/v1/auth/verify",
-      requests: 398567,
-      percentage: 16.6,
-      responseTime: 23,
-    },
-    {
-      endpoint: "/api/v1/search",
-      requests: 287453,
-      percentage: 12.0,
-      responseTime: 67,
-    },
-    {
-      endpoint: "/api/v1/webhooks",
-      requests: 231876,
-      percentage: 9.6,
-      responseTime: 52,
-    },
-  ];
-
-  const errorBreakdown = [
-    {
-      type: "4xx Client Errors",
-      count: 234,
-      percentage: 78.0,
-      color: "text-yellow-400",
-    },
-    {
-      type: "5xx Server Errors",
-      count: 45,
-      percentage: 15.0,
-      color: "text-red-400",
-    },
-    {
-      type: "Timeout Errors",
-      count: 21,
-      percentage: 7.0,
-      color: "text-orange-400",
-    },
-  ];
+  // These will be fetched from the backend
+  const [topEndpoints, setTopEndpoints] = useState<any[]>([]);
+  const [errorBreakdown, setErrorBreakdown] = useState<any[]>([]);
 
   if (loading) {
     return (

@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../common/prisma.service';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaService } from "../common/prisma.service";
 
 @Injectable()
 export class UsersService {
@@ -11,10 +11,10 @@ export class UsersService {
     try {
       // Example: const customer = await stripe.customers.retrieve(stripeCustomerId);
       // const paymentMethods = await stripe.paymentMethods.list({ customer: customer.id });
-      
+
       // For demonstration, return empty array which will show proper "No payment methods" UI
       return [];
-      
+
       // In real implementation, would return something like:
       // return paymentMethods.data.map(pm => ({
       //   id: pm.id,
@@ -26,7 +26,7 @@ export class UsersService {
       //   isDefault: pm.id === customer.invoice_settings.default_payment_method
       // }));
     } catch (error) {
-      console.error('Error fetching payment methods:', error);
+      console.error("Error fetching payment methods:", error);
       return [];
     }
   }
@@ -35,13 +35,13 @@ export class UsersService {
     try {
       // In production, fetch from user profile or Stripe customer
       // For now, return null to show proper empty state instead of placeholder
-      
+
       // Example implementation:
       // const user = await this.prisma.user.findUnique({
       //   where: { id: userId },
       //   include: { billingAddress: true }
       // });
-      // 
+      //
       // if (user?.billingAddress) {
       //   return {
       //     name: user.billingAddress.name,
@@ -53,10 +53,10 @@ export class UsersService {
       //     country: user.billingAddress.country,
       //   };
       // }
-      
+
       return null; // Shows proper "No billing address" UI instead of fake data
     } catch (error) {
-      console.error('Error fetching billing address:', error);
+      console.error("Error fetching billing address:", error);
       return null;
     }
   }
@@ -70,10 +70,12 @@ export class UsersService {
       //   update: addressData,
       // });
       // return updatedAddress;
-      
-      return { message: 'Billing address update functionality will be implemented' };
+
+      return {
+        message: "Billing address update functionality will be implemented",
+      };
     } catch (error) {
-      console.error('Error updating billing address:', error);
+      console.error("Error updating billing address:", error);
       throw error;
     }
   }
