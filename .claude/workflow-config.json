@@ -1,0 +1,119 @@
+{
+  "agentBranches": {
+    "frontend-specialist": {
+      "branch": "feature/frontend-optimization",
+      "description": "Frontend UX improvements and conversion optimization",
+      "focus": [
+        "frontend/",
+        "vercel.json",
+        "*.tsx",
+        "*.css"
+      ],
+      "baseProtection": [
+        "src/",
+        "prisma/"
+      ],
+      "mergeStrategy": "squash"
+    },
+    "backend-api-expert": {
+      "branch": "feature/backend-performance",
+      "description": "Backend API optimization and database improvements",
+      "focus": [
+        "src/",
+        "prisma/",
+        "nest-cli.json",
+        "tsconfig.json"
+      ],
+      "baseProtection": [
+        "frontend/"
+      ],
+      "mergeStrategy": "squash"
+    },
+    "payments-specialist": {
+      "branch": "feature/payment-optimization",
+      "description": "Payment flow optimization and revenue improvements",
+      "focus": [
+        "src/billing/",
+        "src/payments/",
+        "src/subscriptions/",
+        "frontend/**/billing/",
+        "frontend/**/checkout/"
+      ],
+      "baseProtection": [
+        "src/auth/"
+      ],
+      "mergeStrategy": "squash"
+    },
+    "security-guardian": {
+      "branch": "feature/security-enhancements",
+      "description": "Authentication security improvements and compliance",
+      "focus": [
+        "src/auth/",
+        "frontend/**/auth/",
+        "*.guard.ts",
+        "*.strategy.ts"
+      ],
+      "baseProtection": [
+        "src/billing/",
+        "src/payments/"
+      ],
+      "mergeStrategy": "merge"
+    },
+    "devops-engineer": {
+      "branch": "feature/infrastructure-optimization",
+      "description": "Performance monitoring and deployment automation",
+      "focus": [
+        ".github/",
+        "backend.toml",
+        "docker*",
+        "monitoring/",
+        "scripts/"
+      ],
+      "baseProtection": [
+        "src/",
+        "frontend/"
+      ],
+      "mergeStrategy": "squash"
+    }
+  },
+  "workflowRules": {
+    "parallelDevelopment": true,
+    "coordinationRules": {
+      "securityReview": {
+        "triggers": [
+          "src/auth/",
+          "frontend/**/auth/",
+          "*.guard.ts",
+          "*.strategy.ts"
+        ],
+        "reviewer": "security-guardian",
+        "required": true
+      },
+      "apiReview": {
+        "triggers": [
+          "src/**/*.controller.ts",
+          "src/**/*.service.ts"
+        ],
+        "reviewer": "backend-api-expert",
+        "required": false
+      },
+      "paymentReview": {
+        "triggers": [
+          "**/billing/",
+          "**/payment/",
+          "**/checkout/",
+          "src/subscriptions/"
+        ],
+        "reviewer": "payments-specialist",
+        "required": true
+      }
+    },
+    "mergeStrategies": {
+      "feature/frontend-optimization": "squash",
+      "feature/backend-performance": "squash",
+      "feature/payment-optimization": "squash",
+      "feature/security-enhancements": "merge",
+      "feature/infrastructure-optimization": "squash"
+    }
+  }
+}

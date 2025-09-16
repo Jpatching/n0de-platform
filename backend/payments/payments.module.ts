@@ -1,0 +1,22 @@
+import { Module, forwardRef } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
+import { PaymentsController } from "./payments.controller";
+import { PaymentsService } from "./payments.service";
+import { CoinbaseCommerceService } from "./coinbase-commerce.service";
+import { NOWPaymentsService } from "./nowpayments.service";
+import { PaymentsStripeService } from "./stripe.service";
+import { PrismaModule } from "../common/prisma.module";
+import { SubscriptionsModule } from "../subscriptions/subscriptions.module";
+
+@Module({
+  imports: [ConfigModule, PrismaModule, forwardRef(() => SubscriptionsModule)],
+  controllers: [PaymentsController],
+  providers: [
+    PaymentsService,
+    CoinbaseCommerceService,
+    NOWPaymentsService,
+    PaymentsStripeService,
+  ],
+  exports: [PaymentsService],
+})
+export class PaymentsModule {}

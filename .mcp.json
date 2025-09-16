@@ -1,0 +1,45 @@
+{
+  "mcpServers": {
+    "stripe-payment": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@stripe/mcp",
+        "--api-key=sk_test_51S0uJaFjMnr2l5PiUCeEZ4Vw2FEGXNuZFC5MxVjFlN1k6YcVUUP2XETpwovNDnwLcRFiTBZ7HX8OEUTucvHmZ6Wy00zFExTtQk",
+        "--tools=all"
+      ],
+      "env": {}
+    },
+    "n0de-database": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://postgres:postgres@localhost:5432/n0de_production"
+      ],
+      "env": {}
+    },
+    "n0de-cache": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-redis",
+        "redis://localhost:6379/0"
+      ],
+      "env": {}
+    },
+    "n0de-filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/home/sol/n0de-deploy"
+      ],
+      "env": {}
+    }
+  }
+}

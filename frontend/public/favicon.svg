@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="n0deGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00ff87;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#00d4ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8b5cf6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="16" cy="16" r="15" fill="#000000" stroke="url(#n0deGradient)" stroke-width="2"/>
+  
+  <!-- N0DE logo - stylized "N" with connection nodes -->
+  <g fill="url(#n0deGradient)" stroke="none">
+    <!-- Main N structure -->
+    <rect x="6" y="8" width="2.5" height="16" rx="1"/>
+    <rect x="23.5" y="8" width="2.5" height="16" rx="1"/>
+    <rect x="6" y="15" width="20" height="2.5" rx="1" transform="rotate(26 16 16)"/>
+    
+    <!-- Node dots -->
+    <circle cx="11" cy="12" r="1.5"/>
+    <circle cx="21" cy="12" r="1.5"/>
+    <circle cx="11" cy="20" r="1.5"/>
+    <circle cx="21" cy="20" r="1.5"/>
+    
+    <!-- Connection lines -->
+    <rect x="10.5" y="11.75" width="10" height="0.5" rx="0.25"/>
+    <rect x="10.5" y="19.75" width="10" height="0.5" rx="0.25"/>
+  </g>
+</svg>

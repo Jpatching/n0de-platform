@@ -186,31 +186,66 @@ class CSSErrorMonitor {
   }
 
   private attemptAutoFix(error: CSSError) {
-    // Find elements with the problematic CSS
-    const elements = document.querySelectorAll('[style*="' + error.property + '"]');
-    
-    elements.forEach(element => {
-      const style = (element as HTMLElement).style;
-      const currentValue = style.getPropertyValue(error.property);
-      
-      if (currentValue === 'undefined' || currentValue === undefined) {
-        // Apply safe fallback values
+    // Find all elements that might have the problematic CSS property
+    const allElements = document.querySelectorAll('*');
+
+    allElements.forEach(element => {
+      const htmlElement = element as HTMLElement;
+      const style = htmlElement.style;
+      const computedStyle = window.getComputedStyle(htmlElement);
+
+      // Check both inline style and computed style
+      const inlineValue = style.getPropertyValue(error.property);
+      const computedValue = computedStyle.getPropertyValue(error.property);
+
+      // Fix inline styles with undefined values
+      if (inlineValue === 'undefined' || inlineValue === 'null' ||
+          (typeof inlineValue === 'string' && inlineValue.includes('undefined'))) {
+        // Apply safe fallback values based on property type
         switch (error.property) {
           case 'opacity':
-            style.setProperty(error.property, '1');
+            style.setProperty(error.property, '1', 'important');
             break;
           case 'filter':
-            style.setProperty(error.property, 'none');
+            style.setProperty(error.property, 'none', 'important');
             break;
           case 'box-shadow':
           case 'boxShadow':
-            style.setProperty(error.property, 'none');
+            style.setProperty(error.property, 'none', 'important');
+            break;
+          case '-webkit-text-size-adjust':
+          case '-moz-text-size-adjust':
+            style.setProperty(error.property, '100%', 'important');
             break;
         }
-        
+
         if (process.env.NODE_ENV === 'development') {
           console.info(`🔧 Auto-fixed ${error.property} for element:`, element);
         }
+      }
+
+      // Also check CSS text for string 'undefined' values
+      if (htmlElement.style.cssText.includes('undefined')) {
+        const cleanedCssText = htmlElement.style.cssText.replace(/:\s*undefined[^;]*/g, ': initial');
+        htmlElement.style.cssText = cleanedCssText;
+      }
+    });
+
+    // Also scan and fix any style tags
+    this.fixStyleTags();
+  }
+
+  private fixStyleTags() {
+    const styleTags = document.querySelectorAll('style');
+    styleTags.forEach(styleTag => {
+      if (styleTag.textContent && styleTag.textContent.includes('undefined')) {
+        // Replace undefined values with safe defaults in style tags
+        styleTag.textContent = styleTag.textContent
+          .replace(/opacity:\s*undefined[^;]*/g, 'opacity: 1')
+          .replace(/filter:\s*undefined[^;]*/g, 'filter: none')
+          .replace(/box-shadow:\s*undefined[^;]*/g, 'box-shadow: none')
+          .replace(/-webkit-text-size-adjust:\s*undefined[^;]*/g, '-webkit-text-size-adjust: 100%')
+          .replace(/-moz-text-size-adjust:\s*undefined[^;]*/g, '-moz-text-size-adjust: 100%');
       }
     });
   }

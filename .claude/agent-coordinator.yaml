@@ -1,0 +1,219 @@
+# N0DE Agent Coordination System
+name: agent-coordinator
+description: "Master coordination system for managing 5 specialized N0DE development agents"
+
+# Agent registry
+agents:
+  frontend-specialist:
+    file: ".claude/agents/frontend-specialist.yaml"
+    specialization: "Next.js, React, TypeScript, UI/UX, Vercel deployment"
+    domains: ["frontend", "ui", "vercel", "typescript", "react", "nextjs"]
+    priority_patterns:
+      - "frontend/n0de-website/**"
+      - "*.tsx"
+      - "*.css"
+      - "vercel.json"
+      - "conversion"
+      - "homepage"
+      - "dashboard"
+    
+  backend-api-expert:
+    file: ".claude/agents/backend-api-expert.yaml"
+    specialization: "NestJS, PostgreSQL, Prisma, self-hosted deployment"
+    domains: ["backend", "api", "database", "nestjs", "prisma"]
+    priority_patterns:
+      - "src/**"
+      - "prisma/**"
+      - "*.service.ts"
+      - "*.controller.ts"
+      - "api"
+      - "database"
+    
+  payments-specialist:
+    file: ".claude/agents/payments-specialist.yaml"
+    specialization: "Stripe, subscriptions, billing, revenue optimization"
+    domains: ["payments", "billing", "stripe", "subscriptions", "revenue"]
+    priority_patterns:
+      - "src/billing/**"
+      - "src/payments/**"
+      - "src/subscriptions/**"
+      - "**/checkout/**"
+      - "**/billing/**"
+      - "stripe"
+      - "payment"
+      - "billing"
+    
+  security-guardian:
+    file: ".claude/agents/security-guardian.yaml"
+    specialization: "Authentication, security, compliance, OAuth"
+    domains: ["auth", "security", "oauth", "jwt", "compliance"]
+    priority_patterns:
+      - "src/auth/**"
+      - "**/auth/**"
+      - "*.guard.ts"
+      - "*.strategy.ts"
+      - "AuthContext.tsx"
+      - "security"
+      - "authentication"
+      - "oauth"
+    
+  devops-engineer:
+    file: ".claude/agents/devops-engineer.yaml"
+    specialization: "CI/CD, monitoring, performance, infrastructure"
+    domains: ["devops", "deployment", "performance", "monitoring", "infrastructure"]
+    priority_patterns:
+      - ".github/workflows/**"
+      - "vercel.json"
+      - "docker*"
+      - "scripts/**"
+      - "monitoring"
+      - "deployment"
+      - "performance"
+
+# Task routing logic
+routing_rules:
+  # Frontend-related tasks
+  - pattern: ["ui", "frontend", "react", "nextjs", "tailwind", "css", "component", "page", "conversion", "homepage"]
+    agent: "frontend-specialist"
+    priority: 1
+  
+  # Backend API tasks
+  - pattern: ["api", "backend", "nestjs", "controller", "service", "database", "prisma", "migration"]
+    agent: "backend-api-expert"
+    priority: 1
+  
+  # Payment and billing tasks
+  - pattern: ["payment", "billing", "stripe", "subscription", "checkout", "revenue", "pricing"]
+    agent: "payments-specialist"
+    priority: 1
+  
+  # Security and authentication tasks
+  - pattern: ["auth", "security", "login", "oauth", "jwt", "token", "session", "guard", "compliance"]
+    agent: "security-guardian"
+    priority: 1
+  
+  # DevOps and infrastructure tasks
+  - pattern: ["deploy", "performance", "monitor", "ci", "cd", "vercel", "docker", "scale"]
+    agent: "devops-engineer"
+    priority: 1
+  
+  # Cross-cutting concerns (multiple agents may collaborate)
+  - pattern: ["dashboard", "user", "profile"]
+    agents: ["frontend-specialist", "backend-api-expert", "security-guardian"]
+    collaboration: true
+  
+  - pattern: ["testing", "e2e", "integration"]
+    agents: ["frontend-specialist", "backend-api-expert", "devops-engineer"]
+    collaboration: true
+
+# Coordination workflows
+workflows:
+  feature_development:
+    description: "Complete feature development workflow"
+    steps:
+      - agent: "backend-api-expert"
+        task: "Design and implement API endpoints"
+      - agent: "frontend-specialist"
+        task: "Create UI components and pages"
+      - agent: "security-guardian"
+        task: "Review security implications and auth requirements"
+      - agent: "devops-engineer"
+        task: "Set up monitoring and deployment"
+      - agent: "payments-specialist"
+        task: "Integrate payment flows if applicable"
+  
+  bug_fix:
+    description: "Systematic bug resolution workflow"
+    steps:
+      - agent: "devops-engineer"
+        task: "Identify performance impact and root cause"
+      - agent: "security-guardian"
+        task: "Assess security implications"
+      - agent: "responsible_specialist"
+        task: "Implement fix in relevant domain"
+      - agent: "devops-engineer"
+        task: "Deploy fix and monitor results"
+  
+  security_audit:
+    description: "Complete security audit workflow"
+    steps:
+      - agent: "security-guardian"
+        task: "Conduct security assessment"
+      - agent: "backend-api-expert"
+        task: "Review API security measures"
+      - agent: "frontend-specialist"
+        task: "Review client-side security"
+      - agent: "payments-specialist"
+        task: "Review payment security compliance"
+      - agent: "devops-engineer"
+        task: "Review infrastructure security"
+  
+  performance_optimization:
+    description: "Performance optimization workflow"
+    steps:
+      - agent: "devops-engineer"
+        task: "Identify performance bottlenecks"
+      - agent: "backend-api-expert"
+        task: "Optimize database queries and API performance"
+      - agent: "frontend-specialist"
+        task: "Optimize Core Web Vitals and user experience"
+      - agent: "devops-engineer"
+        task: "Monitor and validate improvements"
+
+# Shared context and state management
+shared_context:
+  project_info:
+    name: "N0DE Platform"
+    description: "Europe's fastest Solana RPC infrastructure"
+    urls:
+      frontend: "https://www.n0de.pro"
+      backend: "https://api.n0de.pro"
+      auth_debug: "https://www.n0de.pro/auth/debug"
+    
+  performance_targets:
+    rpc_latency: "9ms average"
+    api_latency: "50ms maximum"
+    throughput: "50K+ RPS"
+    uptime: "99.99%"
+    success_rate: "100%"
+  
+  pricing_tiers:
+    starter: "$99/month (5K RPS)"
+    professional: "$299/month (25K RPS)"
+    enterprise: "$899/month (100K+ RPS)"
+  
+  current_priorities:
+    - "Fix billing authentication flow"
+    - "Optimize payment conversion rates"
+    - "Implement sub-agent coordination"
+    - "Set up automated workflows"
+    - "Performance monitoring and optimization"
+
+# Communication protocols
+communication:
+  status_updates:
+    - "Report progress on assigned tasks"
+    - "Flag blockers and dependencies"
+    - "Share performance metrics and insights"
+    - "Document changes and impacts"
+  
+  collaboration_rules:
+    - "Coordinate on cross-domain changes"
+    - "Review each other's work for quality"
+    - "Share knowledge and best practices"
+    - "Escalate conflicts to human oversight"
+  
+  reporting_format:
+    - "Task status: [in_progress|completed|blocked]"
+    - "Performance impact: [positive|neutral|negative]"
+    - "Dependencies: [list of dependent tasks/agents]"
+    - "Next steps: [planned actions]"
+
+# Success metrics
+coordination_metrics:
+  - Task completion velocity
+  - Cross-agent collaboration effectiveness
+  - Code quality and consistency
+  - Performance improvement tracking
+  - Security vulnerability resolution time
+  - Deployment success rate

@@ -1,0 +1,53 @@
+.analyzer {
+  background-color: var(--color-bg-default);
+  color: var(--color-text-primary);
+}
+
+.primary {
+  color: var(--color-primary);
+}
+
+.secondary {
+  color: var(--color-secondary);
+}
+
+.accent {
+  color: var(--color-accent);
+}
+
+.bgMain {
+  background-color: var(--color-bg-default);
+}
+
+.bgElevated {
+  background-color: var(--color-bg-elevated);
+}
+
+.bgCard {
+  background-color: var(--color-bg-card);
+}
+
+.textPrimary {
+  color: var(--color-text-primary);
+}
+
+.textSecondary {
+  color: var(--color-text-secondary);
+}
+
+.textMuted {
+  color: var(--color-text-muted);
+}
+
+.primaryBg {
+  background-color: var(--color-primary);
+  color: #000000;
+}
+
+.cardBg {
+  background-color: var(--color-bg-card);
+}
+
+.elevatedBg {
+  background-color: var(--color-bg-elevated);
+}

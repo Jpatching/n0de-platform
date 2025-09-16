@@ -1,0 +1,135 @@
+{
+  "ios_simulator_mcp": {
+    "version": "1.0.0",
+    "simulator_config": {
+      "device_types": [
+        {
+          "name": "iPhone 15 Pro",
+          "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-15-Pro",
+          "os_version": "iOS 17.0",
+          "use_cases": ["payment_flows", "responsive_testing", "touch_interactions"]
+        },
+        {
+          "name": "iPhone 14",
+          "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-14",
+          "os_version": "iOS 16.0", 
+          "use_cases": ["compatibility_testing", "payment_validation"]
+        },
+        {
+          "name": "iPhone SE (3rd generation)",
+          "identifier": "com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-generation",
+          "os_version": "iOS 16.0",
+          "use_cases": ["small_screen_testing", "accessibility"]
+        }
+      ],
+      "test_environments": {
+        "production": {
+          "base_url": "https://www.n0de.pro",
+          "headless": true,
+          "screenshot_on_failure": true
+        },
+        "staging": {
+          "base_url": "https://staging.n0de.pro", 
+          "headless": false,
+          "record_session": true
+        }
+      }
+    },
+    "test_suites": {
+      "mobile_payment_flows": {
+        "description": "Complete mobile payment testing for all three methods",
+        "devices": ["iPhone 15 Pro", "iPhone 14"],
+        "tests": [
+          {
+            "name": "stripe_mobile_checkout",
+            "description": "Test Stripe payment flow on mobile Safari",
+            "steps": [
+              "navigate_to_subscription",
+              "select_pro_plan", 
+              "enter_payment_details",
+              "complete_stripe_checkout",
+              "verify_subscription_active"
+            ]
+          },
+          {
+            "name": "coinbase_mobile_crypto",
+            "description": "Test Coinbase Commerce on mobile",
+            "steps": [
+              "navigate_to_crypto_payment",
+              "select_enterprise_plan",
+              "initiate_coinbase_payment",
+              "scan_qr_code_simulation",
+              "verify_crypto_payment_completion"
+            ]
+          },
+          {
+            "name": "nowpayments_mobile_flow", 
+            "description": "Test NOWPayments alternative crypto on mobile",
+            "steps": [
+              "navigate_to_alt_crypto",
+              "select_payment_method",
+              "complete_nowpayments_flow",
+              "verify_payment_confirmation"
+            ]
+          }
+        ]
+      },
+      "mobile_dashboard_testing": {
+        "description": "Comprehensive mobile dashboard functionality",
+        "devices": ["iPhone 15 Pro", "iPhone SE (3rd generation)"],
+        "tests": [
+          {
+            "name": "mobile_navigation",
+            "description": "Test mobile dashboard navigation and hamburger menu",
+            "focus_areas": ["touch_targets", "swipe_gestures", "responsive_layout"]
+          },
+          {
+            "name": "mobile_billing_view",
+            "description": "Verify billing dashboard on mobile devices",
+            "validation_points": [
+              "usage_charts_readable",
+              "payment_method_display", 
+              "invoice_download_functionality",
+              "subscription_management_accessible"
+            ]
+          },
+          {
+            "name": "mobile_analytics",
+            "description": "Analytics dashboard mobile optimization",
+            "metrics_validation": [
+              "real_data_display_mobile",
+              "chart_responsiveness",
+              "touch_interactions_smooth"
+            ]
+          }
+        ]
+      },
+      "accessibility_testing": {
+        "description": "Mobile accessibility and usability validation",
+        "devices": ["iPhone SE (3rd generation)"],
+        "tests": [
+          {
+            "name": "voice_over_compatibility",
+            "description": "Test with iOS VoiceOver enabled"
+          },
+          {
+            "name": "dynamic_type_scaling", 
+            "description": "Test with various text size settings"
+          },
+          {
+            "name": "one_handed_usage",
+            "description": "Verify all functions accessible with one hand"
+          }
+        ]
+      }
+    },
+    "validation_criteria": {
+      "payment_completion_time": "< 60 seconds",
+      "page_load_time_mobile": "< 3 seconds",
+      "touch_target_size": ">= 44px",
+      "text_readability": "minimum 16px font size",
+      "form_validation": "immediate feedback on input",
+      "error_handling": "clear mobile-friendly error messages"
+    }
+  }
+}

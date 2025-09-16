@@ -1,0 +1,36 @@
+{
+  "timestamp": "2025-09-09T23:59:06.739Z",
+  "metrics": {
+    "revenue": {
+      "daily": 0,
+      "monthly": 0,
+      "total": 0,
+      "projectedMonthly": null
+    },
+    "users": {
+      "total": 0,
+      "activeDaily": 0,
+      "newToday": 0,
+      "churnRate": 0,
+      "growthRate": 0
+    },
+    "api": {
+      "totalRequests": 0,
+      "requestsPerSecond": 0,
+      "averageResponseTime": 0,
+      "errorRate": 0,
+      "topEndpoints": []
+    },
+    "subscriptions": {
+      "starter": 0,
+      "professional": 0,
+      "enterprise": 0,
+      "conversionRate": 0
+    },
+    "predictions": {
+      "revenue30Day": 0,
+      "userGrowth30Day": 0,
+      "churnProbability": null
+    }
+  }
+}

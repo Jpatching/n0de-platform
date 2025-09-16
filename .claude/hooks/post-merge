@@ -1,0 +1,303 @@
+#!/usr/bin/env node
+
+/**
+ * N0DE Post-merge Hook - Multi-Agent Deployment Coordination
+ * Runs after successful git merge to coordinate deployment across agents
+ */
+
+const { execSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+console.log('🚀 N0DE Post-merge Multi-Agent Deployment...\n');
+
+// Get changed files from the merge
+const getChangedFiles = () => {
+  try {
+    // Get files changed in the last merge
+    const output = execSync('git diff HEAD~1 --name-only', { encoding: 'utf8' });
+    return output.trim().split('\n').filter(file => file.length > 0);
+  } catch (error) {
+    console.error('Could not detect changed files, proceeding with full deployment check');
+    return [];
+  }
+};
+
+// Determine deployment scope based on changed files
+const determineDeploymentScope = (changedFiles) => {
+  const deploymentScope = {
+    frontend: false,
+    backend: false,
+    database: false,
+    monitoring: false,
+    priority: 'normal'
+  };
+
+  changedFiles.forEach(file => {
+    // Frontend changes
+    if (file.startsWith('frontend/') || file.includes('vercel.json')) {
+      deploymentScope.frontend = true;
+    }
+    
+    // Backend changes
+    if (file.startsWith('src/') || file.includes('package.json') || file.includes('nest-cli.json')) {
+      deploymentScope.backend = true;
+    }
+    
+    // Database changes
+    if (file.startsWith('prisma/')) {
+      deploymentScope.database = true;
+      deploymentScope.priority = 'high'; // Database changes need careful handling
+    }
+    
+    // Monitoring/DevOps changes
+    if (file.includes('.github/workflows/')) {
+      deploymentScope.monitoring = true;
+    }
+    
+    // Critical system changes (auth, payments, security)
+    if (file.match(/(auth|payment|security|billing)/i)) {
+      deploymentScope.priority = 'critical';
+    }
+  });
+
+  return deploymentScope;
+};
+
+// Deploy backend to self-hosted server
+const deployBackend = async () => {
+  console.log('🔧 Backend Agent: Deploying to self-hosted server...');
+  
+  try {
+    // Check pm2 status first
+    console.log('  Checking pm2 service status...');
+    const status = execSync('pm2 list', { encoding: 'utf8' });
+    console.log('  pm2 status:', status.trim());
+    
+    // Restart backend service
+    console.log('  Restarting backend service...');
+    const deployResult = execSync('pm2 restart n0de-backend', { encoding: 'utf8' });
+    console.log('  ✅ Backend restart successful');
+    
+    // Wait for deployment to be ready
+    console.log('  Waiting for service to be ready...');
+    await new Promise(resolve => setTimeout(resolve, 30000)); // Wait 30 seconds
+    
+    return true;
+  } catch (error) {
+    console.error('  ❌ Backend deployment failed:', error.message);
+    return false;
+  }
+};
+
+// Deploy frontend to Vercel
+const deployFrontend = async () => {
+  console.log('🎨 Frontend Agent: Deploying to Vercel...');
+  
+  try {
+    process.chdir('frontend/n0de-website');
+    
+    // Build frontend first
+    console.log('  Building frontend...');
+    execSync('npm run build', { stdio: 'pipe' });
+    console.log('  ✅ Frontend build successful');
+    
+    // Deploy to Vercel production
+    console.log('  Deploying to Vercel...');
+    execSync('vercel --prod --yes', { encoding: 'utf8' });
+    console.log('  ✅ Frontend deployment successful');
+    
+    // Return to project root
+    process.chdir('../../');
+    
+    return true;
+  } catch (error) {
+    console.error('  ❌ Frontend deployment failed:', error.message);
+    // Return to project root even if deployment fails
+    try { process.chdir('../../'); } catch (e) {}
+    return false;
+  }
+};
+
+// Handle database migrations
+const handleDatabaseMigrations = async () => {
+  console.log('🗄️  Database Agent: Handling schema migrations...');
+  
+  try {
+    // Generate Prisma client
+    console.log('  Generating Prisma client...');
+    execSync('npx prisma generate', { stdio: 'pipe' });
+    
+    // Apply database migrations
+    console.log('  Applying database migrations...');
+    execSync('npx prisma db push', { stdio: 'pipe' });
+    console.log('  ✅ Database migrations applied successfully');
+    
+    return true;
+  } catch (error) {
+    console.error('  ❌ Database migration failed:', error.message);
+    return false;
+  }
+};
+
+// Run post-deployment health checks
+const runHealthChecks = async () => {
+  console.log('🏥 DevOps Agent: Running post-deployment health checks...');
+  
+  const endpoints = [
+    'https://api.n0de.pro/api/v1/health',
+    'https://api.n0de.pro/api/v1/billing/health',
+    'https://www.n0de.pro',
+  ];
+  
+  let allHealthy = true;
+  
+  for (const endpoint of endpoints) {
+    try {
+      console.log(`  Checking ${endpoint}...`);
+      const response = await fetch(endpoint, { 
+        method: 'GET',
+        timeout: 10000 
+      });
+      
+      if (response.ok) {
+        console.log(`  ✅ ${endpoint} - Healthy`);
+      } else {
+        console.error(`  ❌ ${endpoint} - Status ${response.status}`);
+        allHealthy = false;
+      }
+    } catch (error) {
+      console.error(`  ❌ ${endpoint} - Connection failed:`, error.message);
+      allHealthy = false;
+    }
+  }
+  
+  return allHealthy;
+};
+
+// Send deployment notifications
+const sendDeploymentNotification = (success, scope, changedFiles) => {
+  console.log('\n📢 Deployment Summary:');
+  console.log(`  Status: ${success ? '✅ SUCCESS' : '❌ FAILED'}`);
+  console.log(`  Priority: ${scope.priority.toUpperCase()}`);
+  console.log(`  Components deployed:`);
+  if (scope.backend) console.log('    - Backend (Self-hosted)');
+  if (scope.frontend) console.log('    - Frontend (Vercel)');
+  if (scope.database) console.log('    - Database (Prisma)');
+  if (scope.monitoring) console.log('    - Monitoring/DevOps');
+  
+  console.log(`  Files changed: ${changedFiles.length}`);
+  
+  if (changedFiles.length > 0 && changedFiles.length <= 10) {
+    console.log('  Changed files:');
+    changedFiles.forEach(file => console.log(`    - ${file}`));
+  }
+  
+  // TODO: Send to Slack/Discord webhook for team notifications
+  // This could be configured with environment variables
+};
+
+// Rollback procedure for failed deployments
+const rollbackDeployment = async (scope) => {
+  console.log('🔄 Initiating rollback procedure...');
+  
+  if (scope.backend) {
+    console.log('  Rolling back backend deployment...');
+    // In a real scenario, this would revert to the previous pm2 deployment
+    console.log('  ⚠️  Manual rollback may be required for self-hosted deployment');
+  }
+  
+  if (scope.database) {
+    console.log('  ⚠️  Database rollback requires manual intervention');
+    console.log('  Review recent migrations and revert if necessary');
+  }
+  
+  console.log('  Rollback procedure completed');
+};
+
+// Main deployment orchestration
+async function main() {
+  const changedFiles = getChangedFiles();
+  const deploymentScope = determineDeploymentScope(changedFiles);
+  
+  console.log('📋 Deployment plan:');
+  console.log(`  Priority: ${deploymentScope.priority}`);
+  console.log(`  Backend: ${deploymentScope.backend ? 'Yes' : 'No'}`);
+  console.log(`  Frontend: ${deploymentScope.frontend ? 'Yes' : 'No'}`);
+  console.log(`  Database: ${deploymentScope.database ? 'Yes' : 'No'}`);
+  console.log(`  Files changed: ${changedFiles.length}\n`);
+  
+  let deploymentSuccess = true;
+  
+  try {
+    // Handle database migrations first (if needed)
+    if (deploymentScope.database) {
+      const dbSuccess = await handleDatabaseMigrations();
+      if (!dbSuccess && deploymentScope.priority === 'critical') {
+        throw new Error('Critical database migration failed');
+      }
+    }
+    
+    // Deploy backend
+    if (deploymentScope.backend) {
+      const backendSuccess = await deployBackend();
+      if (!backendSuccess) {
+        deploymentSuccess = false;
+        if (deploymentScope.priority === 'critical') {
+          throw new Error('Critical backend deployment failed');
+        }
+      }
+    }
+    
+    // Deploy frontend
+    if (deploymentScope.frontend) {
+      const frontendSuccess = await deployFrontend();
+      if (!frontendSuccess) {
+        deploymentSuccess = false;
+      }
+    }
+    
+    // Wait a bit for services to stabilize
+    if (deploymentSuccess) {
+      console.log('\n⏱️  Waiting for services to stabilize...');
+      await new Promise(resolve => setTimeout(resolve, 15000));
+    }
+    
+    // Run health checks
+    const healthChecksPass = await runHealthChecks();
+    if (!healthChecksPass) {
+      deploymentSuccess = false;
+    }
+    
+  } catch (error) {
+    console.error('\n💥 Deployment failed with critical error:', error.message);
+    deploymentSuccess = false;
+    
+    // Attempt rollback for critical failures
+    if (deploymentScope.priority === 'critical') {
+      await rollbackDeployment(deploymentScope);
+    }
+  }
+  
+  // Send notifications
+  sendDeploymentNotification(deploymentSuccess, deploymentScope, changedFiles);
+  
+  if (!deploymentSuccess) {
+    console.error('\n❌ Deployment completed with errors. Please review the logs above.');
+    // Don't exit with error code to avoid blocking git operations
+    // but log the failure for monitoring
+  } else {
+    console.log('\n✅ Deployment completed successfully!');
+  }
+}
+
+// Handle fetch polyfill for Node.js
+if (!global.fetch) {
+  const { default: fetch } = require('node-fetch');
+  global.fetch = fetch;
+}
+
+main().catch(error => {
+  console.error('💥 Post-merge hook error:', error);
+  // Don't exit with error to avoid breaking git flow
+});

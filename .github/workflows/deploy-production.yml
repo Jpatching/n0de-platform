@@ -1,0 +1,248 @@
+name: 🚀 Deploy N0DE Platform
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # Backend Testing and Deployment
+  backend-ci:
+    name: 🔧 Backend CI/CD
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: n0de_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:6
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 🔧 Install backend dependencies
+        run: npm ci
+
+      - name: 📋 Lint backend code
+        run: npm run lint || echo "Linting completed with warnings"
+
+      - name: 🧪 Run backend tests
+        run: npm run test
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/n0de_test
+          REDIS_URL: redis://localhost:6379/0
+          JWT_SECRET: test-jwt-secret
+          API_KEY_SECRET: test-api-key-secret
+
+      - name: 🏗️ Build backend
+        run: npm run build
+
+      - name: 🔍 Run Prisma checks
+        run: |
+          npx prisma generate
+          npx prisma db push
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/n0de_test
+
+  # Frontend Testing and Deployment
+  frontend-ci:
+    name: 🌐 Frontend CI/CD
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: 🔧 Install frontend dependencies
+        run: npm ci
+
+      - name: 📋 Lint frontend code
+        run: npm run lint || echo "Linting completed with warnings"
+
+      - name: 🎨 Check TypeScript types
+        run: npm run type-check
+
+      - name: 🏗️ Build frontend
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: https://api.n0de.pro/api/v1
+          NEXT_PUBLIC_WS_URL: wss://api.n0de.pro
+          NEXT_PUBLIC_SERVER_URL: https://api.n0de.pro
+          NEXT_PUBLIC_APP_URL: https://n0de.pro
+
+      - name: 🧪 Run frontend tests
+        run: npm run test -- --passWithNoTests
+
+  # Deploy to Vercel (Production)
+  deploy-frontend:
+    name: 🚀 Deploy Frontend to Vercel
+    runs-on: ubuntu-latest
+    needs: [backend-ci, frontend-ci]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: 🔧 Install dependencies
+        run: npm ci
+
+      - name: 🏗️ Build application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: https://api.n0de.pro/api/v1
+          NEXT_PUBLIC_WS_URL: wss://api.n0de.pro
+          NEXT_PUBLIC_SERVER_URL: https://api.n0de.pro
+          NEXT_PUBLIC_GOOGLE_OAUTH_URL: https://api.n0de.pro/api/v1/auth/google
+          NEXT_PUBLIC_GITHUB_OAUTH_URL: https://api.n0de.pro/api/v1/auth/github
+          NEXT_PUBLIC_APP_URL: https://n0de.pro
+          NEXT_PUBLIC_DOMAIN: n0de.pro
+
+      - name: 🌐 Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: ./frontend
+          vercel-args: '--prod'
+
+  # System Health Checks
+  health-check:
+    name: 🏥 System Health Check
+    runs-on: ubuntu-latest
+    needs: [deploy-frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: 🏥 Check Frontend Health
+        run: |
+          echo "⏳ Waiting for deployment to be ready..."
+          sleep 30
+          
+          # Check if frontend is loading
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://n0de.pro)
+          if [ $response -eq 200 ]; then
+            echo "✅ Frontend health check passed!"
+          else
+            echo "❌ Frontend health check failed (HTTP $response)"
+            exit 1
+          fi
+
+      - name: 🔌 Check Backend API Health
+        run: |
+          echo "🔍 Testing backend API health..."
+          
+          # Check API health endpoint
+          response=$(curl -s "https://api.n0de.pro/api/v1/health")
+          echo "API Response: $response"
+          
+          if echo "$response" | grep -q '"status":"healthy"'; then
+            echo "✅ Backend API health check passed!"
+          else
+            echo "❌ Backend API health check failed"
+            exit 1
+          fi
+
+      - name: 🛡️ Security Scan
+        run: |
+          echo "🔍 Running security checks..."
+          
+          # Check for exposed RPC endpoints
+          rpc_check=$(curl -s -o /dev/null -w "%{http_code}" "https://n0de.pro:8899" || echo "000")
+          if [ "$rpc_check" = "000" ]; then
+            echo "✅ RPC endpoint is properly secured (not externally accessible)"
+          else
+            echo "🚨 WARNING: RPC endpoint may be exposed!"
+            exit 1
+          fi
+
+      - name: 📊 Performance Check
+        run: |
+          echo "⚡ Running performance checks..."
+          
+          # Test API response time
+          start_time=$(date +%s%N)
+          curl -s "https://api.n0de.pro/api/v1/health" > /dev/null
+          end_time=$(date +%s%N)
+          
+          response_time=$(( (end_time - start_time) / 1000000 ))
+          echo "API Response Time: ${response_time}ms"
+          
+          if [ $response_time -lt 1000 ]; then
+            echo "✅ Performance check passed! (${response_time}ms)"
+          else
+            echo "⚠️ Performance check warning: slow response (${response_time}ms)"
+          fi
+
+  # Notification
+  notify:
+    name: 📢 Deployment Notification
+    runs-on: ubuntu-latest
+    needs: [health-check]
+    if: always()
+
+    steps:
+      - name: 📢 Deployment Success
+        if: needs.health-check.result == 'success'
+        run: |
+          echo "🎉 N0DE Platform Deployment Successful!"
+          echo "Frontend: https://n0de.pro"
+          echo "API: https://api.n0de.pro"
+          echo "Commit: ${{ github.sha }}"
+          echo "Workflow: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+      - name: 🚨 Deployment Failed
+        if: needs.health-check.result != 'success'
+        run: |
+          echo "❌ N0DE Platform Deployment Failed!"
+          echo "Check logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          exit 1

@@ -1,0 +1,41 @@
+[Unit]
+Description=N0DE Frontend Service (Next.js)
+Documentation=https://github.com/n0de-team/n0de-frontend
+After=network.target
+Wants=network.target
+Requires=network.target
+
+[Service]
+Type=simple
+User=sol
+Group=sol
+WorkingDirectory=/home/sol/n0de-deploy/frontend
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=0.0.0.0
+EnvironmentFile=/home/sol/n0de-deploy/frontend/.env.production
+ExecStart=/usr/bin/npm start
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Restart policy
+Restart=always
+RestartSec=10
+StartLimitInterval=60
+StartLimitBurst=3
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+MemoryMax=4G
+CPUQuota=400%
+
+# Security
+NoNewPrivileges=yes
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=n0de-frontend
+
+[Install]
+WantedBy=multi-user.target

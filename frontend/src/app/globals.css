@@ -1,0 +1,775 @@
+/* Fonts are loaded via Next.js optimization in layout.tsx - no need for @import */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Color schemes moved to CSS variables */
+
+/* Base styles */
+@layer base {
+  :root {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 90%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 90%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 90%;
+    --primary: 194 100% 48%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 90%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 50%;
+    --accent: 0 0% 10%;
+    --accent-foreground: 0 0% 90%;
+    --destructive: 0 85% 60%;
+    --destructive-foreground: 0 0% 90%;
+    --border: 0 0% 12%;
+    --input: 0 0% 12%;
+    --ring: 194 100% 48%;
+    --radius: 0.5rem;
+  }
+
+  /* Root container should be transparent; page content sits above background */
+  #__next {
+    background-color: transparent;
+    min-height: 100vh;
+  }
+
+  * {
+    border-color: hsl(var(--border, 0 0% 12%));
+  }
+
+  html {
+    scroll-behavior: smooth;
+    /* Ensure HTML is also transparent */
+    background-color: transparent;
+  }
+  
+  body {
+    /* Make background transparent to show background image */
+    background-color: transparent;
+    color: hsl(var(--foreground, 0 0% 90%));
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overflow-x: hidden;
+    /* Critical height fixes */
+    height: auto;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    /* Prevent layout shifts */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    /* Force GPU acceleration for smoother rendering */
+    will-change: auto;
+    /* Ensure content is above background */
+    position: relative;
+    z-index: 1;
+  }
+  
+  /* Layout normalization to prevent extreme heights */
+  .min-h-screen {
+    min-height: 100vh;
+    height: auto;
+    max-height: none;
+  }
+  
+  section, div {
+    height: auto;
+    max-height: none;
+  }
+  
+  /* Force proper box-sizing */
+  * {
+    box-sizing: border-box;
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background-color: #0A0A0A;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background-color: #1E1E1E;
+    border-radius: 9999px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: #01d3f4;
+  }
+}
+
+/* Component styles */
+@layer components {
+  .btn-primary {
+    background: linear-gradient(135deg, #01d3f4, #0b86f8, #00255e);
+    color: black;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-primary:hover {
+    transform: scale(1.05);
+    box-shadow: 0 10px 15px -3px rgba(0, 255, 136, 0.25);
+  }
+  
+  .btn-secondary {
+    background: #1A1A1A;
+    border: 1px solid #2B2B2B;
+    color: #E6E6E6;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-secondary:hover {
+    border-color: #01d3f4;
+    color: #01d3f4;
+  }
+  
+  .gradient-text {
+    background: linear-gradient(135deg, #01d3f4, #0b86f8, #00255e);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+  
+  .section-padding {
+    padding: 4rem 1rem;
+  }
+  
+  @media (min-width: 640px) {
+    .section-padding {
+      padding: 4rem 1.5rem;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .section-padding {
+      padding: 6rem 2rem;
+    }
+  }
+  
+  .container-width {
+    width: 100%;
+    max-width: 1280px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  /* Responsive container padding */
+  @media (min-width: 640px) {
+    .container-width {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+  }
+  
+  /* Browser compatibility fallbacks */
+  .fixed {
+    position: -webkit-sticky; /* Safari fallback */
+    position: fixed;
+  }
+  
+  /* Backdrop blur fallbacks */
+  .backdrop-blur-sm {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px); /* Safari support */
+  }
+  
+  .backdrop-blur-md {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  
+  .backdrop-blur-lg {
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  
+  /* Z-Index Hierarchy System */
+  :root {
+    --z-background: 0;
+    --z-content: 10;
+    --z-hero-text: 20;
+    --z-modal-backdrop: 40;
+    --z-navigation: 50;
+    --z-dropdown: 60;
+    --z-modal: 70;
+    --z-tooltip: 80;
+    --z-notification: 90;
+  }
+
+  /* Critical fixes for blue element overlapping */
+  nav {
+    isolation: isolate;
+    contain: layout style;
+    z-index: var(--z-navigation, 50);
+    position: relative;
+  }
+
+  /* Hero section text should not interfere with navigation */
+  .hero-section {
+    z-index: var(--z-content, 10);
+    position: relative;
+    isolation: isolate;
+  }
+
+  .hero-gradient-text {
+    z-index: var(--z-hero-text, 20);
+    position: relative;
+    isolation: isolate;
+  }
+
+  /* Prevent header corruption */
+  .fixed {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-perspective: 1000px;
+    perspective: 1000px;
+    z-index: var(--z-navigation, 50);
+  }
+
+  /* Force hardware acceleration for smooth animations */
+  .group:hover {
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
+
+  /* Prevent z-index stacking issues */
+  .relative {
+    position: relative;
+    z-index: auto;
+  }
+
+  /* Background elements */
+  .background-element {
+    z-index: var(--z-background, 0);
+  }
+  
+  @media (min-width: 768px) {
+    .container-width {
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .container-width {
+      padding-left: 2.5rem;
+      padding-right: 2.5rem;
+    }
+  }
+  
+  .performance-metric {
+    @apply text-4xl lg:text-6xl font-bold font-mono gradient-text;
+  }
+  
+  .metric-label {
+    @apply text-sm lg:text-base text-text-secondary font-medium uppercase tracking-wider;
+  }
+  
+  .code-block {
+    @apply bg-bg-elevated border border-border rounded-lg p-4 font-mono text-sm;
+    @apply text-N0DE-cyan overflow-x-auto;
+  }
+  
+  .nav-link {
+    color: #808080;
+    font-weight: 500;
+    transition: color 0.2s;
+    position: relative;
+  }
+  
+  .nav-link:hover {
+    color: #01d3f4;
+  }
+  
+  .nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background-color: #01d3f4;
+    transition: width 0.3s;
+  }
+  
+  .nav-link:hover::after {
+    width: 100%;
+  }
+  
+  .hero-title {
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1;
+    background: linear-gradient(135deg, #ffffff, #01d3f4, #0b86f8, #00255e);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+  
+  @media (min-width: 1024px) {
+    .hero-title {
+      font-size: 4.5rem;
+    }
+  }
+  
+  @media (min-width: 1280px) {
+    .hero-title {
+      font-size: 6rem;
+    }
+  }
+  
+  .hero-subtitle {
+    font-size: 1.25rem;
+    color: #CCCCCC;
+    font-weight: 500;
+    line-height: 1.625;
+  }
+  
+  @media (min-width: 1024px) {
+    .hero-subtitle {
+      font-size: 1.5rem;
+    }
+  }
+  
+  .pricing-card {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .pricing-card-popular {
+    position: relative;
+    overflow: hidden;
+    border-color: #01d3f4;
+    box-shadow: 0 25px 50px -12px rgba(0, 255, 136, 0.1);
+  }
+  
+  .pricing-card-popular::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to right, rgba(0, 255, 136, 0.1), rgba(0, 153, 255, 0.1));
+    opacity: 0.5;
+  }
+  
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
+  @media (min-width: 768px) {
+    .feature-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .feature-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  
+  .stat-card {
+    text-align: center;
+  }
+  
+  .comparison-winner {
+    background: linear-gradient(to right, rgba(0, 255, 136, 0.2), rgba(0, 153, 255, 0.2));
+    border-color: #01d3f4;
+  }
+  
+  .comparison-loser {
+    background-color: #111111;
+    border-color: #1E1E1E;
+    opacity: 0.6;
+  }
+}
+
+/* Utility styles */
+@layer utilities {
+  .text-shadow {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  }
+  
+  .text-shadow-lg {
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.7);
+  }
+  
+  .backdrop-blur-strong {
+    backdrop-filter: blur(20px);
+  }
+  
+  .glass-effect {
+    @apply bg-white/5 backdrop-blur-md border border-white/10;
+  }
+  
+  .glass-morphism {
+    @apply bg-white/10 backdrop-blur-lg border border-white/20;
+    @apply shadow-xl shadow-black/10;
+  }
+  
+  .glass-morphism-strong {
+    @apply bg-white/15 backdrop-blur-xl border border-white/30;
+    @apply shadow-2xl shadow-black/20;
+  }
+  
+  .glow-effect {
+    position: relative;
+  }
+  
+  .glow-effect::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    background: linear-gradient(135deg, #01d3f4, #0b86f8, #00255e);
+    border-radius: 0.5rem;
+    opacity: 0.75;
+    filter: blur(8px);
+    z-index: -1;
+  }
+  
+  .matrix-bg {
+    background-image: 
+      linear-gradient(rgba(0, 255, 136, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 255, 136, 0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+  
+  .glow-green {
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+  }
+  
+  .glow-blue {
+    box-shadow: 0 0 20px rgba(0, 153, 255, 0.3);
+  }
+  
+  .glow-purple {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+  }
+}
+
+/* Modern Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { 
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+    transform: scale(1);
+  }
+  50% { 
+    box-shadow: 0 0 40px rgba(0, 255, 136, 0.6), 0 0 60px rgba(0, 255, 136, 0.3);
+    transform: scale(1.02);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes typing {
+  from { width: 0 }
+  to { width: 100% }
+}
+
+@keyframes blink-caret {
+  from, to { border-color: transparent }
+  50% { border-color: #01d3f4 }
+}
+
+.typewriter {
+  overflow: hidden;
+  border-right: 3px solid #01d3f4;
+  white-space: nowrap;
+  animation: typing 3.5s steps(40, end), blink-caret 0.75s step-end infinite;
+}
+
+/* Performance monitoring styles */
+.performance-graph {
+      @apply bg-gradient-to-t from-N0DE-cyan/20 to-transparent;
+}
+
+.latency-bar {
+  @apply bg-gradient-to-r from-N0DE-cyan via-N0DE-sky to-N0DE-navy rounded-full;
+  @apply relative overflow-hidden;
+}
+
+.latency-bar::before {
+  content: '';
+  @apply absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent;
+  @apply animate-pulse;
+}
+
+/* Loading states */
+.skeleton {
+  @apply bg-gradient-to-r from-bg-elevated via-bg-hover to-bg-elevated bg-[length:200%_100%];
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Navigation Responsive Fixes */
+@media (max-width: 768px) {
+  nav {
+    padding: 0.75rem 0;
+  }
+  
+  .nav-link {
+    font-size: 1.125rem;
+    padding: 0.75rem 0;
+  }
+  
+  /* Fix button sizing on mobile */
+  .mobile-button {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .group:hover {
+    transform: none;
+  }
+  
+  button:hover,
+  .btn-primary:hover,
+  .btn-secondary:hover {
+    transform: none;
+  }
+}
+
+/* Enhanced Mobile and Responsive Optimizations */
+@media (max-width: 640px) {
+  .hero-title {
+    @apply text-3xl leading-tight;
+  }
+  
+  .hero-subtitle {
+    @apply text-base;
+  }
+  
+  .performance-metric {
+    @apply text-2xl;
+  }
+  
+  .section-padding {
+    @apply px-3 py-8;
+  }
+  
+  .container-width {
+    @apply px-3;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 768px) {
+  .hero-title {
+    @apply text-4xl leading-tight;
+  }
+  
+  .hero-subtitle {
+    @apply text-lg;
+  }
+  
+  .performance-metric {
+    @apply text-3xl;
+  }
+  
+  .section-padding {
+    @apply px-4 py-12;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .hero-title {
+    @apply text-5xl;
+  }
+  
+  .hero-subtitle {
+    @apply text-xl;
+  }
+  
+  .performance-metric {
+    @apply text-4xl;
+  }
+}
+
+/* Large screens optimization */
+@media (min-width: 1920px) {
+  .container-width {
+    max-width: 1536px;
+  }
+  
+  .hero-title {
+    font-size: 7rem;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .gradient-text {
+    @apply text-N0DE-cyan;
+  }
+  
+  .card {
+    @apply border-2;
+  }
+}
+
+/* Perfect Airport Conveyor Belt Animation - 20% Slower */
+.animate-scroll {
+  animation: scroll-left 36s linear infinite;
+  display: flex;
+  align-items: center;
+  width: max-content;
+}
+
+.animate-scroll-reverse {
+  animation: scroll-right 48s linear infinite;
+  display: flex;
+  align-items: center;
+  width: max-content;
+}
+
+/* Airport conveyor belt effect - seamless loop */
+@keyframes scroll-left {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+
+@keyframes scroll-right {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(0); }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .animate-scroll,
+  .animate-scroll-reverse {
+    animation: none !important;
+  }
+}
+
+/* Background Image Optimization for High-Quality Display */
+.bg-image-high-quality {
+  background-image: url('/chatgpt-background-main.png');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-attachment: fixed;
+  /* Ensure smooth rendering without pixelation */
+  -webkit-backface-visibility: hidden;
+  -moz-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Tablet and Mobile Background Adjustments */
+@media (max-width: 1024px) {
+  .bg-image-optimized {
+    background-attachment: scroll; /* Better performance on mobile */
+    background-size: cover;
+    background-position: center center;
+  }
+}
+
+@media (max-width: 768px) {
+  .bg-image-optimized {
+    background-size: cover;
+    background-position: center top; /* Better mobile positioning */
+  }
+}
+
+/* Force redeploy - OAuth fix */
+
+/* Critical CSS Safety Rules - Prevent undefined values */
+/* Only target specific problem elements, not all elements */
+[style*="undefined"] {
+  all: revert !important;
+}
+
+/* Specific safety rules for common problematic properties */
+.safe-opacity {
+  opacity: var(--safe-opacity, 1);
+}
+
+.safe-filter {
+  filter: var(--safe-filter, none);
+}
+
+.safe-box-shadow {
+  box-shadow: var(--safe-box-shadow, none);
+}
+
+/* Enhanced gradient text with better visibility */
+.gradient-text {
+  background: linear-gradient(135deg, #01d3f4 0%, #0b86f8 50%, #01d3f4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: #01d3f4;
+  filter: drop-shadow(0 0 20px rgba(1, 211, 244, 0.5));
+  position: relative;
+}
+
+/* Hero gradient text specific styling */
+.hero-gradient-text {
+  background: linear-gradient(135deg, #01d3f4 0%, #0b86f8 50%, #01d3f4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: #01d3f4;
+  filter: drop-shadow(0 0 30px rgba(1, 211, 244, 0.6)) drop-shadow(0 0 60px rgba(1, 211, 244, 0.3));
+  position: relative;
+  z-index: 1;
+}

@@ -1,0 +1,44 @@
+{
+  "name": "N0DE Payment Platform",
+  "description": "High-performance Solana RPC provider with comprehensive payment system",
+  "version": "1.0.0",
+  "hooks": {
+    "user-prompt-submit": ".claude/hooks/payment-system-check.js",
+    "file-edit": ".claude/hooks/auto-deploy-check.js",
+    "task-complete": ".claude/hooks/run-tests.js"
+  },
+  "agents": {
+    "payment-monitor": {
+      "enabled": true,
+      "interval": 300000,
+      "script": ".claude/agents/payment-monitor.js"
+    },
+    "security-scanner": {
+      "enabled": true,
+      "interval": 3600000,
+      "script": ".claude/agents/security-scanner.js"
+    },
+    "deployment-checker": {
+      "enabled": true,
+      "interval": 1800000,
+      "script": ".claude/agents/deployment-checker.js"
+    }
+  },
+  "environments": {
+    "production": {
+      "frontend": "https://n0de.pro",
+      "backend": "https://api.n0de.pro",
+      "database": "n0de_production"
+    },
+    "development": {
+      "frontend": "http://localhost:3000",
+      "backend": "http://localhost:4000",
+      "database": "n0de_development"
+    }
+  },
+  "testing": {
+    "payment-tests": "scripts/automated-payment-tests.sh",
+    "e2e-tests": "scripts/e2e-payment-flow-tests.sh",
+    "security-tests": "scripts/security-hardening.sh"
+  }
+}

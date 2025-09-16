@@ -1,0 +1,68 @@
+{
+  "buildCommand": "next build",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "https://n0de.pro, https://www.n0de.pro, https://api.n0de.pro"
+        }
+      ]
+    },
+    {
+      "source": "/:path*.(webp|png|jpg|jpeg|gif|svg)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ],
+  "functions": {
+    "pages/api/**/*.js": {
+      "maxDuration": 30
+    }
+  },
+  "regions": ["lhr1"],
+  "github": {
+    "silent": true
+  },
+  "build": {
+    "env": {
+      "NEXT_PUBLIC_API_URL": "https://api.n0de.pro",
+      "NEXT_PUBLIC_APP_URL": "https://n0de.pro"
+    }
+  },
+  "images": {
+    "domains": ["n0de.pro", "api.n0de.pro"],
+    "formats": ["image/webp"],
+    "sizes": [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    "minimumCacheTTL": 31536000
+  },
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://api.n0de.pro/:path*"
+    }
+  ]
+}

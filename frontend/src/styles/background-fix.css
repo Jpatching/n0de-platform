@@ -1,0 +1,29 @@
+/* Background image fix */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* Use WebP first for better quality, fallback to PNG */
+  background-image: url('/chatgpt-background-main.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  /* Prevent pixelation with optimized rendering */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: smooth;
+  -webkit-image-rendering: -webkit-optimize-contrast;
+  -moz-image-rendering: crisp-edges;
+  z-index: -1;
+}
+
+/* Fallback for browsers that don't support WebP */
+@supports not (background-image: url('test.webp')) {
+  body::before {
+    background-image: url('/chatgpt-background-main.png');
+  }
+}

@@ -1,0 +1,59 @@
+[
+  {
+    "agent": "frontend-specialist",
+    "branch": "feature/frontend-optimization",
+    "focus": [
+      "frontend/",
+      "vercel.json",
+      "*.tsx",
+      "*.css"
+    ],
+    "description": "Frontend UX improvements and conversion optimization"
+  },
+  {
+    "agent": "backend-api-expert",
+    "branch": "feature/backend-performance",
+    "focus": [
+      "src/",
+      "prisma/",
+      "nest-cli.json",
+      "tsconfig.json"
+    ],
+    "description": "Backend API optimization and database improvements"
+  },
+  {
+    "agent": "payments-specialist",
+    "branch": "feature/payment-optimization",
+    "focus": [
+      "src/billing/",
+      "src/payments/",
+      "src/subscriptions/",
+      "frontend/**/billing/",
+      "frontend/**/checkout/"
+    ],
+    "description": "Payment flow optimization and revenue improvements"
+  },
+  {
+    "agent": "security-guardian",
+    "branch": "feature/security-enhancements",
+    "focus": [
+      "src/auth/",
+      "frontend/**/auth/",
+      "*.guard.ts",
+      "*.strategy.ts"
+    ],
+    "description": "Authentication security improvements and compliance"
+  },
+  {
+    "agent": "devops-engineer",
+    "branch": "feature/infrastructure-optimization",
+    "focus": [
+      ".github/",
+      "backend.toml",
+      "docker*",
+      "monitoring/",
+      "scripts/"
+    ],
+    "description": "Performance monitoring and deployment automation"
+  }
+]

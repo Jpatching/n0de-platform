@@ -1,0 +1,93 @@
+name: 🚀 Deploy N0DE Frontend to Vercel
+
+on:
+  push:
+    branches: [main]
+    paths: ['frontend/**']
+  pull_request:
+    branches: [main]
+    paths: ['frontend/**']
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  deploy-frontend:
+    name: 🌐 Deploy Frontend to Vercel
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: 🔧 Install dependencies
+        run: npm ci
+
+      - name: 🏗️  Build application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: https://api.n0de.pro/api/v1
+          NEXT_PUBLIC_WS_URL: wss://api.n0de.pro
+          NEXT_PUBLIC_SERVER_URL: https://api.n0de.pro
+
+      - name: 🌐 Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: ./frontend
+          vercel-args: '--prod'
+
+      - name: 🏥 Health check
+        if: success()
+        run: |
+          echo "⏳ Waiting for deployment to be ready..."
+          sleep 30
+          
+          # Check frontend is loading
+          if curl -f https://www.n0de.pro | grep -q "N0DE"; then
+            echo "✅ Frontend health check passed!"
+          else
+            echo "❌ Frontend health check failed"
+            exit 1
+          fi
+
+      - name: 🧪 Test OAuth endpoints
+        if: success()
+        run: |
+          echo "🔐 Testing OAuth configuration..."
+          
+          # Test Google OAuth route returns proper redirect
+          if curl -sI https://www.n0de.pro/api/auth/google | grep -q "30[27]"; then
+            echo "✅ Google OAuth endpoint working"
+          else
+            echo "❌ Google OAuth endpoint failed"
+            exit 1
+          fi
+          
+          # Test GitHub OAuth route returns proper redirect  
+          if curl -sI https://www.n0de.pro/api/auth/github | grep -q "30[27]"; then
+            echo "✅ GitHub OAuth endpoint working"
+          else
+            echo "❌ GitHub OAuth endpoint failed"
+            exit 1
+          fi
+
+      - name: 📊 Deployment summary
+        if: always()
+        run: |
+          echo "🎉 Deployment Summary:"
+          echo "Frontend URL: https://www.n0de.pro"
+          echo "Backend API: https://api.n0de.pro"
+          echo "Commit: ${{ github.sha }}"
+          echo "Workflow: ${{ github.run_id }}"

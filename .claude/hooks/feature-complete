@@ -1,0 +1,298 @@
+#!/usr/bin/env node
+
+/**
+ * N0DE Feature-Complete Hook - Comprehensive Multi-Agent Testing
+ * Runs comprehensive testing across all agents when a feature is marked complete
+ */
+
+const { execSync, spawn } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+console.log('🧪 N0DE Feature-Complete Multi-Agent Testing Suite\n');
+
+// Test configuration for each agent domain
+const testSuites = {
+  'security-guardian': {
+    name: 'Security & Authentication Tests',
+    tests: [
+      { name: 'OAuth Flow Test', command: 'npm test -- auth.oauth.spec', critical: true },
+      { name: 'JWT Token Security', command: 'npm test -- auth.jwt.spec', critical: true },
+      { name: 'Route Protection Test', command: 'npm test -- auth.guards.spec', critical: true },
+      { name: 'Security Headers Test', command: 'npm test -- security.headers.spec', critical: false },
+    ]
+  },
+  
+  'frontend-specialist': {
+    name: 'Frontend & UI Tests',
+    tests: [
+      { name: 'Component Unit Tests', command: 'cd frontend/n0de-website && npm test', critical: true },
+      { name: 'E2E User Flows', command: 'cd frontend/n0de-website && npm run test:e2e', critical: true },
+      { name: 'Performance Tests', command: 'lighthouse https://www.n0de.pro --preset=desktop --quiet --chrome-flags="--headless"', critical: false },
+      { name: 'Accessibility Tests', command: 'cd frontend/n0de-website && npm run test:a11y', critical: false },
+    ]
+  },
+  
+  'backend-api-expert': {
+    name: 'Backend API Tests',
+    tests: [
+      { name: 'Unit Tests', command: 'npm test', critical: true },
+      { name: 'Integration Tests', command: 'npm run test:e2e', critical: true },
+      { name: 'API Performance Tests', command: 'npm run test:performance', critical: false },
+      { name: 'Database Tests', command: 'npm run test:db', critical: true },
+    ]
+  },
+  
+  'payments-specialist': {
+    name: 'Payment & Billing Tests',
+    tests: [
+      { name: 'Stripe Integration Tests', command: 'npm test -- payment stripe', critical: true },
+      { name: 'Billing Calculation Tests', command: 'npm test -- billing calculation', critical: true },
+      { name: 'Subscription Lifecycle', command: 'npm test -- subscription lifecycle', critical: true },
+      { name: 'Webhook Processing', command: 'npm test -- webhook processing', critical: false },
+    ]
+  },
+  
+  'devops-engineer': {
+    name: 'Infrastructure & Performance Tests',
+    tests: [
+      { name: 'Health Endpoint Test', command: 'curl -f https://api.n0de.pro/api/v1/health', critical: true },
+      { name: 'Database Connection Test', command: 'npm run test:db-connection', critical: true },
+      { name: 'Redis Connection Test', command: 'npm run test:redis-connection', critical: true },
+      { name: 'Load Test (Light)', command: 'npm run test:load-light', critical: false },
+    ]
+  }
+};
+
+// Run a single test with timeout and retry logic
+const runTest = async (test, retries = 1) => {
+  console.log(`    Running: ${test.name}...`);
+  
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`      Retry attempt ${attempt}/${retries}`);
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds between retries
+      }
+      
+      const result = execSync(test.command, { 
+        encoding: 'utf8', 
+        timeout: 120000, // 2 minute timeout
+        stdio: 'pipe' 
+      });
+      
+      console.log(`    ✅ ${test.name} - PASSED`);
+      return { success: true, output: result };
+    } catch (error) {
+      const errorOutput = error.stdout || error.stderr || error.message;
+      
+      if (attempt === retries) {
+        console.error(`    ❌ ${test.name} - FAILED`);
+        if (test.critical) {
+          console.error(`      Critical test failure! Output:`);
+          console.error(`      ${errorOutput}`);
+        }
+        return { success: false, output: errorOutput, critical: test.critical };
+      }
+    }
+  }
+};
+
+// Run all tests for a specific agent
+const runAgentTests = async (agentName, testSuite) => {
+  console.log(`\n🤖 ${agentName.toUpperCase()} - ${testSuite.name}`);
+  console.log('━'.repeat(60));
+  
+  const results = {
+    passed: 0,
+    failed: 0,
+    criticalFailures: 0,
+    testResults: []
+  };
+  
+  for (const test of testSuite.tests) {
+    const result = await runTest(test, test.critical ? 2 : 0); // Retry critical tests
+    results.testResults.push(result);
+    
+    if (result.success) {
+      results.passed++;
+    } else {
+      results.failed++;
+      if (result.critical) {
+        results.criticalFailures++;
+      }
+    }
+  }
+  
+  console.log(`\n  📊 ${agentName} Results: ${results.passed} passed, ${results.failed} failed`);
+  if (results.criticalFailures > 0) {
+    console.log(`  ⚠️  Critical failures: ${results.criticalFailures}`);
+  }
+  
+  return results;
+};
+
+// Generate comprehensive test report
+const generateTestReport = (allResults) => {
+  console.log('\n' + '='.repeat(80));
+  console.log('📊 COMPREHENSIVE TEST REPORT');
+  console.log('='.repeat(80));
+  
+  let totalPassed = 0;
+  let totalFailed = 0;
+  let totalCriticalFailures = 0;
+  
+  Object.entries(allResults).forEach(([agent, results]) => {
+    console.log(`\n${agent.toUpperCase()}:`);
+    console.log(`  ✅ Passed: ${results.passed}`);
+    console.log(`  ❌ Failed: ${results.failed}`);
+    if (results.criticalFailures > 0) {
+      console.log(`  🚨 Critical Failures: ${results.criticalFailures}`);
+    }
+    
+    totalPassed += results.passed;
+    totalFailed += results.failed;
+    totalCriticalFailures += results.criticalFailures;
+  });
+  
+  console.log('\n' + '-'.repeat(40));
+  console.log(`TOTAL TESTS: ${totalPassed + totalFailed}`);
+  console.log(`✅ PASSED: ${totalPassed}`);
+  console.log(`❌ FAILED: ${totalFailed}`);
+  
+  if (totalCriticalFailures > 0) {
+    console.log(`🚨 CRITICAL FAILURES: ${totalCriticalFailures}`);
+    console.log('\n❌ FEATURE NOT READY FOR PRODUCTION');
+    return false;
+  } else if (totalFailed === 0) {
+    console.log('\n✅ ALL TESTS PASSED - FEATURE READY FOR PRODUCTION');
+    return true;
+  } else {
+    console.log('\n⚠️  FEATURE READY WITH NON-CRITICAL FAILURES');
+    console.log('Consider fixing non-critical issues before final release');
+    return true;
+  }
+};
+
+// Run performance benchmarks
+const runPerformanceBenchmarks = async () => {
+  console.log('\n🚀 Running Performance Benchmarks...');
+  console.log('━'.repeat(60));
+  
+  const benchmarks = [
+    {
+      name: 'API Latency Test',
+      command: 'curl -w "@curl-format.txt" -o /dev/null -s https://api.n0de.pro/api/v1/health',
+      target: '< 50ms'
+    },
+    {
+      name: 'Frontend Performance',
+      command: 'lighthouse https://www.n0de.pro --only-categories=performance --quiet --chrome-flags="--headless"',
+      target: '> 90 score'
+    }
+  ];
+  
+  // Create curl format file for timing
+  fs.writeFileSync('curl-format.txt', 'time_total: %{time_total}\\n');
+  
+  for (const benchmark of benchmarks) {
+    try {
+      console.log(`  Running: ${benchmark.name} (target: ${benchmark.target})`);
+      const result = execSync(benchmark.command, { encoding: 'utf8', timeout: 30000 });
+      console.log(`  ✅ ${benchmark.name} completed`);
+      console.log(`      Result: ${result.trim()}`);
+    } catch (error) {
+      console.log(`  ⚠️  ${benchmark.name} - Could not complete`);
+    }
+  }
+  
+  // Clean up
+  try { fs.unlinkSync('curl-format.txt'); } catch (e) {}
+};
+
+// Check system dependencies and environment
+const checkPrerequisites = () => {
+  console.log('🔍 Checking Prerequisites...');
+  
+  const prerequisites = [
+    { name: 'Node.js', command: 'node --version' },
+    { name: 'NPM', command: 'npm --version' },
+    { name: 'Git', command: 'git --version' },
+    { name: 'Vercel CLI', command: 'vercel --version' },
+  ];
+  
+  let allPrereqsMet = true;
+  
+  prerequisites.forEach(prereq => {
+    try {
+      const version = execSync(prereq.command, { encoding: 'utf8', stdio: 'pipe' });
+      console.log(`  ✅ ${prereq.name}: ${version.trim()}`);
+    } catch (error) {
+      console.log(`  ❌ ${prereq.name}: Not found`);
+      allPrereqsMet = false;
+    }
+  });
+  
+  if (!allPrereqsMet) {
+    console.log('\n⚠️  Some prerequisites are missing. Tests may fail.');
+    return false;
+  }
+  
+  console.log('✅ All prerequisites met');
+  return true;
+};
+
+// Main test orchestration
+async function main() {
+  const startTime = Date.now();
+  
+  // Check prerequisites
+  if (!checkPrerequisites()) {
+    process.exit(1);
+  }
+  
+  console.log('\n🎯 Starting Feature-Complete Testing Suite...');
+  console.log(`📅 Started at: ${new Date().toLocaleString()}`);
+  
+  const allResults = {};
+  let hasFailedTests = false;
+  
+  // Run tests for each agent
+  for (const [agentName, testSuite] of Object.entries(testSuites)) {
+    try {
+      const results = await runAgentTests(agentName, testSuite);
+      allResults[agentName] = results;
+      
+      if (results.criticalFailures > 0) {
+        hasFailedTests = true;
+      }
+    } catch (error) {
+      console.error(`💥 Error testing ${agentName}:`, error.message);
+      allResults[agentName] = { passed: 0, failed: 1, criticalFailures: 1 };
+      hasFailedTests = true;
+    }
+  }
+  
+  // Run performance benchmarks
+  await runPerformanceBenchmarks();
+  
+  // Generate final report
+  const featureReady = generateTestReport(allResults);
+  
+  const duration = Math.round((Date.now() - startTime) / 1000);
+  console.log(`\n⏱️  Total testing time: ${duration} seconds`);
+  
+  // Exit with appropriate code
+  if (featureReady) {
+    console.log('\n🎉 Feature testing completed successfully!');
+    process.exit(0);
+  } else {
+    console.log('\n💥 Feature testing failed. Please address critical issues.');
+    process.exit(1);
+  }
+}
+
+main().catch(error => {
+  console.error('💥 Feature-complete testing error:', error);
+  process.exit(1);
+});

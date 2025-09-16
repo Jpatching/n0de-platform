@@ -1,0 +1,914 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  username          String?   @unique
+  passwordHash      String?
+  firstName         String?
+  lastName          String?
+  name              String?   // Full name field for display
+  avatar            String?
+  emailVerified     Boolean   @default(false)
+  emailVerifiedAt   DateTime?
+  isActive          Boolean   @default(true)
+  isSuspended       Boolean   @default(false)
+  suspendedReason   String?
+  suspendedAt       DateTime?
+  lastLoginAt       DateTime?
+  loginCount        Int       @default(0)
+  githubId          String?   @unique
+  googleId          String?   @unique
+  role              UserRole  @default(USER)
+  status            String?   @default("active") // active, suspended, inactive
+  organizationId    String?   // Reference to organization
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  apiKeys           ApiKey[]
+  supportTickets    SupportTicket[]
+  usageStats        UsageStats[]
+  sessions          UserSession[]
+  auditLogs         AuditLog[]
+  subscriptions     Subscription[]
+  payments          Payment[]
+  paymentHistory    PaymentHistory[]
+  adminActions      AdminAction[]
+  notifications     Notification[]
+  billingUsage      BillingUsage[]
+  realTimeUsage     RealTimeUsage?
+  billingAnalytics  BillingAnalytics[]
+  webhooks          Webhook[]
+  
+  // Team Management Relations
+  organization      Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  organizationRole  OrganizationRole?
+  sentInvitations   TeamInvitation[] @relation("InvitedBy")
+  teamAuditLogs     TeamAuditLog[]
+  verificationTokens VerificationToken[]
+  
+  // Collaboration Relations
+  createdSessions   CollaborativeSession[] @relation("SessionCreator")
+  ownedResources    SharedResource[]       @relation("ResourceOwner")
+  ownedWorkspaces   Workspace[]           @relation("WorkspaceOwner")
+  workspaceAccess   WorkspaceAccess[]     @relation("WorkspaceUser")
+  grantedAccess     WorkspaceAccess[]     @relation("WorkspaceGranter")
+  teamMemberships   TeamMember[]          @relation("UserTeams")
+  
+  @@map("users")
+}
+
+model ApiKey {
+  id            String      @id @default(cuid())
+  userId        String
+  name          String
+  keyHash       String      @unique // Hashed API key
+  keyPreview    String      // First 8 chars for display
+  permissions   String[]    // Array of permissions
+  rateLimit     Int         @default(1000) // Requests per minute
+  isActive      Boolean     @default(true)
+  lastUsedAt    DateTime?
+  totalRequests Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  expiresAt     DateTime?
+
+  // Relations
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usageStats    UsageStats[]
+  auditLogs     AuditLog[]
+
+  @@map("api_keys")
+}
+
+model UsageStats {
+  id              String    @id @default(cuid())
+  userId          String
+  apiKeyId        String?
+  date            DateTime  @default(now()) @db.Date
+  hour            Int       // 0-23 for hourly tracking
+  requestCount    Int       @default(0)
+  successCount    Int       @default(0)
+  errorCount      Int       @default(0)
+  avgLatency      Float     @default(0)
+  totalLatency    Float     @default(0)
+  bytesTransferred BigInt   @default(0)
+  uniqueIPs       Int       @default(0)
+  region          String?   // frankfurt, amsterdam, north-america
+  endpoint        String?   // RPC method called
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  apiKey          ApiKey?   @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, apiKeyId, date, hour, region, endpoint])
+  @@map("usage_stats")
+}
+
+model SupportTicket {
+  id              String              @id @default(cuid())
+  userId          String
+  title           String
+  description     String
+  status          SupportTicketStatus @default(OPEN)
+  priority        TicketPriority      @default(MEDIUM)
+  category        TicketCategory      @default(GENERAL)
+  assignedToEmail String?
+  assignedToName  String?
+  tags            String[]
+  satisfaction    Int?                // 1-5 rating
+  resolvedAt      DateTime?
+  closedAt        DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  // Relations
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages        SupportMessage[]
+  attachments     SupportAttachment[]
+
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id          String        @id @default(cuid())
+  ticketId    String
+  senderId    String?       // null for agent messages
+  senderType  SenderType    @default(USER)
+  senderName  String?
+  senderEmail String?
+  content     String
+  messageType MessageType   @default(TEXT)
+  isInternal  Boolean       @default(false) // Internal agent notes
+  readAt      DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  attachments SupportAttachment[]
+
+  @@map("support_messages")
+}
+
+model SupportAttachment {
+  id          String          @id @default(cuid())
+  ticketId    String?
+  messageId   String?
+  fileName    String
+  originalName String
+  mimeType    String
+  fileSize    Int
+  fileUrl     String
+  uploadedBy  String?
+  createdAt   DateTime        @default(now())
+
+  // Relations
+  ticket      SupportTicket?  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  message     SupportMessage? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@map("support_attachments")
+}
+
+model UserSession {
+  id            String    @id @default(cuid())
+  userId        String
+  sessionId     String    @unique
+  refreshToken  String?   @unique
+  ipAddress     String?
+  userAgent     String?
+  isActive      Boolean   @default(true)
+  expiresAt     DateTime
+  lastActivityAt DateTime @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  userId      String?
+  apiKeyId    String?
+  action      String    // CREATE, UPDATE, DELETE, LOGIN, etc.
+  resource    String    // USER, API_KEY, SUPPORT_TICKET, etc.
+  resourceId  String?
+  oldValues   Json?
+  newValues   Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  apiKey      ApiKey?   @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+}
+
+model SystemMetrics {
+  id              String    @id @default(cuid())
+  metricType      String    // latency, uptime, throughput, error_rate
+  region          String?   // frankfurt, amsterdam, north-america
+  value           Float
+  unit            String    // ms, percent, rps
+  timestamp       DateTime  @default(now())
+  metadata        Json?
+
+  @@map("system_metrics")
+}
+
+model Subscription {
+  id                    String            @id @default(cuid())
+  userId                String            @unique
+  planName              String
+  planType              SubscriptionType  @default(FREE)
+  status                SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart    DateTime
+  currentPeriodEnd      DateTime
+  cancelAt              DateTime?
+  canceledAt            DateTime?
+  cancelAtPeriodEnd     Boolean           @default(false)
+  trialStart            DateTime?
+  trialEnd              DateTime?
+  stripeSubscriptionId  String?           @unique
+  stripeCustomerId      String?
+  metadata              Json?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  // Relations
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments        Payment[]
+  billingUsage    BillingUsage[]
+
+  @@map("subscriptions")
+}
+
+model RpcNode {
+  id          String      @id @default(cuid())
+  name        String
+  region      String      // frankfurt, amsterdam, north-america
+  endpoint    String      @unique
+  network     String      // mainnet, devnet, testnet
+  isActive    Boolean     @default(true)
+  priority    Int         @default(0) // Higher priority = preferred routing
+  maxRps      Int         @default(1000)
+  currentRps  Int         @default(0)
+  avgLatency  Float       @default(0)
+  uptime      Float       @default(100)
+  lastCheck   DateTime    @default(now())
+  metadata    Json?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("rpc_nodes")
+}
+
+model Payment {
+  id              String            @id @default(cuid())
+  userId          String
+  subscriptionId  String?
+  provider        PaymentProvider
+  providerPaymentId String?         // External payment ID from provider
+  amount          Float
+  currency        String            @default("USD")
+  status          PaymentStatus     @default(PENDING)
+  planType        SubscriptionType?
+  chargeUrl       String?           // For Coinbase Commerce
+  paymentUrl      String?           // For NOWPayments
+  expiresAt       DateTime?
+  paidAt          DateTime?
+  failedAt        DateTime?
+  canceledAt      DateTime?
+  metadata        Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription    Subscription?     @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  webhookEvents   WebhookEvent[]
+  paymentHistory  PaymentHistory[]
+
+  @@map("payments")
+}
+
+model PaymentHistory {
+  id                String            @id @default(cuid())
+  userId            String?           // Temporarily optional for migration
+  paymentId         String?
+  stripeInvoiceId   String?           @unique
+  amount            Int?              // Temporarily optional for migration
+  currency          String            @default("usd")
+  status            PaymentStatus
+  failureReason     String?
+  description       String?
+  paidAt            DateTime?
+  createdAt         DateTime          @default(now())
+
+  // Relations
+  user              User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment           Payment?          @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@map("payment_history")
+}
+
+model WebhookEvent {
+  id              String            @id @default(cuid())
+  paymentId       String?
+  provider        PaymentProvider
+  eventType       String
+  eventId         String?           @unique // Provider's event ID to prevent duplicates
+  payload         Json
+  processed       Boolean           @default(false)
+  processedAt     DateTime?
+  errorMessage    String?
+  retryCount      Int               @default(0)
+  createdAt       DateTime          @default(now())
+
+  // Relations
+  payment         Payment?          @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@map("webhook_events")
+}
+
+model WebhookLog {
+  id              String            @id @default(cuid())
+  stripeEventId   String            @unique
+  eventType       String
+  processed       Boolean           @default(false)
+  processedAt     DateTime?
+  payload         Json
+  errorMessage    String?
+  createdAt       DateTime          @default(now())
+
+  @@map("webhook_logs")
+}
+
+model AdminAction {
+  id              String            @id @default(cuid())
+  adminUserId     String
+  targetUserId    String?
+  action          String            // UPDATE_SUBSCRIPTION, SUSPEND_USER, etc.
+  resource        String            // USER, SUBSCRIPTION, SUPPORT_TICKET, etc.
+  resourceId      String?
+  details         Json?
+  ipAddress       String?
+  userAgent       String?
+  createdAt       DateTime          @default(now())
+
+  // Relations
+  adminUser       User              @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@map("admin_actions")
+}
+
+// Add role field to User for admin management
+// We need to alter the User model to include role
+// This will be done via migration
+
+// Enums
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketCategory {
+  TECHNICAL
+  BILLING
+  GENERAL
+  FEATURE_REQUEST
+  BUG_REPORT
+}
+
+enum SenderType {
+  USER
+  AGENT
+  SYSTEM
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  SYSTEM
+}
+
+enum SubscriptionType {
+  FREE
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum TokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+  MAGIC_LINK
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  UNPAID
+  TRIALING
+  EXPIRED
+}
+
+enum PaymentProvider {
+  COINBASE_COMMERCE
+  NOWPAYMENTS
+  STRIPE
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELED
+  EXPIRED
+  REFUNDED
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  MEMBER  
+  DEVELOPER
+  VIEWER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  CANCELED
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String
+  priority    String
+  title       String
+  message     String
+  data        String?
+  actionUrl   String?
+  actionLabel String?
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model BillingUsage {
+  id              String    @id @default(cuid())
+  userId          String
+  subscriptionId  String?
+  periodStart     DateTime
+  periodEnd       DateTime
+  requestsUsed    Int       @default(0)
+  computeUnits    Int       @default(0)
+  overageRequests Int       @default(0)
+  overageCost     Float     @default(0)
+  totalCost       Float     @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription    Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, periodStart, periodEnd])
+  @@map("billing_usage")
+}
+
+model RealTimeUsage {
+  id              String    @id @default(cuid())
+  userId          String
+  requestsUsed    Int       @default(0)
+  computeUnits    Int       @default(0)
+  rateLimit       Int       @default(0)
+  rateLimitUsed   Int       @default(0)
+  resetTime       DateTime?
+  lastUpdated     DateTime  @default(now())
+
+  // Relations  
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId])
+  @@map("real_time_usage")
+}
+
+model BillingAnalytics {
+  id                String    @id @default(cuid())
+  userId            String
+  date              DateTime  @db.Date
+  requestCount      Int       @default(0)
+  computeUnits      Int       @default(0)
+  cost              Float     @default(0)
+  network           String?
+  endpoint          String?
+  latency           Float     @default(0)
+  success           Boolean   @default(true)
+  metadata          Json?
+  createdAt         DateTime  @default(now())
+
+  // Relations
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, endpoint, network])
+  @@map("billing_analytics")
+}
+
+// Team Management Models
+model Organization {
+  id              String               @id @default(cuid())
+  name            String
+  description     String?
+  avatar          String?
+  settings        Json?                // Organization preferences, branding, etc.
+  planType        SubscriptionType     @default(FREE)
+  isActive        Boolean              @default(true)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  // Relations
+  users           User[]
+  organizationRoles OrganizationRole[]
+  teamInvitations TeamInvitation[]
+  teamAuditLogs   TeamAuditLog[]
+  workspaces      Workspace[]
+  teamMembers     TeamMember[]      @relation("TeamMembers")
+
+  @@map("organizations")
+}
+
+model OrganizationRole {
+  id              String       @id @default(cuid())
+  userId          String       @unique
+  organizationId  String
+  role            TeamRole     @default(DEVELOPER)
+  permissions     String[]     // Specific permissions array
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relations
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@map("organization_roles")
+}
+
+model TeamInvitation {
+  id              String             @id @default(cuid())
+  email           String
+  role            TeamRole           @default(DEVELOPER)
+  organizationId  String
+  invitedById     String
+  token           String             @unique @default(cuid())
+  status          InvitationStatus   @default(PENDING)
+  message         String?            // Optional invitation message
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  declinedAt      DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  // Relations
+  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy       User               @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([email, organizationId])
+  @@index([token])
+  @@index([status, expiresAt])
+  @@map("team_invitations")
+}
+
+model TeamAuditLog {
+  id              String       @id @default(cuid())
+  organizationId  String
+  userId          String?      // Who performed the action
+  action          String       // INVITE_USER, REMOVE_USER, UPDATE_ROLE, etc.
+  targetUserId    String?      // User being acted upon
+  targetEmail     String?      // Email being acted upon (for invitations)
+  details         Json?        // Additional action details
+  ipAddress       String?
+  userAgent       String?
+  metadata        Json?
+  createdAt       DateTime     @default(now())
+
+  // Relations
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([userId, action])
+  @@map("team_audit_logs")
+}
+
+model VerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique @default(cuid())
+  type      TokenType @default(EMAIL_VERIFICATION)
+  email     String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId, type])
+  @@index([expiresAt])
+  @@map("verification_tokens")
+}
+
+// Collaboration System Models
+model CollaborativeSession {
+  id              String    @id @default(cuid())
+  name            String
+  description     String?
+  createdById     String
+  participants    String[]  // Array of user IDs
+  isActive        Boolean   @default(true)
+  maxParticipants Int       @default(10)
+  sessionCode     String    @unique @default(cuid())
+  expiresAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  createdBy       User      @relation("SessionCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  activities      SessionActivity[]
+  messages        CollaborationMessage[]
+  codeEdits       CodeEdit[]
+
+  @@index([sessionCode])
+  @@index([isActive, expiresAt])
+  @@map("collaborative_sessions")
+}
+
+model SessionActivity {
+  id              String              @id @default(cuid())
+  sessionId       String
+  userId          String
+  activityType    String              // JOIN, LEAVE, CODE_EDIT, MESSAGE, etc.
+  metadata        Json?
+  createdAt       DateTime            @default(now())
+
+  // Relations
+  session         CollaborativeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("session_activity")
+}
+
+model CollaborationMessage {
+  id              String              @id @default(cuid())
+  sessionId       String
+  userId          String
+  content         String
+  messageType     String              @default("text") // text, system, code, file
+  metadata        Json?
+  createdAt       DateTime            @default(now())
+
+  // Relations
+  session         CollaborativeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("collaboration_messages")
+}
+
+model CodeEdit {
+  id              String              @id @default(cuid())
+  sessionId       String
+  userId          String
+  fileName        String?
+  operation       String              // INSERT, DELETE, UPDATE
+  startLine       Int
+  endLine         Int
+  content         String?
+  metadata        Json?
+  createdAt       DateTime            @default(now())
+
+  // Relations
+  session         CollaborativeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("code_edits")
+}
+
+model SharedResource {
+  id              String    @id @default(cuid())
+  ownerId         String
+  resourceType    String    // API_KEY, WORKSPACE, USAGE_DATA
+  resourceId      String
+  shareId         String    @unique @default(cuid())
+  accessLevel     String    // READ, READ_WRITE, ADMIN
+  isActive        Boolean   @default(true)
+  expiresAt       DateTime?
+  allowedEmails   String[]  // Specific emails that can access
+  isPublic        Boolean   @default(false)
+  accessCount     Int       @default(0)
+  lastAccessedAt  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  owner           User      @relation("ResourceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  accessLogs      ResourceAccessLog[]
+
+  @@index([shareId])
+  @@index([resourceType, resourceId])
+  @@index([isActive, expiresAt])
+  @@map("shared_resources")
+}
+
+model ResourceAccessLog {
+  id              String          @id @default(cuid())
+  sharedResourceId String
+  accessorEmail   String?
+  accessorIp      String?
+  userAgent       String?
+  action          String          // VIEW, DOWNLOAD, COPY
+  metadata        Json?
+  createdAt       DateTime        @default(now())
+
+  // Relations
+  sharedResource  SharedResource  @relation(fields: [sharedResourceId], references: [id], onDelete: Cascade)
+
+  @@index([sharedResourceId, createdAt])
+  @@map("resource_access_logs")
+}
+
+model CollaborationActivity {
+  id              String    @id @default(cuid())
+  userId          String
+  activityType    String    // SHARE_RESOURCE, JOIN_SESSION, INVITE_USER
+  resourceType    String?
+  resourceId      String?
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([activityType, createdAt])
+  @@map("collaboration_activity")
+}
+
+// Workspace and Team Models
+model Workspace {
+  id              String            @id @default(cuid())
+  name            String
+  description     String?
+  ownerId         String
+  organizationId  String?
+  settings        Json?             // Workspace preferences
+  isShared        Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  owner           User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  organization    Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  access          WorkspaceAccess[]
+
+  @@index([ownerId])
+  @@index([organizationId])
+  @@map("workspaces")
+}
+
+model WorkspaceAccess {
+  id              String      @id @default(cuid())
+  workspaceId     String
+  userId          String
+  accessLevel     String      // READ, READ_WRITE, ADMIN
+  grantedById     String
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relations
+  workspace       Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user            User        @relation("WorkspaceUser", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy       User        @relation("WorkspaceGranter", fields: [grantedById], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId, isActive])
+  @@map("workspace_access")
+}
+
+model TeamMember {
+  id              String      @id @default(cuid())
+  organizationId  String
+  userId          String
+  role            TeamRole    @default(DEVELOPER)
+  permissions     String[]
+  isActive        Boolean     @default(true)
+  joinedAt        DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relations
+  organization    Organization @relation("TeamMembers", fields: [organizationId], references: [id], onDelete: Cascade)
+  user            User        @relation("UserTeams", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId, isActive])
+  @@map("team_members")
+}
+
+// User Webhook Management Models
+model Webhook {
+  id              String    @id @default(cuid())
+  userId          String
+  url             String
+  events          String[]  // Array of event names to subscribe to
+  secret          String    // Secret for webhook verification
+  isActive        Boolean   @default(true)
+  lastTriggered   DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveries      WebhookDelivery[]
+
+  @@index([userId, isActive])
+  @@map("webhooks")
+}
+
+model WebhookDelivery {
+  id              String              @id @default(cuid())
+  webhookId       String
+  event           String              // The event that triggered this delivery
+  payload         Json                // The payload sent to the webhook
+  status          WebhookDeliveryStatus @default(PENDING)
+  attempts        Int                 @default(0)
+  lastAttemptAt   DateTime?
+  nextAttemptAt   DateTime?
+  response        Json?               // Response from the webhook endpoint
+  errorMessage    String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  // Relations
+  webhook         Webhook             @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId, status])
+  @@index([status, nextAttemptAt])
+  @@map("webhook_deliveries")
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  RETRYING
+}
