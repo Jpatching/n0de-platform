@@ -103,7 +103,7 @@ async function processSuccessfulPayment(ipnData: NOWPaymentsIPN) {
 
 export async function POST(request: NextRequest) {
   try {
-    const headersList = headers();
+    const headersList = await headers();
     const signature = headersList.get('x-nowpayments-sig');
     
     if (!signature) {

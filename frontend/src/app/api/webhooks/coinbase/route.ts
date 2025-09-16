@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
   try {
     // Get raw body for signature verification
     const rawBody = await request.text();
-    const headersList = headers();
+    const headersList = await headers();
     const signature = headersList.get('x-cc-webhook-signature');
 
     if (!signature) {

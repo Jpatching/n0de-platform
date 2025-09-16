@@ -4,12 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { io } from "socket.io-client";
 import { ApiConfig } from "@/lib/api-config";
-import {
-  CheckCircle,
-  AlertCircle,
-  Clock,
-  TrendingUp,
-} from "lucide-react";
+import { CheckCircle, AlertCircle, Clock, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface SubscriptionData {
@@ -67,12 +62,71 @@ export default function BillingStatusWidget() {
   const [error, setError] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
 
+  // Define callbacks first
+  const showSuccessNotification = useCallback((message: string) => {
+    // You can integrate with your notification system here
+    console.log("Success:", message);
+  }, []);
+
+  const formatUsagePercentage = useCallback((used: number, limit: number) => {
+    if (limit === 0) return 0;
+    return Math.min(100, (used / limit) * 100);
+  }, []);
+
+  const startPolling = useCallback(
+    (interval: number) => {
+      setIsPolling(true);
+
+      const pollTimer = setInterval(async () => {
+        try {
+          // FIXED: Use centralized API configuration
+          const endpoint = ApiConfig.isDevelopment()
+            ? `/api/billing/subscription/${user?.id}` // Proxied through Next.js
+            : ApiConfig.buildApiUrl(`billing/subscription/${user?.id}`);
+          const response = await fetch(endpoint, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setSubscriptionData(data.subscription);
+            setLastUpdate(new Date());
+
+            if (data.paymentCompleted) {
+              showSuccessNotification("Payment completed successfully!");
+              setPaymentStatus(null);
+              setIsPolling(false);
+              clearInterval(pollTimer);
+            }
+          }
+        } catch (error) {
+          console.error("Error polling subscription:", error);
+        }
+      }, interval);
+
+      // Stop polling after 10 minutes to prevent infinite loops
+      setTimeout(() => {
+        clearInterval(pollTimer);
+        setIsPolling(false);
+      }, 600000);
+    },
+    [
+      user,
+      token,
+      setSubscriptionData,
+      setLastUpdate,
+      paymentStatus,
+      setIsPolling,
+      showSuccessNotification,
+    ],
+  );
+
   // Initialize WebSocket connection
   useEffect(() => {
     if (!user || !token) return;
 
     // FIXED: Use centralized API configuration instead of URL manipulation hack
-    const socketInstance = io(ApiConfig.buildWebSocketUrl('billing-sync'), {
+    const socketInstance = io(ApiConfig.buildWebSocketUrl("billing-sync"), {
       transports: ["websocket", "polling"],
       upgrade: true,
       rememberUpgrade: true,
@@ -120,7 +174,6 @@ export default function BillingStatusWidget() {
       console.log("Disconnected from billing sync service");
     });
 
-
     return () => {
       socketInstance.disconnect();
     };
@@ -129,82 +182,13 @@ export default function BillingStatusWidget() {
   // Check for pending payments and start polling if needed
   useEffect(() => {
     if (!user || !subscriptionData) return;
-
-    checkPaymentStatus();
-  }, [user, subscriptionData, checkPaymentStatus]);
-
-  const checkPaymentStatus = useCallback(async () => {
-    try {
-      // FIXED: Use centralized API configuration
-      const endpoint = ApiConfig.isDevelopment()
-        ? `/api/billing/payment-status/${user?.id}`  // Proxied through Next.js
-        : ApiConfig.buildApiUrl(`billing/payment-status/${user?.id}`);
-      const response = await fetch(endpoint, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (response.ok) {
-        const status: PaymentStatus = await response.json();
-        setPaymentStatus(status);
-
-        if (status.shouldPoll && !isPolling) {
-          startPolling(status.pollInterval);
-        }
-      }
-    } catch (error) {
-      console.error("Error checking payment status:", error);
+    
+    // Check if subscription needs polling (incomplete or past due status)
+    if (subscriptionData.subscription.status === 'INCOMPLETE' || 
+        subscriptionData.subscription.status === 'PAST_DUE') {
+      startPolling(5000); // Poll every 5 seconds for payment updates
     }
-  }, [user, token, setPaymentStatus, isPolling, startPolling]);
-
-  const startPolling = useCallback((interval: number) => {
-    setIsPolling(true);
-
-    const pollTimer = setInterval(async () => {
-      try {
-        // FIXED: Use centralized API configuration
-        const endpoint = ApiConfig.isDevelopment()
-          ? `/api/billing/subscription/${user?.id}`  // Proxied through Next.js
-          : ApiConfig.buildApiUrl(`billing/subscription/${user?.id}`);
-        const response = await fetch(endpoint, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (response.ok) {
-          const data: SubscriptionData = await response.json();
-          setSubscriptionData(data);
-          setLastUpdate(new Date());
-
-          // Stop polling if subscription is active
-          if (
-            data.subscription.status === "ACTIVE" &&
-            paymentStatus?.hasPending
-          ) {
-            clearInterval(pollTimer);
-            setIsPolling(false);
-            showSuccessNotification("Subscription activated!");
-          }
-        }
-      } catch (error) {
-        console.error("Polling error:", error);
-      }
-    }, interval);
-
-    // Stop polling after 10 minutes max
-    setTimeout(() => {
-      clearInterval(pollTimer);
-      setIsPolling(false);
-    }, 600000);
-  }, [user, token, setSubscriptionData, setLastUpdate, paymentStatus, setIsPolling, showSuccessNotification]);
-
-  const showSuccessNotification = useCallback((message: string) => {
-    // You can integrate with your notification system here
-    console.log("Success:", message);
-  }, []);
-
-  const formatUsagePercentage = useCallback((used: number, limit: number) => {
-    if (limit === 0) return 0;
-    return Math.min(100, (used / limit) * 100);
-  }, []);
+  }, [user, subscriptionData, startPolling]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

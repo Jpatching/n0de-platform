@@ -49,19 +49,19 @@ export default function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isLoading && (!user || user.role === 'USER')) {
+    if (!isLoading && (!user || user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
       router.push('/dashboard');
       return;
     }
 
-    if (user) {
+    if (user && (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN')) {
       fetchDashboardStats();
     }
-  }, [user, isLoading, router, fetchDashboardStats]);
+  }, [user, isLoading, router]);
 
   const fetchDashboardStats = useCallback(async () => {
     try {
-      const data = await api.get('/admin/dashboard');
+      const data = await api.get('/admin/dashboard') as DashboardStats;
       setStats(data);
     } catch (error) {
       console.error('Failed to fetch dashboard stats:', error);

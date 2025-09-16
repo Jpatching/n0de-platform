@@ -7,7 +7,7 @@ function getStripe() {
     throw new Error('STRIPE_SECRET_KEY environment variable is not configured');
   }
   return new Stripe(secretKey, {
-    apiVersion: '2024-11-20.acacia', // Use stable API version
+    apiVersion: '2025-08-27.basil', // Use stable API version
   });
 }
 
@@ -180,7 +180,7 @@ export async function POST(request: NextRequest) {
     
     // Return detailed error information for debugging
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const stripeError = error as Stripe.StripeError;
+    const stripeError = error as Stripe.StripeRawError;
     
     return NextResponse.json(
       { 
