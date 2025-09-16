@@ -453,6 +453,16 @@ const SubscriptionManagementPage = () => {
   });
   console.log("PLANS:", JSON.stringify(plans, null, 2));
 
+  // Validate plans data to prevent object rendering issues
+  const validPlans = (plans || []).map((plan) => ({
+    ...plan,
+    features: Array.isArray(plan.features)
+      ? plan.features.map((f) =>
+          typeof f === "string" ? f : String(f || "Feature"),
+        )
+      : [],
+  }));
+
   return (
     <ProtectedRoute>
       <ErrorBoundary>
@@ -761,7 +771,7 @@ const SubscriptionManagementPage = () => {
                     </div>
 
                     <div className="grid lg:grid-cols-3 gap-6">
-                      {(plans || []).map((plan) => {
+                      {(validPlans || []).map((plan) => {
                         const IconComponent = getPlanIcon(plan.name);
                         const isCurrentPlan = subscription?.plan === plan.name;
 
@@ -797,14 +807,17 @@ const SubscriptionManagementPage = () => {
                                   <IconComponent className="w-8 h-8 text-N0DE-cyan" />
                                 </div>
                                 <CardTitle className="text-2xl text-text-primary">
-                                  {plan.name}
+                                  {String(plan.name || "Plan")}
                                 </CardTitle>
                                 <div className="mt-4">
                                   <span className="text-4xl font-bold text-text-primary">
-                                    {safeCurrency(plan.price, plan.currency)}
+                                    {safeCurrency(
+                                      plan.price || 0,
+                                      plan.currency || "USD",
+                                    )}
                                   </span>
                                   <span className="text-text-secondary ml-1">
-                                    /{plan.interval}
+                                    /{String(plan.interval || "month")}
                                   </span>
                                 </div>
                               </CardHeader>
@@ -822,7 +835,9 @@ const SubscriptionManagementPage = () => {
                                       <span className="text-text-primary font-medium">
                                         {plan.limits.requests === -1
                                           ? "Unlimited"
-                                          : plan.limits.requests.toLocaleString()}
+                                          : String(
+                                              plan.limits.requests || 0,
+                                            ).toLocaleString()}
                                       </span>
                                     </div>
                                     <div className="flex justify-between">
@@ -832,7 +847,7 @@ const SubscriptionManagementPage = () => {
                                       <span className="text-text-primary font-medium">
                                         {plan.limits.apiKeys === -1
                                           ? "Unlimited"
-                                          : plan.limits.apiKeys}
+                                          : String(plan.limits.apiKeys || 0)}
                                       </span>
                                     </div>
                                     <div className="flex justify-between">
@@ -840,7 +855,9 @@ const SubscriptionManagementPage = () => {
                                         Rate Limit
                                       </span>
                                       <span className="text-text-primary font-medium">
-                                        {plan.limits.rateLimit.toLocaleString()}{" "}
+                                        {String(
+                                          plan.limits.rateLimit || 0,
+                                        ).toLocaleString()}{" "}
                                         req/s
                                       </span>
                                     </div>
@@ -853,19 +870,25 @@ const SubscriptionManagementPage = () => {
                                   </div>
                                   <ul className="space-y-2">
                                     {(plan.features || []).map(
-                                      (feature, index) => (
-                                        <li
-                                          key={index}
-                                          className="flex items-start gap-2 text-sm text-text-secondary"
-                                        >
-                                          <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                                          <span>
-                                            {typeof feature === "string"
-                                              ? feature
-                                              : JSON.stringify(feature)}
-                                          </span>
-                                        </li>
-                                      ),
+                                      (feature, index) => {
+                                        // Handle different feature formats safely
+                                        let featureText = "";
+                                        if (typeof feature === "string") {
+                                          featureText = feature;
+                                        } else {
+                                          featureText = "Feature included";
+                                        }
+
+                                        return (
+                                          <li
+                                            key={index}
+                                            className="flex items-start gap-2 text-sm text-text-secondary"
+                                          >
+                                            <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                                            <span>{featureText}</span>
+                                          </li>
+                                        );
+                                      },
                                     )}
                                   </ul>
                                 </div>

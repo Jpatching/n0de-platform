@@ -13,6 +13,7 @@ import { PrismaService } from "../common/prisma.service";
 import { LoggerService } from "../common/logger.service";
 import { RedisService } from "../common/redis.service";
 import { EmailService } from "../email/email.service";
+import { BillingSyncService } from "../billing/billing-sync.service";
 import { RegisterDto, LoginDto } from "./dto/auth.dto";
 
 @Injectable()
@@ -26,6 +27,7 @@ export class AuthService {
     private logger: LoggerService,
     private redis: RedisService,
     private emailService: EmailService,
+    private billingSyncService: BillingSyncService,
   ) {
     this.bcryptRounds = parseInt(this.configService.get("BCRYPT_ROUNDS")) || 12;
   }
@@ -71,6 +73,21 @@ export class AuthService {
         avatar: true,
         emailVerified: true,
         createdAt: true,
+      },
+    });
+
+    // Initialize billing data for new user
+    await this.billingSyncService.initializeUsageTracking(user.id);
+
+    // Create free tier subscription
+    await this.prisma.subscription.create({
+      data: {
+        userId: user.id,
+        planName: "Free",
+        planType: "FREE",
+        status: "ACTIVE",
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
       },
     });
 
@@ -707,6 +724,21 @@ export class AuthService {
           isActive: true,
           isSuspended: true,
           createdAt: true,
+        },
+      });
+
+      // Initialize billing data for new OAuth user
+      await this.billingSyncService.initializeUsageTracking(user.id);
+
+      // Create free tier subscription
+      await this.prisma.subscription.create({
+        data: {
+          userId: user.id,
+          planName: "Free",
+          planType: "FREE",
+          status: "ACTIVE",
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
         },
       });
 

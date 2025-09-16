@@ -14,12 +14,14 @@ import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 import { LocalAuthGuard } from "./guards/local-auth.guard";
 import { CommonModule } from "../common/common.module";
 import { EmailModule } from "../email/email.module";
+import { BillingModule } from "../billing/billing.module";
 
 @Module({
   imports: [
     ConfigModule,
     CommonModule,
     EmailModule,
+    BillingModule,
     PassportModule.register({ defaultStrategy: "jwt" }),
     ThrottlerModule.forRoot([
       {

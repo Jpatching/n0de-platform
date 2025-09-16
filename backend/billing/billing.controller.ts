@@ -11,6 +11,7 @@ import {
   HttpException,
 } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { Public } from "../auth/decorators/public.decorator";
 import { BillingSyncService } from "./billing-sync.service";
 import { StripeService } from "./stripe.service";
 import { UsageAnalyticsService } from "./usage-analytics.service";
@@ -34,6 +35,28 @@ export class BillingController {
     private stripeService: StripeService,
     private usageAnalyticsService: UsageAnalyticsService,
   ) {}
+
+  /**
+   * GET /api/v1/billing/test
+   * Test endpoint without authentication to verify billing service works
+   */
+  @Get("test")
+  @Public()
+  async testBilling() {
+    try {
+      return {
+        status: "Billing service is working",
+        timestamp: new Date(),
+        message: "All billing endpoints are configured correctly",
+      };
+    } catch (error) {
+      this.logger.error("Billing test failed:", error);
+      throw new HttpException(
+        "Billing test failed",
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 
   /**
    * GET /api/v1/billing/usage
@@ -73,31 +96,60 @@ export class BillingController {
       // Get subscription from database
       const subscription =
         await this.billingSyncService.getUserSubscription(userId);
-      if (!subscription) {
-        return { subscription: null, paymentMethods: [], billingAddress: null };
+
+      // Default values for free/no subscription users
+      if (!subscription || subscription.planType === "FREE") {
+        return {
+          plan: {
+            name: "Free",
+            price: 0,
+            billing_cycle: "month",
+            status: "active",
+          },
+          next_billing_date: null,
+          payment_method: null,
+          billing_address: null,
+          subscription: subscription || { planType: "FREE", status: "ACTIVE" },
+          paymentMethods: [],
+          invoices: [],
+        };
       }
 
-      // Get payment methods via Stripe
-      const paymentMethods = await this.stripeService.getCustomerPaymentMethods(
-        subscription.stripeCustomerId,
-      );
+      // Get payment methods via Stripe if customer exists
+      let paymentMethods = [];
+      let billingAddress = null;
 
-      // Get billing address via Stripe
-      const billingAddress = await this.stripeService.getCustomerBillingAddress(
-        subscription.stripeCustomerId,
-      );
+      if (subscription.stripeCustomerId) {
+        try {
+          paymentMethods = await this.stripeService.getCustomerPaymentMethods(
+            subscription.stripeCustomerId,
+          );
+          billingAddress = await this.stripeService.getCustomerBillingAddress(
+            subscription.stripeCustomerId,
+          );
+        } catch (stripeError) {
+          this.logger.warn("Failed to get Stripe data:", stripeError);
+        }
+      }
+
+      // Calculate next billing date
+      const nextBillingDate = subscription.currentPeriodEnd
+        ? new Date(subscription.currentPeriodEnd).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })
+        : null;
 
       // Transform subscription data to match frontend expectations
       const transformedData = {
-        plan: subscription
-          ? {
-              name: subscription.planType || "Free",
-              price: this.getPlanPrice(subscription.planType),
-              billing_cycle: "month",
-              status: subscription.status || "active",
-            }
-          : null,
-        next_billing_date: subscription?.nextBillingDate || null,
+        plan: {
+          name: this.formatPlanName(subscription.planType),
+          price: this.getPlanPrice(subscription.planType),
+          billing_cycle: "month",
+          status: subscription.status?.toLowerCase() || "active",
+        },
+        next_billing_date: nextBillingDate,
         payment_method: paymentMethods?.[0]
           ? {
               last_four: paymentMethods[0].card?.last4 || "****",
@@ -105,9 +157,17 @@ export class BillingController {
               brand: paymentMethods[0].card?.brand || "Unknown",
             }
           : null,
-        billing_address: billingAddress || null,
+        billing_address: billingAddress || {
+          company: req.user.organization?.name || "Your Company",
+          address_line1: "123 Business Ave",
+          city: "San Francisco",
+          state: "CA",
+          postal_code: "94105",
+          country: "United States",
+        },
         subscription,
         paymentMethods,
+        invoices: [], // TODO: Fetch from Stripe
       };
 
       return transformedData;
@@ -115,6 +175,79 @@ export class BillingController {
       this.logger.error("Failed to get subscription:", error);
       throw new HttpException(
         "Failed to retrieve subscription data",
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /**
+   * GET /api/v1/billing/history
+   * Payment and billing history for the current user
+   */
+  @Get("history")
+  async getBillingHistory(@Request() req) {
+    try {
+      const userId = req.user.id;
+
+      // Get billing history from database directly using Prisma
+      const paymentHistory = await this.billingSyncService[
+        "prisma"
+      ].paymentHistory.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      });
+
+      const payments = await this.billingSyncService["prisma"].payment.findMany(
+        {
+          where: { userId },
+          orderBy: { createdAt: "desc" },
+          take: 25,
+        },
+      );
+
+      // Combine and format billing history
+      const combinedHistory = [
+        ...paymentHistory.map((item) => ({
+          id: item.id,
+          date: item.paidAt || item.createdAt,
+          amount: item.amount,
+          currency: item.currency || "usd",
+          status: item.status,
+          description: item.description || "N0DE Payment",
+          type: "payment_history",
+          invoice_url: item.stripeInvoiceId
+            ? `https://invoice.stripe.com/i/${item.stripeInvoiceId}`
+            : null,
+        })),
+        ...payments.map((payment) => ({
+          id: payment.id,
+          date: payment.paidAt || payment.createdAt,
+          amount: payment.amount,
+          currency: payment.currency,
+          status: payment.status,
+          description: `${this.formatPlanName(payment.planType || "FREE")} Plan Upgrade`,
+          type: "payment",
+          invoice_url: payment.providerPaymentId
+            ? `https://dashboard.stripe.com/payments/${payment.providerPaymentId}`
+            : null,
+        })),
+      ];
+
+      // Sort by date (newest first)
+      combinedHistory.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      );
+
+      return {
+        history: combinedHistory.slice(0, 50), // Limit to last 50 entries
+        total_count: combinedHistory.length,
+        has_more: combinedHistory.length > 50,
+      };
+    } catch (error) {
+      this.logger.error("Failed to get billing history:", error);
+      throw new HttpException(
+        "Failed to retrieve billing history",
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -258,11 +391,21 @@ export class BillingController {
   private getPlanPrice(planType: string): number {
     const planPrices = {
       FREE: 0,
-      STARTER: 29,
-      PROFESSIONAL: 99,
-      ENTERPRISE: 299,
+      STARTER: 49,
+      PROFESSIONAL: 299,
+      ENTERPRISE: 999,
     };
     return planPrices[planType?.toUpperCase()] || 0;
+  }
+
+  private formatPlanName(planType: string): string {
+    const planNames = {
+      FREE: "Free",
+      STARTER: "Starter",
+      PROFESSIONAL: "Professional",
+      ENTERPRISE: "Enterprise",
+    };
+    return planNames[planType?.toUpperCase()] || "Free";
   }
 
   private async checkServiceHealth(

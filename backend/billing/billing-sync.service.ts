@@ -72,6 +72,8 @@ export class BillingSyncService {
     userId: string,
     endpoint: string,
     computeUnits: number,
+    requestSizeBytes: number = 0,
+    responseSizeBytes: number = 0,
   ): Promise<void> {
     const timestamp = Date.now();
     const period = this.getCurrentBillingPeriod();
@@ -88,6 +90,14 @@ export class BillingSyncService {
     );
     pipeline.hincrby(`usage:${userId}:${period}`, "total_requests", 1);
 
+    // Track bandwidth usage
+    const bandwidthBytes = requestSizeBytes + responseSizeBytes;
+    pipeline.hincrby(
+      `usage:${userId}:${period}`,
+      "bandwidth_bytes",
+      bandwidthBytes,
+    );
+
     // Track for rate limiting (sliding window)
     const rateLimitKey = `rate:${userId}:${Math.floor(timestamp / 60000)}`; // Per minute
     pipeline.incr(rateLimitKey);
@@ -101,6 +111,9 @@ export class BillingSyncService {
     );
 
     await pipeline.exec();
+
+    // Update real-time usage in database
+    await this.updateRealTimeUsage(userId, 1, computeUnits, bandwidthBytes);
 
     // Async: Check if user hit limits (don't block RPC response)
     setImmediate(() => this.checkUsageLimits(userId, period));
@@ -450,26 +463,66 @@ export class BillingSyncService {
   async getCurrentUsage(userId: string): Promise<any> {
     try {
       const currentPeriod = this.getCurrentPeriod();
-      const requests = await this.redis.get(
-        `usage:${userId}:${currentPeriod}:requests`,
-      );
-      const computeUnits = await this.redis.get(
-        `usage:${userId}:${currentPeriod}:computeUnits`,
-      );
+
+      // Get subscription to determine limits
+      const subscription = await this.getUserSubscription(userId);
+      const planLimits = this.getPlanLimits(subscription?.planType || "FREE");
+
+      // Get usage from multiple sources
+      const period = this.getCurrentBillingPeriod();
+      const usage = await this.redis.hgetall(`usage:${userId}:${period}`);
+
+      // Get real-time usage from database
+      const realTimeUsage = await this.prisma.realTimeUsage.findUnique({
+        where: { userId },
+      });
+
+      // Calculate current usage values
+      const requestsUsed =
+        parseInt(usage.total_requests || "0") ||
+        realTimeUsage?.requestsUsed ||
+        0;
+      const bandwidthUsed = parseInt(usage.bandwidth_bytes || "0");
+      const storageUsed = parseInt(usage.storage_bytes || "0");
+      const computeUnitsUsed =
+        parseInt(usage.compute_units || "0") ||
+        realTimeUsage?.computeUnits ||
+        0;
 
       return {
-        requests: parseInt(requests || "0"),
-        computeUnits: parseFloat(computeUnits || "0"),
+        requests_used: requestsUsed,
+        requests_limit: planLimits.requests,
+        bandwidth_used: bandwidthUsed,
+        bandwidth_limit: planLimits.bandwidth,
+        storage_used: storageUsed,
+        storage_limit: planLimits.storage,
+        compute_units_used: computeUnitsUsed,
+        compute_units_limit: planLimits.computeUnits,
         period: currentPeriod,
         timestamp: new Date(),
+        billing_cycle: {
+          start: new Date(period + "-01"),
+          end: this.getEndOfMonth(new Date(period + "-01")),
+        },
       };
     } catch (error) {
       this.logger.error("Failed to get current usage:", error);
+      const planLimits = this.getPlanLimits("FREE");
       return {
-        requests: 0,
-        computeUnits: 0,
+        requests_used: 0,
+        requests_limit: planLimits.requests,
+        bandwidth_used: 0,
+        bandwidth_limit: planLimits.bandwidth,
+        storage_used: 0,
+        storage_limit: planLimits.storage,
+        compute_units_used: 0,
+        compute_units_limit: planLimits.computeUnits,
         period: this.getCurrentPeriod(),
         timestamp: new Date(),
+        billing_cycle: {
+          start: new Date(),
+          end: this.getEndOfMonth(new Date()),
+        },
       };
     }
   }
@@ -555,5 +608,130 @@ export class BillingSyncService {
   private getCurrentPeriod(): string {
     const now = new Date();
     return `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, "0")}`;
+  }
+
+  /**
+   * Get plan limits based on subscription type
+   */
+  private getPlanLimits(planType: string): any {
+    const limits = {
+      FREE: {
+        requests: 100000, // 100K requests
+        bandwidth: 1000000000, // 1GB
+        storage: 100000000, // 100MB
+        computeUnits: 10000000, // 10M compute units
+      },
+      STARTER: {
+        requests: 1000000, // 1M requests
+        bandwidth: 50000000000, // 50GB
+        storage: 5000000000, // 5GB
+        computeUnits: 100000000, // 100M compute units
+      },
+      PROFESSIONAL: {
+        requests: 10000000, // 10M requests
+        bandwidth: 500000000000, // 500GB
+        storage: 50000000000, // 50GB
+        computeUnits: 1000000000, // 1B compute units
+      },
+      ENTERPRISE: {
+        requests: -1, // Unlimited
+        bandwidth: -1, // Unlimited
+        storage: -1, // Unlimited
+        computeUnits: -1, // Unlimited
+      },
+    };
+
+    return limits[planType.toUpperCase()] || limits.FREE;
+  }
+
+  /**
+   * Get end of month date
+   */
+  private getEndOfMonth(date: Date): Date {
+    const endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    endDate.setHours(23, 59, 59, 999);
+    return endDate;
+  }
+
+  /**
+   * Update real-time usage in database
+   */
+  private async updateRealTimeUsage(
+    userId: string,
+    requests: number,
+    computeUnits: number,
+    bandwidthBytes: number,
+  ): Promise<void> {
+    try {
+      await this.prisma.realTimeUsage.upsert({
+        where: { userId },
+        update: {
+          requestsUsed: { increment: requests },
+          computeUnits: { increment: computeUnits },
+          lastUpdated: new Date(),
+        },
+        create: {
+          userId,
+          requestsUsed: requests,
+          computeUnits,
+          rateLimit: 1000, // Default rate limit
+          rateLimitUsed: 0,
+          lastUpdated: new Date(),
+        },
+      });
+
+      // Also update billing usage for the current period
+      const period = this.getCurrentBillingPeriod();
+      const periodStart = new Date(period + "-01");
+      const periodEnd = this.getEndOfMonth(periodStart);
+
+      await this.prisma.billingUsage.upsert({
+        where: {
+          userId_periodStart_periodEnd: {
+            userId,
+            periodStart,
+            periodEnd,
+          },
+        },
+        update: {
+          requestsUsed: { increment: requests },
+          computeUnits: { increment: computeUnits },
+          updatedAt: new Date(),
+        },
+        create: {
+          userId,
+          periodStart,
+          periodEnd,
+          requestsUsed: requests,
+          computeUnits,
+          overageRequests: 0,
+          overageCost: 0,
+          totalCost: 0,
+        },
+      });
+    } catch (error) {
+      this.logger.error("Failed to update real-time usage:", error);
+    }
+  }
+
+  /**
+   * Track storage usage
+   */
+  async recordStorageUsage(
+    userId: string,
+    sizeBytes: number,
+    operation: "add" | "remove",
+  ): Promise<void> {
+    const period = this.getCurrentBillingPeriod();
+    const key = `usage:${userId}:${period}`;
+
+    if (operation === "add") {
+      await this.redis.hincrby(key, "storage_bytes", sizeBytes);
+    } else {
+      await this.redis.hincrby(key, "storage_bytes", -sizeBytes);
+    }
+
+    // Check storage limits
+    setImmediate(() => this.checkUsageLimits(userId, period));
   }
 }

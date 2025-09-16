@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 export default function InteractiveBackground() {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     // Preload the image with priority
@@ -15,6 +16,7 @@ export default function InteractiveBackground() {
 
     img.onload = () => {
       setImageLoaded(true);
+      setImageUrl(img.src);
       // Add image to browser cache by setting it as background
       if (typeof window !== "undefined") {
         document.documentElement.style.setProperty(
@@ -25,7 +27,7 @@ export default function InteractiveBackground() {
     };
 
     img.onerror = () => setImageError(true);
-    img.src = "/ChatGPT Image Aug 7, 2025, 12_12_38 AM.png";
+    img.src = "/n0de-main-background.png";
 
     // Clean up
     return () => {
@@ -41,10 +43,11 @@ export default function InteractiveBackground() {
         className="absolute inset-0 w-full h-full"
         style={{
           backgroundImage:
-            imageLoaded && !imageError
-              ? `url('/ChatGPT Image Aug 7, 2025, 12_12_38 AM.png')`
+            imageLoaded && !imageError && imageUrl
+              ? `url('${imageUrl}')`
               : undefined,
           backgroundColor: imageError || !imageLoaded ? "#0f0f0f" : undefined,
+          backgroundBlendMode: "normal",
           backgroundSize: "cover",
           backgroundRepeat: "no-repeat",
           backgroundPosition: "center",
@@ -54,7 +57,7 @@ export default function InteractiveBackground() {
           backgroundPositionX: ["0px", "20px", "-10px", "0px"],
           backgroundPositionY: ["0px", "15px", "-8px", "0px"],
           scale: [1, 1.02, 0.99, 1],
-          opacity: [0.8, 0.9, 0.85, 0.8],
+          opacity: imageLoaded ? [0.85, 0.95, 0.9, 0.85] : 0,
           filter: [
             "contrast(1.05) brightness(1.05) saturate(1)",
             "contrast(1.1) brightness(1.08) saturate(1.05)",
