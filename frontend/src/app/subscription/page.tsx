@@ -456,6 +456,17 @@ const SubscriptionManagementPage = () => {
   // Validate plans data to prevent object rendering issues
   const validPlans = (plans || []).map((plan) => ({
     ...plan,
+    id: String(plan.id || 'plan'),
+    name: String(plan.name || 'Plan'),
+    price: Number(plan.price) || 0,
+    interval: String(plan.interval || 'month'),
+    currency: String(plan.currency || 'USD'),
+    limits: {
+      ...plan.limits,
+      requests: Number(plan.limits?.requests) || 0,
+      apiKeys: Number(plan.limits?.apiKeys) || 0,
+      rateLimit: Number(plan.limits?.rateLimit) || 0,
+    },
     features: Array.isArray(plan.features)
       ? plan.features.map((f) =>
           typeof f === "string" ? f : String(f || "Feature"),
@@ -904,7 +915,14 @@ const SubscriptionManagementPage = () => {
                                   ) : (
                                     <button
                                       onClick={() => {
-                                        setSelectedPlan(plan);
+                                        const safePlan = {
+                                          ...plan,
+                                          id: String(plan.id || 'plan'),
+                                          name: String(plan.name || 'Plan'),
+                                          price: Number(plan.price) || 0,
+                                          currency: String(plan.currency || 'USD'),
+                                        };
+                                        setSelectedPlan(safePlan);
                                         setShowUpgradeDialog(true);
                                       }}
                                       className={
