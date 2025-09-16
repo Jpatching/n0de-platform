@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { 
-  Search, 
-  Filter, 
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Search,
+  Filter,
   MoreVertical,
   Shield,
   ShieldCheck,
@@ -12,11 +12,11 @@ import {
   Ban,
   CheckCircle,
   AlertCircle,
-  Crown
-} from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import api from '@/lib/api';
-import { toast } from 'sonner';
+  Crown,
+} from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import api from "@/lib/api";
+import { toast } from "sonner";
 
 interface User {
   id: string;
@@ -24,7 +24,7 @@ interface User {
   username?: string;
   firstName?: string;
   lastName?: string;
-  role: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+  role: "USER" | "ADMIN" | "SUPER_ADMIN";
   isActive: boolean;
   isSuspended: boolean;
   suspendedReason?: string;
@@ -61,17 +61,40 @@ export default function AdminUsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('');
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("");
   const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState<UsersResponse['pagination'] | null>(null);
+  const [pagination, setPagination] = useState<
+    UsersResponse["pagination"] | null
+  >(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
+  const fetchUsers = useCallback(async () => {
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: "20",
+      });
+
+      if (search) params.append("search", search);
+      if (roleFilter) params.append("role", roleFilter);
+
+      const data: UsersResponse = await api.get(`/admin/users?${params}`);
+      setUsers(data.users);
+      setPagination(data.pagination);
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+      toast.error("Failed to load users");
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search, roleFilter]);
+
   useEffect(() => {
-    if (!isLoading && (!user || user.role === 'USER')) {
-      router.push('/dashboard');
+    if (!isLoading && (!user || user.role === "USER")) {
+      router.push("/dashboard");
       return;
     }
 
@@ -79,27 +102,6 @@ export default function AdminUsersPage() {
       fetchUsers();
     }
   }, [user, isLoading, router, page, search, roleFilter, fetchUsers]);
-
-  const fetchUsers = useCallback(async () => {
-    try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '20',
-      });
-
-      if (search) params.append('search', search);
-      if (roleFilter) params.append('role', roleFilter);
-
-      const data: UsersResponse = await api.get(`/admin/users?${params}`);
-      setUsers(data.users);
-      setPagination(data.pagination);
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
-      toast.error('Failed to load users');
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search, roleFilter]);
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
@@ -115,12 +117,12 @@ export default function AdminUsersPage() {
     setActionLoading(true);
     try {
       await api.post(`/admin/users/${userId}/suspend`, { reason });
-      toast.success('User suspended successfully');
+      toast.success("User suspended successfully");
       fetchUsers();
       setShowUserModal(false);
     } catch (error) {
-      console.error('Failed to suspend user:', error);
-      toast.error('Failed to suspend user');
+      console.error("Failed to suspend user:", error);
+      toast.error("Failed to suspend user");
     } finally {
       setActionLoading(false);
     }
@@ -130,12 +132,12 @@ export default function AdminUsersPage() {
     setActionLoading(true);
     try {
       await api.post(`/admin/users/${userId}/unsuspend`);
-      toast.success('User unsuspended successfully');
+      toast.success("User unsuspended successfully");
       fetchUsers();
       setShowUserModal(false);
     } catch (error) {
-      console.error('Failed to unsuspend user:', error);
-      toast.error('Failed to unsuspend user');
+      console.error("Failed to unsuspend user:", error);
+      toast.error("Failed to unsuspend user");
     } finally {
       setActionLoading(false);
     }
@@ -145,12 +147,12 @@ export default function AdminUsersPage() {
     setActionLoading(true);
     try {
       await api.put(`/admin/users/${userId}/role`, { role: newRole });
-      toast.success('User role updated successfully');
+      toast.success("User role updated successfully");
       fetchUsers();
       setShowUserModal(false);
     } catch (error) {
-      console.error('Failed to update user role:', error);
-      toast.error('Failed to update user role');
+      console.error("Failed to update user role:", error);
+      toast.error("Failed to update user role");
     } finally {
       setActionLoading(false);
     }
@@ -162,9 +164,9 @@ export default function AdminUsersPage() {
 
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case 'SUPER_ADMIN':
+      case "SUPER_ADMIN":
         return <Crown className="w-4 h-4 text-yellow-500" />;
-      case 'ADMIN':
+      case "ADMIN":
         return <ShieldCheck className="w-4 h-4 text-blue-500" />;
       default:
         return <Shield className="w-4 h-4 text-gray-500" />;
@@ -174,9 +176,9 @@ export default function AdminUsersPage() {
   const getRoleBadge = (role: string) => {
     const baseClasses = "px-2 py-1 rounded-full text-xs font-medium";
     switch (role) {
-      case 'SUPER_ADMIN':
+      case "SUPER_ADMIN":
         return `${baseClasses} bg-yellow-500/20 text-yellow-300`;
-      case 'ADMIN':
+      case "ADMIN":
         return `${baseClasses} bg-blue-500/20 text-blue-300`;
       default:
         return `${baseClasses} bg-gray-500/20 text-gray-300`;
@@ -211,7 +213,10 @@ export default function AdminUsersPage() {
         <div className="container-width">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
-              <button onClick={() => router.push('/admin')} className="flex items-center space-x-2 text-text-secondary hover:text-text-primary">
+              <button
+                onClick={() => router.push("/admin")}
+                className="flex items-center space-x-2 text-text-secondary hover:text-text-primary"
+              >
                 <Shield className="w-4 h-4" />
                 <span>Admin</span>
               </button>
@@ -260,48 +265,85 @@ export default function AdminUsersPage() {
             <table className="w-full">
               <thead className="bg-bg-main border-b border-border">
                 <tr>
-                  <th className="text-left py-3 px-4 font-medium text-text-secondary">User</th>
-                  <th className="text-left py-3 px-4 font-medium text-text-secondary">Role</th>
-                  <th className="text-left py-3 px-4 font-medium text-text-secondary">Status</th>
-                  <th className="text-left py-3 px-4 font-medium text-text-secondary">Subscription</th>
-                  <th className="text-left py-3 px-4 font-medium text-text-secondary">Last Login</th>
-                  <th className="text-left py-3 px-4 font-medium text-text-secondary">Actions</th>
+                  <th className="text-left py-3 px-4 font-medium text-text-secondary">
+                    User
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-text-secondary">
+                    Role
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-text-secondary">
+                    Status
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-text-secondary">
+                    Subscription
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-text-secondary">
+                    Last Login
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-text-secondary">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((user) => (
-                  <tr key={user.id} className="border-b border-border hover:bg-bg-elevated/50">
+                  <tr
+                    key={user.id}
+                    className="border-b border-border hover:bg-bg-elevated/50"
+                  >
                     <td className="py-3 px-4">
                       <div>
-                        <div className="font-medium">{user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.username || 'N/A'}</div>
-                        <div className="text-sm text-text-secondary">{user.email}</div>
-                        <div className="text-xs text-text-muted">ID: {user.id.slice(0, 8)}...</div>
+                        <div className="font-medium">
+                          {user.firstName && user.lastName
+                            ? `${user.firstName} ${user.lastName}`
+                            : user.username || "N/A"}
+                        </div>
+                        <div className="text-sm text-text-secondary">
+                          {user.email}
+                        </div>
+                        <div className="text-xs text-text-muted">
+                          ID: {user.id.slice(0, 8)}...
+                        </div>
                       </div>
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center space-x-2">
                         {getRoleIcon(user.role)}
                         <span className={getRoleBadge(user.role)}>
-                          {user.role.replace('_', ' ')}
+                          {user.role.replace("_", " ")}
                         </span>
                       </div>
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center space-x-2">
                         {getStatusIcon(user)}
-                        <span className={user.isSuspended ? 'text-red-400' : 'text-green-400'}>
-                          {user.isSuspended ? 'Suspended' : user.isActive ? 'Active' : 'Inactive'}
+                        <span
+                          className={
+                            user.isSuspended ? "text-red-400" : "text-green-400"
+                          }
+                        >
+                          {user.isSuspended
+                            ? "Suspended"
+                            : user.isActive
+                              ? "Active"
+                              : "Inactive"}
                         </span>
                       </div>
                       {user.isSuspended && user.suspendedReason && (
-                        <div className="text-xs text-text-muted mt-1">{user.suspendedReason}</div>
+                        <div className="text-xs text-text-muted mt-1">
+                          {user.suspendedReason}
+                        </div>
                       )}
                     </td>
                     <td className="py-3 px-4">
                       {user.currentSubscription ? (
                         <div>
-                          <div className="font-medium">{user.currentSubscription.planType}</div>
-                          <div className="text-sm text-text-secondary">{user.currentSubscription.status}</div>
+                          <div className="font-medium">
+                            {user.currentSubscription.planType}
+                          </div>
+                          <div className="text-sm text-text-secondary">
+                            {user.currentSubscription.status}
+                          </div>
                         </div>
                       ) : (
                         <span className="text-text-muted">No subscription</span>
@@ -310,7 +352,9 @@ export default function AdminUsersPage() {
                     <td className="py-3 px-4">
                       {user.lastLoginAt ? (
                         <div>
-                          <div className="text-sm">{formatDate(user.lastLoginAt)}</div>
+                          <div className="text-sm">
+                            {formatDate(user.lastLoginAt)}
+                          </div>
                         </div>
                       ) : (
                         <span className="text-text-muted">Never</span>
@@ -337,7 +381,9 @@ export default function AdminUsersPage() {
           {pagination && pagination.pages > 1 && (
             <div className="border-t border-border px-4 py-3 flex items-center justify-between">
               <div className="text-sm text-text-secondary">
-                Showing {((page - 1) * pagination.limit) + 1} to {Math.min(page * pagination.limit, pagination.total)} of {pagination.total} users
+                Showing {(page - 1) * pagination.limit + 1} to{" "}
+                {Math.min(page * pagination.limit, pagination.total)} of{" "}
+                {pagination.total} users
               </div>
               <div className="flex items-center space-x-2">
                 <button
@@ -347,7 +393,9 @@ export default function AdminUsersPage() {
                 >
                   Previous
                 </button>
-                <span className="text-sm">{page} of {pagination.pages}</span>
+                <span className="text-sm">
+                  {page} of {pagination.pages}
+                </span>
                 <button
                   onClick={() => setPage(page + 1)}
                   disabled={page === pagination.pages}
@@ -365,9 +413,10 @@ export default function AdminUsersPage() {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-bg-elevated rounded-lg p-6 w-full max-w-lg mx-4">
               <h3 className="text-lg font-semibold mb-4">
-                User Actions: {selectedUser.firstName && selectedUser.lastName 
-                  ? `${selectedUser.firstName} ${selectedUser.lastName}` 
-                  : selectedUser.username || 'Unknown User'}
+                User Actions:{" "}
+                {selectedUser.firstName && selectedUser.lastName
+                  ? `${selectedUser.firstName} ${selectedUser.lastName}`
+                  : selectedUser.username || "Unknown User"}
               </h3>
 
               <div className="space-y-4">
@@ -375,42 +424,54 @@ export default function AdminUsersPage() {
                   <span>Email:</span>
                   <span className="font-medium">{selectedUser.email}</span>
                 </div>
-                
+
                 <div className="flex items-center justify-between p-3 bg-bg-main rounded">
                   <span>Role:</span>
-                  <span className="font-medium">{selectedUser.role.replace('_', ' ')}</span>
+                  <span className="font-medium">
+                    {selectedUser.role.replace("_", " ")}
+                  </span>
                 </div>
 
                 <div className="flex items-center justify-between p-3 bg-bg-main rounded">
                   <span>Status:</span>
-                  <span className={`font-medium ${selectedUser.isSuspended ? 'text-red-400' : 'text-green-400'}`}>
-                    {selectedUser.isSuspended ? 'Suspended' : 'Active'}
+                  <span
+                    className={`font-medium ${selectedUser.isSuspended ? "text-red-400" : "text-green-400"}`}
+                  >
+                    {selectedUser.isSuspended ? "Suspended" : "Active"}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between p-3 bg-bg-main rounded">
                   <span>API Keys:</span>
-                  <span className="font-medium">{selectedUser._count.apiKeys}</span>
+                  <span className="font-medium">
+                    {selectedUser._count.apiKeys}
+                  </span>
                 </div>
 
                 <div className="flex items-center justify-between p-3 bg-bg-main rounded">
                   <span>Support Tickets:</span>
-                  <span className="font-medium">{selectedUser._count.supportTickets}</span>
+                  <span className="font-medium">
+                    {selectedUser._count.supportTickets}
+                  </span>
                 </div>
 
                 {/* Actions */}
                 <div className="border-t border-border pt-4 space-y-3">
                   <button
-                    onClick={() => router.push(`/admin/users/${selectedUser.id}`)}
+                    onClick={() =>
+                      router.push(`/admin/users/${selectedUser.id}`)
+                    }
                     className="w-full btn-secondary flex items-center justify-center space-x-2"
                   >
                     <Eye className="w-4 h-4" />
                     <span>View Details</span>
                   </button>
 
-                  {user?.role === 'ADMIN' && selectedUser.role !== 'ADMIN' && (
+                  {user?.role === "ADMIN" && selectedUser.role !== "ADMIN" && (
                     <select
-                      onChange={(e) => handleUpdateRole(selectedUser.id, e.target.value)}
+                      onChange={(e) =>
+                        handleUpdateRole(selectedUser.id, e.target.value)
+                      }
                       className="w-full p-2 bg-bg-main border border-border rounded"
                       defaultValue={selectedUser.role}
                       disabled={actionLoading}
@@ -433,7 +494,7 @@ export default function AdminUsersPage() {
                   ) : (
                     <button
                       onClick={() => {
-                        const reason = prompt('Suspension reason:');
+                        const reason = prompt("Suspension reason:");
                         if (reason) {
                           handleSuspendUser(selectedUser.id, reason);
                         }

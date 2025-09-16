@@ -1,16 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { headers } from 'next/headers';
+import { NextRequest, NextResponse } from "next/server";
+import { headers } from "next/headers";
 
 const COINBASE_WEBHOOK_SECRET = process.env.COINBASE_COMMERCE_WEBHOOK_SECRET;
 
 if (!COINBASE_WEBHOOK_SECRET) {
-  console.error('Missing COINBASE_COMMERCE_WEBHOOK_SECRET environment variable');
+  console.error(
+    "Missing COINBASE_COMMERCE_WEBHOOK_SECRET environment variable",
+  );
 }
 
 // Webhook event types from Coinbase Commerce
 interface CoinbaseEvent {
   id: string;
-  type: 'charge:created' | 'charge:confirmed' | 'charge:failed' | 'charge:delayed' | 'charge:pending' | 'charge:resolved';
+  type:
+    | "charge:created"
+    | "charge:confirmed"
+    | "charge:failed"
+    | "charge:delayed"
+    | "charge:pending"
+    | "charge:resolved";
   api_version: string;
   created_at: string;
   data: {
@@ -25,10 +33,10 @@ interface CoinbaseEvent {
     confirmed_at?: string;
     pricing_type: string;
     pricing: {
-      local: { amount: string; currency: string; };
-      bitcoin?: { amount: string; currency: string; };
-      ethereum?: { amount: string; currency: string; };
-      usdc?: { amount: string; currency: string; };
+      local: { amount: string; currency: string };
+      bitcoin?: { amount: string; currency: string };
+      ethereum?: { amount: string; currency: string };
+      usdc?: { amount: string; currency: string };
     };
     metadata: {
       plan_id?: string;
@@ -52,8 +60,8 @@ interface CoinbaseEvent {
       transaction_id: string;
       status: string;
       value: {
-        local: { amount: string; currency: string; };
-        crypto: { amount: string; currency: string; };
+        local: { amount: string; currency: string };
+        crypto: { amount: string; currency: string };
       };
       block: {
         height: number;
@@ -66,20 +74,24 @@ interface CoinbaseEvent {
 }
 
 // Verify webhook signature using Coinbase Commerce method
-async function verifySignature(payload: string, signature: string, secret: string): Promise<boolean> {
+async function verifySignature(
+  payload: string,
+  signature: string,
+  secret: string,
+): Promise<boolean> {
   try {
-    const crypto = await import('crypto');
+    const crypto = await import("crypto");
     const expectedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(payload, 'utf8')
-      .digest('hex');
-    
+      .createHmac("sha256", secret)
+      .update(payload, "utf8")
+      .digest("hex");
+
     return crypto.timingSafeEqual(
-      Buffer.from(signature, 'hex'),
-      Buffer.from(expectedSignature, 'hex')
+      Buffer.from(signature, "hex"),
+      Buffer.from(expectedSignature, "hex"),
     );
   } catch (error) {
-    console.error('Signature verification error:', error);
+    console.error("Signature verification error:", error);
     return false;
   }
 }
@@ -89,73 +101,69 @@ export async function POST(request: NextRequest) {
     // Get raw body for signature verification
     const rawBody = await request.text();
     const headersList = await headers();
-    const signature = headersList.get('x-cc-webhook-signature');
+    const signature = headersList.get("x-cc-webhook-signature");
 
     if (!signature) {
-      console.error('Missing webhook signature');
-      return NextResponse.json(
-        { error: 'Missing signature' },
-        { status: 400 }
-      );
+      console.error("Missing webhook signature");
+      return NextResponse.json({ error: "Missing signature" }, { status: 400 });
     }
 
     // Verify webhook signature
-    if (COINBASE_WEBHOOK_SECRET && !(await verifySignature(rawBody, signature, COINBASE_WEBHOOK_SECRET))) {
-      console.error('Invalid webhook signature');
-      return NextResponse.json(
-        { error: 'Invalid signature' },
-        { status: 401 }
-      );
+    if (
+      COINBASE_WEBHOOK_SECRET &&
+      !(await verifySignature(rawBody, signature, COINBASE_WEBHOOK_SECRET))
+    ) {
+      console.error("Invalid webhook signature");
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
     const event: CoinbaseEvent = JSON.parse(rawBody);
-    
-    console.log('Coinbase webhook received:', {
+
+    console.log("Coinbase webhook received:", {
       eventType: event.type,
       chargeId: event.data.id,
-      timestamp: event.created_at
+      timestamp: event.created_at,
     });
 
     // Handle different event types
     switch (event.type) {
-      case 'charge:created':
+      case "charge:created":
         await handleChargeCreated(event);
         break;
-        
-      case 'charge:confirmed':
+
+      case "charge:confirmed":
         await handleChargeConfirmed(event);
         break;
-        
-      case 'charge:failed':
+
+      case "charge:failed":
         await handleChargeFailed(event);
         break;
-        
-      case 'charge:delayed':
+
+      case "charge:delayed":
         await handleChargeDelayed(event);
         break;
-        
-      case 'charge:pending':
+
+      case "charge:pending":
         await handleChargePending(event);
         break;
-        
-      case 'charge:resolved':
+
+      case "charge:resolved":
         await handleChargeResolved(event);
         break;
-        
+
       default:
-        console.log('Unhandled event type:', event.type);
+        console.log("Unhandled event type:", event.type);
     }
 
     return NextResponse.json(
       { received: true, eventType: event.type },
-      { status: 200 }
+      { status: 200 },
     );
-
   } catch (error) {
-    console.error('Webhook processing error:', error);
+    console.error("Webhook processing error:", error);
     return NextResponse.json(
-      { error: 'Webhook processing failed' },
-      { status: 500 }
+      { error: "Webhook processing failed" },
+      { status: 500 },
     );
   }
 }
@@ -163,13 +171,13 @@ export async function POST(request: NextRequest) {
 async function handleChargeCreated(event: CoinbaseEvent) {
   const { data } = event;
   const { metadata } = data;
-  
-  console.log('Charge created:', {
+
+  console.log("Charge created:", {
     chargeId: data.id,
     planId: metadata.plan_id,
     customerEmail: metadata.customer_email,
-    amount: data.pricing.local.amount,
-    currency: data.pricing.local.currency
+    amount: parseFloat(data.pricing.local.amount),
+    currency: data.pricing.local.currency,
   });
 
   // Record charge creation in database
@@ -186,26 +194,30 @@ async function handleChargeCreated(event: CoinbaseEvent) {
   // Send confirmation email to customer
   await sendChargeCreatedEmail(metadata.customer_email!, {
     chargeName: data.name,
-    amount: data.pricing.local.amount,
+    amount: parseFloat(data.pricing.local.amount),
     currency: data.pricing.local.currency,
-    hostedUrl: data.hosted_url
+    hostedUrl: data.hosted_url,
   });
 }
 
 async function handleChargeConfirmed(event: CoinbaseEvent) {
   const { data } = event;
   const { metadata } = data;
-  
-  console.log('Payment confirmed:', {
+
+  console.log("Payment confirmed:", {
     chargeId: data.id,
     planId: metadata.plan_id,
     customerEmail: metadata.customer_email,
-    confirmedAt: data.confirmed_at
+    confirmedAt: data.confirmed_at,
   });
 
   // Activate customer subscription
   if (metadata.plan_id && metadata.customer_email) {
-    await activateSubscription(metadata.customer_email, metadata.plan_id, data.id);
+    await activateSubscription(
+      metadata.customer_email,
+      metadata.plan_id,
+      data.id,
+    );
   }
 
   // Update charge status in database
@@ -220,9 +232,9 @@ async function handleChargeConfirmed(event: CoinbaseEvent) {
   // Send success notification
   await sendPaymentSuccessEmail(metadata.customer_email!, {
     planName: data.name,
-    amount: data.pricing.local.amount,
+    amount: parseFloat(data.pricing.local.amount),
     currency: data.pricing.local.currency,
-    transactionDetails: data.payments?.[0]
+    transactionDetails: data.payments?.[0],
   });
 
   // Create API keys for the customer
@@ -232,11 +244,11 @@ async function handleChargeConfirmed(event: CoinbaseEvent) {
 async function handleChargeFailed(event: CoinbaseEvent) {
   const { data } = event;
   const { metadata } = data;
-  
-  console.log('Payment failed:', {
+
+  console.log("Payment failed:", {
     chargeId: data.id,
     planId: metadata.plan_id,
-    customerEmail: metadata.customer_email
+    customerEmail: metadata.customer_email,
   });
 
   // Update charge status
@@ -250,35 +262,35 @@ async function handleChargeFailed(event: CoinbaseEvent) {
   // Send failure notification
   await sendPaymentFailedEmail(metadata.customer_email!, {
     planName: data.name,
-    amount: data.pricing.local.amount,
+    amount: parseFloat(data.pricing.local.amount),
     currency: data.pricing.local.currency,
-    reason: 'Payment could not be confirmed on the blockchain'
+    reason: "Payment could not be confirmed on the blockchain",
   });
 }
 
 async function handleChargeDelayed(event: CoinbaseEvent) {
   const { data } = event;
   const { metadata } = data;
-  
-  console.log('Payment delayed (underpaid):', {
+
+  console.log("Payment delayed (underpaid):", {
     chargeId: data.id,
     planId: metadata.plan_id,
-    customerEmail: metadata.customer_email
+    customerEmail: metadata.customer_email,
   });
 
   // Notify customer about underpayment
   await sendPaymentDelayedEmail(metadata.customer_email!, {
-    planName: data.name,
-    reason: 'Payment amount is less than required. Please send the remaining amount.'
+    planType: data.name,
+    amount: parseFloat(data.pricing.local.amount),
   });
 }
 
 async function handleChargePending(event: CoinbaseEvent) {
   const { data } = event;
-  
-  console.log('Payment pending confirmation:', {
+
+  console.log("Payment pending confirmation:", {
     chargeId: data.id,
-    payments: data.payments?.length || 0
+    payments: data.payments?.length || 0,
   });
 
   // Update status to pending
@@ -293,34 +305,38 @@ async function handleChargePending(event: CoinbaseEvent) {
 async function handleChargeResolved(event: CoinbaseEvent) {
   const { data } = event;
   const { metadata } = data;
-  
-  console.log('Charge resolved:', {
+
+  console.log("Charge resolved:", {
     chargeId: data.id,
     planId: metadata.plan_id,
-    customerEmail: metadata.customer_email
+    customerEmail: metadata.customer_email,
   });
 
   // Handle resolved charges (could be confirmed or failed after being delayed/pending)
   const latestStatus = data.timeline[data.timeline.length - 1]?.status;
-  
-  if (latestStatus === 'COMPLETED') {
+
+  if (latestStatus === "COMPLETED") {
     // Same as confirmed
     await handleChargeConfirmed(event);
   }
 }
 
 // Helper functions for business logic
-async function activateSubscription(customerEmail: string, planId: string, _chargeId: string) {
+async function activateSubscription(
+  customerEmail: string,
+  planId: string,
+  _chargeId: string,
+) {
   console.log(`Activating ${planId} subscription for ${customerEmail}`);
-  
+
   const planLimits = {
     starter: { rps: 5000, monthlyRequests: 1000000, price: 99 },
     professional: { rps: 25000, monthlyRequests: 5000000, price: 299 },
-    enterprise: { rps: -1, monthlyRequests: 50000000, price: 899 }
+    enterprise: { rps: -1, monthlyRequests: 50000000, price: 899 },
   };
-  
+
   const _limits = planLimits[planId as keyof typeof planLimits];
-  
+
   // In production: Update customer subscription in database
   // await database.subscriptions.upsert({
   //   customer_email: customerEmail,
@@ -336,10 +352,10 @@ async function activateSubscription(customerEmail: string, planId: string, _char
 
 async function provisionApiAccess(customerEmail: string, planId: string) {
   console.log(`Provisioning API access for ${customerEmail} on ${planId} plan`);
-  
+
   // Generate API key
   const apiKey = `n0de_live_${generateSecureKey(32)}`;
-  
+
   // In production: Store API key in database
   // await database.api_keys.create({
   //   customer_email: customerEmail,
@@ -349,12 +365,12 @@ async function provisionApiAccess(customerEmail: string, planId: string) {
   //   status: 'active',
   //   created_at: new Date()
   // });
-  
+
   // Send API key to customer
   await sendApiKeyEmail(customerEmail, {
-    apiKey,
+    planType: planId,
     planId,
-    dashboardUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard`
+    dashboardUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/dashboard`,
   });
 }
 
@@ -364,38 +380,59 @@ interface EmailDetails {
   chargeId?: string;
   transactionHash?: string;
   customerName?: string;
+  chargeName?: string;
+  planName?: string;
+  currency?: string;
+  hostedUrl?: string;
+  reason?: string;
+  transactionDetails?: any;
+  dashboardUrl?: string;
+  planId?: string;
 }
 
 // Email notification functions
-async function sendChargeCreatedEmail(customerEmail: string, _details: EmailDetails) {
-  console.log('Sending charge created email to:', customerEmail);
+async function sendChargeCreatedEmail(
+  customerEmail: string,
+  _details: EmailDetails,
+) {
+  console.log("Sending charge created email to:", customerEmail);
   // Implement email service integration (SendGrid, etc.)
 }
 
-async function sendPaymentSuccessEmail(customerEmail: string, _details: EmailDetails) {
-  console.log('Sending payment success email to:', customerEmail);
+async function sendPaymentSuccessEmail(
+  customerEmail: string,
+  _details: EmailDetails,
+) {
+  console.log("Sending payment success email to:", customerEmail);
   // Implement email service integration
 }
 
-async function sendPaymentFailedEmail(customerEmail: string, _details: EmailDetails) {
-  console.log('Sending payment failed email to:', customerEmail);
+async function sendPaymentFailedEmail(
+  customerEmail: string,
+  _details: EmailDetails,
+) {
+  console.log("Sending payment failed email to:", customerEmail);
   // Implement email service integration
 }
 
-async function sendPaymentDelayedEmail(customerEmail: string, _details: EmailDetails) {
-  console.log('Sending payment delayed email to:', customerEmail);
+async function sendPaymentDelayedEmail(
+  customerEmail: string,
+  _details: EmailDetails,
+) {
+  console.log("Sending payment delayed email to:", customerEmail);
   // Implement email service integration
 }
 
 async function sendApiKeyEmail(customerEmail: string, _details: EmailDetails) {
-  console.log('Sending API key email to:', customerEmail);
+  console.log("Sending API key email to:", customerEmail);
   // Implement email service integration with API key
 }
 
 // Utility functions
 function generateSecureKey(length: number): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
   for (let i = 0; i < length; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }

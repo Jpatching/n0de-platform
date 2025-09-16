@@ -1,17 +1,52 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 
 export default function InteractiveBackground() {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    // Preload the image with priority
+    const img = new Image();
+    img.loading = "eager";
+    img.decoding = "async";
+
+    img.onload = () => {
+      setImageLoaded(true);
+      // Add image to browser cache by setting it as background
+      if (typeof window !== "undefined") {
+        document.documentElement.style.setProperty(
+          "--preloaded-bg",
+          `url('${img.src}')`,
+        );
+      }
+    };
+
+    img.onerror = () => setImageError(true);
+    img.src = "/ChatGPT Image Aug 7, 2025, 12_12_38 AM.png";
+
+    // Clean up
+    return () => {
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, []);
+
   return (
-    <div className="fixed inset-0 w-full h-full overflow-hidden z-0">
-      {/* Single Smooth Background with Jitter Effects */}
+    <div className="fixed inset-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+      {/* Main Background with Image or Fallback */}
       <motion.div
         className="absolute inset-0 w-full h-full"
         style={{
-          backgroundImage: `url('/ChatGPT Image Aug 7, 2025, 12_12_38 AM.png')`,
+          backgroundImage:
+            imageLoaded && !imageError
+              ? `url('/ChatGPT Image Aug 7, 2025, 12_12_38 AM.png')`
+              : undefined,
+          backgroundColor: imageError || !imageLoaded ? "#0f0f0f" : undefined,
           backgroundSize: "cover",
-          backgroundRepeat: "repeat",
+          backgroundRepeat: "no-repeat",
           backgroundPosition: "center",
         }}
         animate={{
@@ -30,7 +65,7 @@ export default function InteractiveBackground() {
         transition={{
           duration: 12,
           repeat: Infinity,
-          ease: [0.25, 0.46, 0.45, 0.94], // Jitter's "Slow down" easing
+          ease: [0.25, 0.46, 0.45, 0.94],
           times: [0, 0.3, 0.7, 1],
         }}
       />
@@ -48,7 +83,7 @@ export default function InteractiveBackground() {
           opacity: [0.6, 0.8, 0.5, 0.6],
         }}
         transition={{
-          duration: 8,
+          duration: 15,
           repeat: Infinity,
           ease: "easeInOut",
         }}
