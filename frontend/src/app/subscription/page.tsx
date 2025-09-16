@@ -1238,7 +1238,7 @@ const SubscriptionManagementPage = () => {
                     <p className="text-text-secondary">
                       You&apos;re about to switch to the{" "}
                       <span className="text-text-primary font-medium">
-                        {selectedPlan.name}
+                        {String(selectedPlan.name || "Selected Plan")}
                       </span>{" "}
                       plan.
                     </p>
